@@ -650,6 +650,8 @@
     <string name="proxy_app_list_scan_china_done">Đã quét %1$d ứng dụng, tìm thấy %2$d ứng dụng Trung Quốc</string>
     <string name="proxy_app_list_scan_china_no_match">Đã quét {scanned} ứng dụng, không tìm thấy ứng dụng Trung Quốc</string>
     <string name="proxy_app_list_scan_china_skipped_global">Bỏ qua trong chế độ tất cả ứng dụng</string>
+    <string name="proxy_app_list_apply_preset_apps">Ứng dụng proxy mặc định</string>
+    <string name="proxy_app_list_apply_preset_apps_done">Đã áp dụng ứng dụng proxy mặc định</string>
     <string name="proxy_app_list_invert_selection">Đảo ngược lựa chọn</string>
     <string name="proxy_app_list_clear_selection">Xóa lựa chọn</string>
     <string name="proxy_app_list_invert_done">Đã đảo ngược lựa chọn</string>

@@ -30,7 +30,7 @@ android {
     defaultConfig {
         minSdk = ProjectConfig.MIN_SDK
         ndk {
-            abiFilters += ProjectConfig.SUPPORTED_ANDROID_ABIS
+            abiFilters += nativeAndroidAbis()
         }
     }
 
@@ -60,7 +60,7 @@ val syncHevSocks5TunnelVersion = tasks.register<SyncGitSubmoduleVersionTask>("sy
     submodulePath.set(hevSocks5TunnelSubmoduleDir.asFile.relativeTo(rootProject.projectDir).invariantSeparatorsPath)
 }
 
-private val buildHevTunAssetTasks = ProjectConfig.SUPPORTED_ANDROID_ABIS.flatMap { abi ->
+private val buildHevTunAssetTasks = nativeAndroidAbis().flatMap { abi ->
     hevTunArtifacts.map { artifact ->
         tasks.register<BuildHevTunTask>("buildHevTun${abi.capitalizedForTask()}${artifact.taskSuffix}") {
             description = "Build Hev TUN ${artifact.displayName} for Android $abi."

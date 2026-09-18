@@ -2,18 +2,20 @@
 // SPDX-License-Identifier: GPL-3.0
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
+import java.io.File
+import java.util.Properties
 
 object ProjectConfig {
     const val JVM_VERSION = 26
     const val PROJECT_NAME = "starseaN"
-    const val VERSION_NAME = "1.4.9-dev"
     const val PACKAGE_NAME = "org.starsean"
-    const val ASTERISKD_VERSION = "v2.0.32"
+    const val STARSEAD_VERSION = "v2.0.32"
     const val BPF2SOCKS_VERSION = "v1.0.15"
     const val BPF_MATCHER_VERSION = "v1.0.1"
     const val XRAY_CORE_VERSION = "v26.9.9"
@@ -24,10 +26,31 @@ object ProjectConfig {
     val SUPPORTED_ANDROID_ABIS = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 }
 
-fun org.gradle.api.Project.getGitVersionCode(): Int {
-    return providers.exec {
-        commandLine("git", "rev-list", "--count", "HEAD")
-    }.standardOutput.asText.get().trim().toInt()
+fun loadAppVersionName(rootDir: File): String {
+    val file = File(rootDir, "version.properties")
+    check(file.isFile) { "Missing ${file.absolutePath}" }
+    val properties = Properties()
+    file.inputStream().use(properties::load)
+    return properties.getProperty("VERSION_NAME")?.trim()?.takeIf(String::isNotEmpty)
+        ?: error("VERSION_NAME missing in ${file.absolutePath}")
+}
+
+fun Project.appVersionName(): String = loadAppVersionName(rootProject.projectDir)
+
+fun Project.appVersionCode(): Int = versionCodeFromName(appVersionName())
+
+fun versionCodeFromName(versionName: String): Int {
+    val core = versionName
+        .trim()
+        .removePrefix("v")
+        .removePrefix("V")
+        .substringBefore('-')
+        .substringBefore('+')
+    val parts = core.split('.').mapNotNull { it.toIntOrNull() }
+    val major = parts.getOrElse(0) { 0 }
+    val minor = parts.getOrElse(1) { 0 }
+    val patch = parts.getOrElse(2) { 0 }
+    return major * 10_000 + minor * 100 + patch
 }
 
 abstract class GenerateProjectInfoTask : DefaultTask() {

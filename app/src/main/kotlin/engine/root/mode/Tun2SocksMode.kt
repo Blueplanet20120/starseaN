@@ -11,11 +11,11 @@ import engine.proxy.buildLocalSocksInbound
 import engine.proxy.toLocalProxyOptions
 import engine.root.config.RootConfigBuildContext
 import engine.root.config.RootModeStartConfig
-import engine.root.config.buildAsteriskdConfig
+import engine.root.config.buildStarseadConfig
 import engine.root.config.tun2SocksInternalProxyPortValue
-import engine.root.daemon.config.AsteriskdHevSocks5TunnelHelper
-import engine.root.daemon.config.AsteriskdMode
-import engine.root.daemon.config.AsteriskdModeOptions
+import engine.root.daemon.config.StarseadHevSocks5TunnelHelper
+import engine.root.daemon.config.StarseadMode
+import engine.root.daemon.config.StarseadModeOptions
 import engine.vpn.toTunOptions
 import engine.xray.XrayProtocols
 import engine.xray.XrayTags
@@ -39,15 +39,15 @@ internal fun RootConfigBuildContext.buildTun2SocksStartConfig(): RootModeStartCo
     return RootModeStartConfig(
         root = rootStartConfig,
         localProxyOptions = localProxyOptions,
-        asteriskdConfig = rootStartConfig.buildAsteriskdConfig(
-            mode = AsteriskdMode.Tun2Socks,
+        starseadConfig = rootStartConfig.buildStarseadConfig(
+            mode = StarseadMode.Tun2Socks,
             iptablesConfig = iptablesConfig,
             virtualInterfaces = listOf("starsea0"),
-            modeOptions = AsteriskdModeOptions(
+            modeOptions = StarseadModeOptions(
                 transparentPort = null,
                 tunnelName = null,
             ),
-            helper = AsteriskdHevSocks5TunnelHelper(
+            helper = StarseadHevSocks5TunnelHelper(
                 executablePath = rootStartConfig.runtimePaths.hevSocks5TunnelExecutablePath,
                 socksHost = Tun2SocksListenAddress,
                 socksPort = socks5ProxyPort,

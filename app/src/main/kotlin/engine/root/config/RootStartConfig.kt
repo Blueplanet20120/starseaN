@@ -6,7 +6,7 @@ package engine.root.config
 import app.ServiceControlSettings
 import engine.network.NetworkLimits
 import engine.proxy.LocalProxyOptions
-import engine.root.daemon.config.AsteriskdConfig
+import engine.root.daemon.config.StarseadConfig
 
 const val RootBpf2SocksDefaultBridgePort = NetworkLimits.PORT_MAX - 3
 internal const val DefaultRootTun2SocksProxyPort = NetworkLimits.PORT_MAX - 1
@@ -38,5 +38,5 @@ internal data class RootStartConfig(
 internal data class RootModeStartConfig(
     val root: RootStartConfig,
     val localProxyOptions: LocalProxyOptions,
-    val asteriskdConfig: AsteriskdConfig,
+    val starseadConfig: StarseadConfig,
 )

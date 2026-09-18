@@ -12,7 +12,7 @@ import features.resources.runtime.AndroidResourceFileDownloadCancellation
 import android.app.Application
 import system.AndroidAppIconFetcher
 import features.logs.AndroidAccessLogRepository
-import features.logs.AndroidAsteriskdLogRepository
+import features.logs.AndroidStarseadLogRepository
 import features.logs.AndroidCoreLogRepository
 import features.logs.AndroidLogcatRepository
 import coil3.ImageLoader
@@ -30,7 +30,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-class AsteriskApplication : Application(), SingletonImageLoader.Factory {
+class StarseaApplication : Application(), SingletonImageLoader.Factory {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     internal val stateStore: AndroidAppStateStore by lazy {
         AndroidAppStateStore.get(applicationContext)
@@ -89,7 +89,7 @@ class AsteriskApplication : Application(), SingletonImageLoader.Factory {
         AndroidLogcatRepository.initialize(applicationContext)
         AndroidCoreLogRepository.initialize(applicationContext)
         AndroidAccessLogRepository.initialize(applicationContext)
-        AndroidAsteriskdLogRepository.initialize(applicationContext)
+        AndroidStarseadLogRepository.initialize(applicationContext)
         appScope.launch {
             stateStore.state
                 .map { state ->
@@ -112,7 +112,7 @@ class AsteriskApplication : Application(), SingletonImageLoader.Factory {
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         return ImageLoader.Builder(context)
             .components {
-                add(AndroidAppIconFetcher.Factory(this@AsteriskApplication))
+                add(AndroidAppIconFetcher.Factory(this@StarseaApplication))
                 add(AndroidAppIconFetcher.CacheKeyer())
             }
             .build()

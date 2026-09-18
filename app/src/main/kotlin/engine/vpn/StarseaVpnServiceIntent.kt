@@ -14,19 +14,19 @@ import engine.proxy.LocalProxyLoopbackAddress
 import engine.proxy.LocalProxyOptions
 import engine.xray.XrayCoreLogPaths
 
-internal object AsteriskVpnServiceIntents {
+internal object StarseaVpnServiceIntents {
     const val ACTION_START = "app.action.START_VPN"
     const val ACTION_STOP = "app.action.STOP_VPN"
 
     fun startIntent(context: Context, config: VpnServiceStartConfig): Intent {
-        return Intent(context, AsteriskVpnService::class.java).apply {
+        return Intent(context, StarseaVpnService::class.java).apply {
             action = ACTION_START
             writeStartConfig(config)
         }
     }
 
     fun stopIntent(context: Context): Intent {
-        return Intent(context, AsteriskVpnService::class.java).apply {
+        return Intent(context, StarseaVpnService::class.java).apply {
             action = ACTION_STOP
         }
     }

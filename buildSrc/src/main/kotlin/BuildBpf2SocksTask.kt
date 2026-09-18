@@ -58,10 +58,15 @@ abstract class BuildBpf2SocksTask : DefaultTask() {
             throw GradleException("No bpf2socks C sources found under ${sourceDir.absolutePath}")
         }
 
+        val outputDir = outputDirectory.get().asFile
+        val outputs = targetAbis.get().map { abi -> outputDir.resolve("$abi/libbpf2socks.so") }
+        if (outputs.all { output -> NativeOutputReuse.isCurrent(output, listOf(sourceDir)) }) {
+            logger.lifecycle("Skipping bpf2socks: native outputs are up to date")
+            return
+        }
         val ndkDir = findNdkDir()
         val embeddedSource = buildEmbeddedBpfSource(ndkDir, sourceDir)
         val sources = userSpaceSources + embeddedSource
-        val outputDir = outputDirectory.get().asFile
         outputDir.mkdirs()
         targetAbis.get().map { abi -> abi.toBpf2SocksAbiTarget() }.forEach { target ->
             val output = outputDir.resolve("${target.androidAbi}/libbpf2socks.so")

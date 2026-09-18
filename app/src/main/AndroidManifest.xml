@@ -24,7 +24,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
-        android:name=".AsteriskApplication"
+        android:name=".StarseaApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
@@ -154,7 +154,7 @@
         </service>
 
         <service
-            android:name="engine.vpn.AsteriskVpnService"
+            android:name="engine.vpn.StarseaVpnService"
             android:exported="false"
             android:permission="android.permission.BIND_VPN_SERVICE"
             tools:ignore="VpnServicePolicy">

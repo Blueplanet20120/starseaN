@@ -15,7 +15,7 @@ android {
     defaultConfig {
         minSdk = ProjectConfig.MIN_SDK
         ndk {
-            abiFilters += ProjectConfig.SUPPORTED_ANDROID_ABIS
+            abiFilters += nativeAndroidAbis()
         }
     }
 
@@ -53,7 +53,7 @@ val buildBpf2Socks = tasks.register<BuildBpf2SocksTask>("buildBpf2Socks") {
         .takeIf { it.asFile.exists() }
         ?.let(localPropertiesFile::set)
     minSdk.set(ProjectConfig.MIN_SDK)
-    targetAbis.set(ProjectConfig.SUPPORTED_ANDROID_ABIS)
+    targetAbis.set(nativeAndroidAbis())
 }
 
 tasks.named("preBuild") {

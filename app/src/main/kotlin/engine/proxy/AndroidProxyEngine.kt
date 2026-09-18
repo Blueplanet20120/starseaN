@@ -327,7 +327,7 @@ internal fun normalizeRootRuntimeStatus(
     val snapshot = probed.rootSnapshot ?: return probed
     val activeRunMode = runModeFor(snapshot.mode) ?: probed.runMode ?: return probed
     return ProxyEngineStatus.fromRootSnapshot(
-        localOwner = RootRuntimeOwner.AsteriskNg,
+        localOwner = RootRuntimeOwner.StarseaN,
         runMode = activeRunMode,
         snapshot = snapshot,
     )

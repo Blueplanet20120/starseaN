@@ -11,7 +11,7 @@ import java.io.File
 internal data class RootRuntimeLayout(
     val configPath: String,
     val xrayCorePath: String,
-    val asteriskdPath: String,
+    val starseadPath: String,
     val bpfMatcherPath: String,
     val bpf2socksPath: String,
     val hevSocks5TunnelPath: String,
@@ -20,16 +20,16 @@ internal data class RootRuntimeLayout(
     val startupScriptPath: String
         get() = File(dataDir, "startup.sh").absolutePath
 
-    val asteriskdConfigPath: String
+    val starseadConfigPath: String
         get() = File(dataDir, "starsead.json").absolutePath
 
-    val asteriskdStatePath: String
+    val starseadStatePath: String
         get() = File(dataDir, "starsead.state").absolutePath
 
     val logDirectoryPath: String
         get() = File(dataDir, "logs").absolutePath
 
-    val asteriskdLogPath: String
+    val starseadLogPath: String
         get() = File(logDirectoryPath, "starsead.log").absolutePath
 }
 
@@ -80,7 +80,7 @@ internal fun XrayResourceFilePaths.toRootRuntimeLayout(): RootRuntimeLayout {
     return RootRuntimeLayout(
         configPath = File(dir, "config.json").absolutePath,
         xrayCorePath = xrayCorePath,
-        asteriskdPath = asteriskdPath,
+        starseadPath = starseadPath,
         bpfMatcherPath = bpfMatcherPath,
         bpf2socksPath = bpf2socksPath,
         hevSocks5TunnelPath = hevSocks5TunnelPath,

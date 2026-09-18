@@ -3,7 +3,7 @@
 
 package engine.root.runtime
 
-import engine.root.daemon.control.AsteriskdPhase
+import engine.root.daemon.control.StarseadPhase
 import engine.root.publication.RootPublicationLaunchMode
 
 internal data class ServiceControlReconfigurePlan(
@@ -12,7 +12,7 @@ internal data class ServiceControlReconfigurePlan(
 )
 
 internal fun serviceControlReconfigurePlan(
-    phase: AsteriskdPhase?,
+    phase: StarseadPhase?,
     enabled: Boolean,
 ): ServiceControlReconfigurePlan =
     when (phase) {
@@ -24,11 +24,11 @@ internal fun serviceControlReconfigurePlan(
                 RootPublicationLaunchMode.None
             },
         )
-        AsteriskdPhase.Running -> ServiceControlReconfigurePlan(
+        StarseadPhase.Running -> ServiceControlReconfigurePlan(
             shutdownRequired = true,
             launchMode = RootPublicationLaunchMode.Service,
         )
-        AsteriskdPhase.Stopped -> ServiceControlReconfigurePlan(
+        StarseadPhase.Stopped -> ServiceControlReconfigurePlan(
             shutdownRequired = true,
             launchMode = if (enabled) {
                 RootPublicationLaunchMode.Monitor
@@ -36,5 +36,5 @@ internal fun serviceControlReconfigurePlan(
                 RootPublicationLaunchMode.None
             },
         )
-        else -> throw IllegalArgumentException("asteriskd must be running or stopped to reconfigure")
+        else -> throw IllegalArgumentException("starsead must be running or stopped to reconfigure")
     }

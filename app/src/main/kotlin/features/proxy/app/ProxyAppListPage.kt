@@ -51,11 +51,14 @@ import app.LocalAppServices
 import app.LocalAppStateStore
 import app.LocalIsWideScreen
 import app.LocalUpdateAppState
+import app.PresetProxyAppPackageNames
 import app.R
 import app.collectAppState
 import app.modes.RunModeVpnService
 import features.proxy.app.model.ProxyAppListItem
 import features.proxy.app.model.ProxyAppListUserSpaceTabUi
+import features.proxy.app.model.isSelected
+import features.proxy.app.model.sortedSelectedFirst
 import features.proxy.app.usecase.ProxyAppListClipboardData
 import features.proxy.app.usecase.applyProxyAppListClipboardImport
 import features.proxy.app.usecase.decodeProxyAppListFromClipboard
@@ -122,6 +125,7 @@ fun ProxyAppListPage(
     val scanNoMatchTemplate = stringResource(R.string.proxy_app_list_scan_china_no_match)
     val invertDoneMessage = stringResource(R.string.proxy_app_list_invert_done)
     val clearDoneMessage = stringResource(R.string.proxy_app_list_clear_done)
+    val presetAppliedMessage = stringResource(R.string.proxy_app_list_apply_preset_apps_done)
     var pendingScanJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
 
     val appSelectionKeyGroups = remember(pageState.appPackages) {
@@ -207,6 +211,24 @@ fun ProxyAppListPage(
                     when (action) {
                         ProxyAppListMoreAction.ToggleSystemApps -> {
                             pageState.showSystemApps = !pageState.showSystemApps
+                        }
+
+                        ProxyAppListMoreAction.ApplyPresetApps -> {
+                            val snapshot = pageState.appPackages
+                            val nextSelection = applyPresetProxyAppSelection(
+                                installedApps = snapshot,
+                                userIds = pageState.userSpaces.map { user -> user.id }
+                                    .ifEmpty { listOf(selectedUserId ?: 0) },
+                                presetPackageNames = PresetProxyAppPackageNames,
+                                keyGroups = appSelectionKeyGroups,
+                            )
+                            updateAppState { state ->
+                                state.copy(
+                                    proxyAppListMode = ProxyAppListModeWhitelist,
+                                    proxyAppListSelectedApps = nextSelection,
+                                )
+                            }
+                            scope.launch { tipNotifier.show(presetAppliedMessage) }
                         }
 
                         ProxyAppListMoreAction.ImportClipboard -> {
@@ -604,9 +626,11 @@ private fun ProxyAppListUserPage(
     scrollBehavior: ScrollBehavior,
     onAppCheckedChange: (ProxyAppListItem, Boolean) -> Unit,
 ) {
-    val visibleApps = userId?.let { id ->
-        pageState.preparedAppListData.visibleItemsByUser[id]
-    }.orEmpty()
+    val visibleApps = remember(userId, pageState.preparedAppListData, selectedAppKeys) {
+        userId?.let { id ->
+            pageState.preparedAppListData.visibleItemsByUser[id]
+        }.orEmpty().sortedSelectedFirst(selectedAppKeys)
+    }
     val lazyListState = rememberLazyListState()
 
     Box(Modifier.fillMaxSize()) {
@@ -625,8 +649,8 @@ private fun ProxyAppListUserPage(
                     key = { item -> item.key },
                     contentType = { "app" },
                 ) { item ->
-                    val checked = remember(item.selectionKeys, selectedAppKeys) {
-                        item.selectionKeys.any { key -> key in selectedAppKeys }
+                    val checked = remember(item.selectionKeys, item.app.packageName, selectedAppKeys) {
+                        item.isSelected(selectedAppKeys)
                     }
                     ProxyAppListItemCard(
                         app = item.app,

@@ -5,7 +5,7 @@ package app
 
 import app.modes.ColorModeSystem
 import app.modes.LanguageModeSystem
-import app.modes.ProxyAppListModeGlobal
+import app.modes.ProxyAppListModeWhitelist
 import app.modes.ProxyServerListLayoutSingle
 import app.modes.ProxyServerListSortDefault
 import app.modes.RunModeVpnService
@@ -114,8 +114,8 @@ data class AppState(
     val ignoredInterfaces: List<String> = emptyList(),
     val privateAddressCidrs: List<String> = emptyList(),
 
-    val proxyAppListMode: Int = ProxyAppListModeGlobal,
-    val proxyAppListSelectedApps: List<String> = emptyList(),
+    val proxyAppListMode: Int = ProxyAppListModeWhitelist,
+    val proxyAppListSelectedApps: List<String> = PresetProxyAppPackageNames,
 )
 
 val AppState.effectiveLocalDnsEnabled: Boolean

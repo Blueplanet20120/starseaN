@@ -11,15 +11,15 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-internal object AsteriskdConfigEncoder {
-    fun encode(config: AsteriskdConfig): String {
-        AsteriskdConfigValidator.validate(config)
-        return AsteriskdJson.encodeToString(JsonObject.serializer(), config.toJsonObject())
+internal object StarseadConfigEncoder {
+    fun encode(config: StarseadConfig): String {
+        StarseadConfigValidator.validate(config)
+        return StarseadJson.encodeToString(JsonObject.serializer(), config.toJsonObject())
             .trimEnd('\r', '\n') + "\n"
     }
 }
 
-private fun AsteriskdConfig.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadConfig.toJsonObject(): JsonObject = buildJsonObject {
     put("schemaVersion", 3)
     put("owner", owner.wireValue)
     put("coreType", coreType.wireValue)
@@ -36,19 +36,19 @@ private fun AsteriskdConfig.toJsonObject(): JsonObject = buildJsonObject {
     put("serviceControl", serviceControl.toJsonObject())
 }
 
-private fun AsteriskdServiceControlConfig.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadServiceControlConfig.toJsonObject(): JsonObject = buildJsonObject {
     put("enabled", enabled)
     put("schedule", schedule.toJsonObject())
     put("wifi", wifi.toJsonObject())
 }
 
-private fun AsteriskdScheduleControl.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadScheduleControl.toJsonObject(): JsonObject = buildJsonObject {
     put("enabled", enabled)
     put("startCron", startCron)
     put("stopCron", stopCron)
 }
 
-private fun AsteriskdWifiControl.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadWifiControl.toJsonObject(): JsonObject = buildJsonObject {
     put("enabled", enabled)
     put("connectStart", connectStart.toJsonObject())
     put("connectStop", connectStop.toJsonObject())
@@ -56,19 +56,19 @@ private fun AsteriskdWifiControl.toJsonObject(): JsonObject = buildJsonObject {
     put("disconnectStop", disconnectStop.toJsonObject())
 }
 
-private fun AsteriskdWifiRule.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadWifiRule.toJsonObject(): JsonObject = buildJsonObject {
     put("enabled", enabled)
     put("ssids", ssids.toJsonArray())
     put("bssids", bssids.toJsonArray())
 }
 
-private fun AsteriskdCoreConfig.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadCoreConfig.toJsonObject(): JsonObject = buildJsonObject {
     put("workingDirectory", workingDirectory)
     put("readinessTimeoutMilliseconds", readinessTimeoutMilliseconds)
     put("ageSecretKey", ageSecretKey?.let(::JsonPrimitive) ?: JsonNull)
 }
 
-private fun AsteriskdNetworkConfig.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadNetworkConfig.toJsonObject(): JsonObject = buildJsonObject {
     put("enableIpv6", enableIpv6)
     put("disableSystemIpv6", disableSystemIpv6)
     put("enableLocalDns", enableLocalDns)
@@ -82,7 +82,7 @@ private fun AsteriskdNetworkConfig.toJsonObject(): JsonObject = buildJsonObject 
     put("appPolicy", appPolicy.toJsonObject())
 }
 
-private fun AsteriskdAppPolicy.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadAppPolicy.toJsonObject(): JsonObject = buildJsonObject {
     put("mode", mode.wireValue)
     put("uids", uids.toJsonIntArray())
     put("bypassUids", bypassUids.toJsonIntArray())
@@ -90,17 +90,17 @@ private fun AsteriskdAppPolicy.toJsonObject(): JsonObject = buildJsonObject {
     put("directCidrPathV6", directCidrPathV6?.let(::JsonPrimitive) ?: JsonNull)
 }
 
-private fun AsteriskdModeOptions.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadModeOptions.toJsonObject(): JsonObject = buildJsonObject {
     put("transparentPort", transparentPort?.let(::JsonPrimitive) ?: JsonNull)
     put("tunnelName", tunnelName?.let(::JsonPrimitive) ?: JsonNull)
 }
 
-private fun AsteriskdMatcher.toJsonObject(): JsonObject = buildJsonObject {
+private fun StarseadMatcher.toJsonObject(): JsonObject = buildJsonObject {
     put("executablePath", executablePath)
 }
 
-private fun AsteriskdHelper.toJsonObject(): JsonObject = when (this) {
-    is AsteriskdHevSocks5TunnelHelper -> buildJsonObject {
+private fun StarseadHelper.toJsonObject(): JsonObject = when (this) {
+    is StarseadHevSocks5TunnelHelper -> buildJsonObject {
         put("type", "hev-socks5-tunnel")
         put("executablePath", executablePath)
         put("socksHost", socksHost)
@@ -114,7 +114,7 @@ private fun AsteriskdHelper.toJsonObject(): JsonObject = when (this) {
         put("tcpReadWriteTimeoutMilliseconds", tcpReadWriteTimeoutMilliseconds)
         put("udpReadWriteTimeoutMilliseconds", udpReadWriteTimeoutMilliseconds)
     }
-    is AsteriskdBpf2SocksHelper -> buildJsonObject {
+    is StarseadBpf2SocksHelper -> buildJsonObject {
         put("type", "bpf2socks")
         put("executablePath", executablePath)
         put("bridgeListenAddress", bridgeListenAddress)
@@ -139,7 +139,7 @@ private fun AsteriskdHelper.toJsonObject(): JsonObject = when (this) {
 private fun List<String>.toJsonArray(): JsonArray = JsonArray(map(::JsonPrimitive))
 private fun List<Int>.toJsonIntArray(): JsonArray = JsonArray(map(::JsonPrimitive))
 
-private val AsteriskdJson = Json {
+private val StarseadJson = Json {
     encodeDefaults = true
     explicitNulls = true
     prettyPrint = true

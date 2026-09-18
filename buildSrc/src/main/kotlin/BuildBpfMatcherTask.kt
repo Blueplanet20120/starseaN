@@ -45,8 +45,13 @@ abstract class BuildBpfMatcherTask : DefaultTask() {
     @TaskAction
     fun build() {
         val source = sourceFile.get().asFile
-        val ndkDir = findNdkDir()
         val outputDir = outputDirectory.get().asFile
+        val outputs = targetAbis.get().map { abi -> outputDir.resolve("$abi/libbpf-matcher.so") }
+        if (outputs.all { output -> NativeOutputReuse.isCurrent(output, listOf(source)) }) {
+            logger.lifecycle("Skipping bpf-matcher: native outputs are up to date")
+            return
+        }
+        val ndkDir = findNdkDir()
         outputDir.mkdirs()
         targetAbis.get().map { abi -> abi.toBpfMatcherAbiTarget() }.forEach { target ->
             val output = outputDir.resolve("${target.androidAbi}/libbpf-matcher.so")

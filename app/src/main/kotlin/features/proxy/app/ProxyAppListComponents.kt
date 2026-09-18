@@ -60,6 +60,7 @@ import ui.components.IconDropdownMenuEntry
 
 internal enum class ProxyAppListMoreAction {
     ToggleSystemApps,
+    ApplyPresetApps,
     ScanChinaApps,
     InvertSelection,
     ClearSelection,
@@ -111,6 +112,11 @@ internal fun ProxyAppListMoreActionsMenu(
                 title = stringResource(R.string.proxy_app_list_show_system_apps),
                 selected = showSystemApps,
                 action = ProxyAppListMoreAction.ToggleSystemApps,
+            ),
+            IconDropdownMenuEntry(
+                key = "apply-preset-apps",
+                title = stringResource(R.string.proxy_app_list_apply_preset_apps),
+                action = ProxyAppListMoreAction.ApplyPresetApps,
             ),
             IconDropdownMenuEntry(
                 key = "scan-china-apps",

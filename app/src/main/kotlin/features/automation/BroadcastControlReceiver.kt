@@ -6,7 +6,7 @@ package features.automation
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import app.AsteriskApplication
+import app.StarseaApplication
 import data.AndroidAppStateStore
 import engine.proxy.AndroidProxyEngine
 import features.logs.AndroidAppLogger
@@ -77,7 +77,7 @@ private class BroadcastControlHandler(
         if (dispatchBroadcastUpdate(
                 command = command,
                 enabled = configuredState.enableBroadcastControl,
-                gateway = AndroidBroadcastUpdateGateway(appContext as AsteriskApplication),
+                gateway = AndroidBroadcastUpdateGateway(appContext as StarseaApplication),
             )
         ) {
             AndroidAppLogger.info(LogTag, "Broadcast control ${command.actionName} dispatched")

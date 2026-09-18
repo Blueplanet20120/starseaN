@@ -8,8 +8,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-internal const val AsteriskDatabaseName = "starsean.db"
-internal const val LegacyAsteriskDatabaseName = "asteriskng.db"
+internal const val StarseaDatabaseName = "starsean.db"
 
 @Database(
     entities = [
@@ -21,7 +20,7 @@ internal const val LegacyAsteriskDatabaseName = "asteriskng.db"
     version = 2,
     exportSchema = true,
 )
-internal abstract class AsteriskAppDatabase : RoomDatabase() {
+internal abstract class StarseaAppDatabase : RoomDatabase() {
     abstract fun appStateDao(): AppStateDao
 }
 

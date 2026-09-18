@@ -7,12 +7,12 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import app.AsteriskApplication
+import app.StarseaApplication
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal class AndroidBroadcastUpdateGateway(
-    private val application: AsteriskApplication,
+    private val application: StarseaApplication,
 ) : BroadcastUpdateGateway {
     private val workManager = WorkManager.getInstance(application)
 

@@ -6,16 +6,16 @@ package engine.root.runtime
 import android.content.Context
 import engine.proxy.ProxyEngineStatus
 import engine.root.config.RootStartConfig
-import engine.root.daemon.AsteriskdClient
-import engine.root.daemon.config.AsteriskdConfig
-import engine.root.daemon.config.AsteriskdConfigEncoder
-import engine.root.daemon.config.AsteriskdMode
-import engine.root.daemon.config.AsteriskdOwner
-import engine.root.daemon.control.AsteriskdControlCodec
-import engine.root.daemon.control.AsteriskdControlResponse
-import engine.root.daemon.control.AsteriskdPhase
-import engine.root.daemon.control.AsteriskdResultCode
-import engine.root.daemon.control.AsteriskdSnapshot
+import engine.root.daemon.StarseadClient
+import engine.root.daemon.config.StarseadConfig
+import engine.root.daemon.config.StarseadConfigEncoder
+import engine.root.daemon.config.StarseadMode
+import engine.root.daemon.config.StarseadOwner
+import engine.root.daemon.control.StarseadControlCodec
+import engine.root.daemon.control.StarseadControlResponse
+import engine.root.daemon.control.StarseadPhase
+import engine.root.daemon.control.StarseadResultCode
+import engine.root.daemon.control.StarseadSnapshot
 import engine.root.publication.RootBootConfigWriter
 import engine.root.publication.RootBootPublicationCommand
 import engine.root.publication.RootPublicationBundle
@@ -41,45 +41,45 @@ internal class RootSupervisorController(
 ) {
     private val appContext = context.applicationContext
     private val runtimeLayout = appContext.rootRuntimeLayout()
-    private val client = AsteriskdClient(shell)
-    suspend fun status(): AsteriskdControlResponse = client.status(runtimeLayout.asteriskdPath)
+    private val client = StarseadClient(shell)
+    suspend fun status(): StarseadControlResponse = client.status(runtimeLayout.starseadPath)
 
-    fun observeStatus(): Flow<AsteriskdSnapshot> = client.observeStatus(runtimeLayout.asteriskdPath)
+    fun observeStatus(): Flow<StarseadSnapshot> = client.observeStatus(runtimeLayout.starseadPath)
         .onEach { snapshot -> observeRunningFailure(snapshot) }
 
-    suspend fun preflightStart(expectedMode: AsteriskdMode, explicitRestart: Boolean): AsteriskdSnapshot? {
-        return status().preflightStart(AsteriskdOwner.AsteriskNg, expectedMode, explicitRestart)
+    suspend fun preflightStart(expectedMode: StarseadMode, explicitRestart: Boolean): StarseadSnapshot? {
+        return status().preflightStart(StarseadOwner.StarseaN, expectedMode, explicitRestart)
             ?.also { snapshot -> observeRunningFailure(snapshot, explicitRootAction = true) }
     }
 
-    suspend fun ownsRuntime(): Boolean = status().boundSnapshot()?.owner == AsteriskdOwner.AsteriskNg
+    suspend fun ownsRuntime(): Boolean = status().boundSnapshot()?.owner == StarseadOwner.StarseaN
 
-    suspend fun proxyStatus(runMode: Int, expectedMode: AsteriskdMode): ProxyEngineStatus {
+    suspend fun proxyStatus(runMode: Int, expectedMode: StarseadMode): ProxyEngineStatus {
         val snapshot = status().boundSnapshot() ?: return ProxyEngineStatus(running = false, runMode = runMode)
         observeRunningFailure(snapshot)
         return snapshot.toProxyEngineStatus(runMode, expectedMode)
     }
 
-    private suspend fun observeRunningFailure(snapshot: AsteriskdSnapshot, explicitRootAction: Boolean = false) {
-        if (snapshot.owner == AsteriskdOwner.AsteriskNg && snapshot.phase == AsteriskdPhase.Running) {
+    private suspend fun observeRunningFailure(snapshot: StarseadSnapshot, explicitRootAction: Boolean = false) {
+        if (snapshot.owner == StarseadOwner.StarseaN && snapshot.phase == StarseadPhase.Running) {
             RootFailureWatcher.ensureStarted(appContext, shell, runtimeLayout, explicitRootAction)
         }
     }
 
-    fun proxyStatus(snapshot: AsteriskdSnapshot, runMode: Int, expectedMode: AsteriskdMode): ProxyEngineStatus =
+    fun proxyStatus(snapshot: StarseadSnapshot, runMode: Int, expectedMode: StarseadMode): ProxyEngineStatus =
         snapshot.toProxyEngineStatus(runMode, expectedMode)
 
-    fun requireRunning(snapshot: AsteriskdSnapshot, expectedMode: AsteriskdMode) {
-        snapshot.requireRunning(AsteriskdOwner.AsteriskNg, expectedMode)
+    fun requireRunning(snapshot: StarseadSnapshot, expectedMode: StarseadMode) {
+        snapshot.requireRunning(StarseadOwner.StarseaN, expectedMode)
     }
 
     suspend fun start(
         root: RootStartConfig,
-        config: AsteriskdConfig,
-    ): AsteriskdSnapshot {
+        config: StarseadConfig,
+    ): StarseadSnapshot {
         RootFailureWatcher.beginAttempt()
         status().boundSnapshot()?.let { snapshot ->
-            val disposition = snapshot.ordinaryStartDisposition(AsteriskdOwner.AsteriskNg, config.mode)
+            val disposition = snapshot.ordinaryStartDisposition(StarseadOwner.StarseaN, config.mode)
             if (disposition == RootOrdinaryStartDisposition.Reuse) {
                 observeRunningFailure(snapshot)
                 return snapshot
@@ -100,11 +100,11 @@ internal class RootSupervisorController(
 
     suspend fun restart(
         root: RootStartConfig,
-        config: AsteriskdConfig,
-    ): AsteriskdSnapshot {
+        config: StarseadConfig,
+    ): StarseadSnapshot {
         RootFailureWatcher.beginAttempt()
         val snapshot = status().boundSnapshot()
-        if (snapshot != null && snapshot.owner != AsteriskdOwner.AsteriskNg) {
+        if (snapshot != null && snapshot.owner != StarseadOwner.StarseaN) {
             throw RootRuntimeConflictException(snapshot)
         }
         return launch(
@@ -117,11 +117,11 @@ internal class RootSupervisorController(
 
     suspend fun reconfigureServiceControl(
         root: RootStartConfig,
-        config: AsteriskdConfig,
+        config: StarseadConfig,
     ): Boolean {
         RootFailureWatcher.beginAttempt()
         val snapshot = status().boundSnapshot()
-        if (snapshot != null && snapshot.owner != AsteriskdOwner.AsteriskNg) {
+        if (snapshot != null && snapshot.owner != StarseadOwner.StarseaN) {
             throw RootRuntimeConflictException(snapshot)
         }
         val plan = try {
@@ -153,10 +153,10 @@ internal class RootSupervisorController(
             RootFailureWatcher.stop()
             return
         }
-        if (snapshot.owner != AsteriskdOwner.AsteriskNg) {
+        if (snapshot.owner != StarseadOwner.StarseaN) {
             throw RootRuntimeConflictException(snapshot)
         }
-        if (snapshot.phase != AsteriskdPhase.Stopped) {
+        if (snapshot.phase != StarseadPhase.Stopped) {
             throw RootRuntimeBusyException(snapshot)
         }
         shutdownOwn()
@@ -164,10 +164,10 @@ internal class RootSupervisorController(
 
     private suspend fun launch(
         root: RootStartConfig,
-        config: AsteriskdConfig,
-        restartExpectedOwner: AsteriskdOwner?,
+        config: StarseadConfig,
+        restartExpectedOwner: StarseadOwner?,
         launchMode: RootPublicationLaunchMode,
-    ): AsteriskdSnapshot {
+    ): StarseadSnapshot {
         // Only an actual ROOT launch may arm diagnostics; constructing engines also happens in VPN.
         RootFailureWatcher.ensureStarted(appContext, shell, runtimeLayout)
         var stage = "prepare_directories"
@@ -175,7 +175,7 @@ internal class RootSupervisorController(
         try {
             preparePublication()
             stage = "encode_config"
-            val daemonConfigBytes = AsteriskdConfigEncoder.encode(config).toByteArray(Charsets.UTF_8)
+            val daemonConfigBytes = StarseadConfigEncoder.encode(config).toByteArray(Charsets.UTF_8)
             val publication = RootPublicationBundle(
                 runtimeLayout = runtimeLayout,
                 bootEnabled = root.enableBoot,
@@ -207,12 +207,12 @@ internal class RootSupervisorController(
             runCatching { AndroidAppLogger.info(LogTag, "root_start stage=launch result=sent") }
             val snapshot = withTimeoutOrNull(StartTimeoutMilliseconds.milliseconds) {
                 when (launchMode) {
-                    RootPublicationLaunchMode.Service -> client.awaitRunning(runtimeLayout.asteriskdPath)
-                    RootPublicationLaunchMode.Monitor -> client.awaitStopped(runtimeLayout.asteriskdPath)
+                    RootPublicationLaunchMode.Service -> client.awaitRunning(runtimeLayout.starseadPath)
+                    RootPublicationLaunchMode.Monitor -> client.awaitStopped(runtimeLayout.starseadPath)
                     RootPublicationLaunchMode.None -> error("A non-launch publication has no runtime snapshot")
                 }
-            } ?: throw IllegalStateException("asteriskd did not reach the requested phase before timeout")
-            if (snapshot.owner != AsteriskdOwner.AsteriskNg) throw RootRuntimeConflictException(snapshot)
+            } ?: throw IllegalStateException("starsead did not reach the requested phase before timeout")
+            if (snapshot.owner != StarseadOwner.StarseaN) throw RootRuntimeConflictException(snapshot)
             require(snapshot.mode == config.mode) { "Unexpected ROOT mode ${snapshot.mode.wireValue}" }
             runCatching { AndroidAppLogger.info(LogTag, "root_start stage=ready phase=${snapshot.phase}") }
             return snapshot
@@ -223,72 +223,72 @@ internal class RootSupervisorController(
         }
     }
 
-    suspend fun stopOwn(): AsteriskdControlResponse {
+    suspend fun stopOwn(): StarseadControlResponse {
         val initial = status()
         val initialSnapshot = initial.boundSnapshot() ?: run {
             RootFailureWatcher.stop()
             return initial
         }
-        if (initialSnapshot.owner != AsteriskdOwner.AsteriskNg) {
+        if (initialSnapshot.owner != StarseadOwner.StarseaN) {
             throw RootRuntimeConflictException(initialSnapshot)
         }
         val result = shell.exec(RootStopOwnCommand.build(runtimeLayout), ShellExecOptions(logFailure = false))
-        val response = AsteriskdControlCodec.decodeShellResponse(result)
+        val response = StarseadControlCodec.decodeShellResponse(result)
         when (response.requestId) {
             "status" -> response.boundSnapshot()?.let { snapshot ->
-                if (snapshot.owner != AsteriskdOwner.AsteriskNg) throw RootRuntimeConflictException(snapshot)
+                if (snapshot.owner != StarseadOwner.StarseaN) throw RootRuntimeConflictException(snapshot)
             }
             "stop" -> Unit
             else -> error("Unexpected stop-own response id")
         }
-        if (response.result.code == AsteriskdResultCode.Ok || response.result.code == AsteriskdResultCode.NotRunning) {
+        if (response.result.code == StarseadResultCode.Ok || response.result.code == StarseadResultCode.NotRunning) {
             RootFailureWatcher.stop()
             return response
         }
-        error(response.result.message ?: "Failed to stop asteriskd")
+        error(response.result.message ?: "Failed to stop starsead")
     }
 
-    suspend fun shutdownOwn(): AsteriskdControlResponse {
+    suspend fun shutdownOwn(): StarseadControlResponse {
         val initial = status()
         val initialSnapshot = initial.boundSnapshot() ?: run {
             RootFailureWatcher.stop()
             return initial
         }
-        if (initialSnapshot.owner != AsteriskdOwner.AsteriskNg) {
+        if (initialSnapshot.owner != StarseadOwner.StarseaN) {
             throw RootRuntimeConflictException(initialSnapshot)
         }
         val result = shell.exec(
             RootShutdownOwnCommand.build(runtimeLayout),
             ShellExecOptions(logFailure = false),
         )
-        val response = AsteriskdControlCodec.decodeShellResponse(result)
+        val response = StarseadControlCodec.decodeShellResponse(result)
         when (response.requestId) {
             "status" -> response.boundSnapshot()?.let { snapshot ->
-                if (snapshot.owner != AsteriskdOwner.AsteriskNg) {
+                if (snapshot.owner != StarseadOwner.StarseaN) {
                     throw RootRuntimeConflictException(snapshot)
                 }
             }
             "shutdown", "stop" -> Unit
             else -> error("Unexpected shutdown-own response id")
         }
-        if (response.result.code == AsteriskdResultCode.Ok ||
-            response.result.code == AsteriskdResultCode.NotRunning
+        if (response.result.code == StarseadResultCode.Ok ||
+            response.result.code == StarseadResultCode.NotRunning
         ) {
             RootFailureWatcher.stop()
             return response
         }
-        error(response.result.message ?: "Failed to shutdown asteriskd")
+        error(response.result.message ?: "Failed to shutdown starsead")
     }
 
     suspend fun publishBoot(
         root: RootStartConfig,
-        config: AsteriskdConfig,
+        config: StarseadConfig,
     ) {
         preparePublication()
         RootBootConfigWriter.write(
             layout = runtimeLayout,
             coreConfigBytes = root.xrayConfigJson.toByteArray(Charsets.UTF_8),
-            encodedDaemonConfig = AsteriskdConfigEncoder.encode(config),
+            encodedDaemonConfig = StarseadConfigEncoder.encode(config),
         )
         val result = shell.exec(
             RootBootPublicationCommand.buildInstallation(runtimeLayout),
@@ -312,9 +312,9 @@ internal class RootSupervisorController(
     private fun launchFailure(result: ShellExecResult): IllegalStateException {
         runCatching { AndroidAppLogger.warn(LogTag, "root_launcher exit=${result.errno} stderr=${sanitizeLauncherStderr(result.stderr).take(512)}") }
         val controlResponse = result.controlResponseOrNull()
-        controlResponse?.result?.snapshot?.rejectBound(AsteriskdOwner.AsteriskNg)
+        controlResponse?.result?.snapshot?.rejectBound(StarseadOwner.StarseaN)
         val message = controlResponse?.result?.message ?: sanitizeLauncherStderr(result.stderr)
-            .ifBlank { "asteriskd launcher exited with ${result.errno}" }
+            .ifBlank { "starsead launcher exited with ${result.errno}" }
         return IllegalStateException(message)
     }
 

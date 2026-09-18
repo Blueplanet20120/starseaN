@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 
 @SuppressLint("VpnServicePolicy")
-class AsteriskVpnService : VpnService() {
+class StarseaVpnService : VpnService() {
     private var tunFileDescriptor: ParcelFileDescriptor? = null
     private var logFileTailers: List<CoreLogFileTailer> = emptyList()
     private var hevTunRuntime: HevTunRuntime? = null
@@ -53,7 +53,7 @@ class AsteriskVpnService : VpnService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            AsteriskVpnServiceIntents.ACTION_STOP -> {
+            StarseaVpnServiceIntents.ACTION_STOP -> {
                 serviceScope.launch {
                     try {
                         operationMutex.withLock {
@@ -65,7 +65,7 @@ class AsteriskVpnService : VpnService() {
                 }
             }
 
-            AsteriskVpnServiceIntents.ACTION_START -> {
+            StarseaVpnServiceIntents.ACTION_START -> {
                 val config = intent.readVpnServiceStartConfig()
                 if (config == null) {
                     completeStart(Result.failure(IllegalStateException(getString(R.string.error_vpn_start_config_missing))))
@@ -297,7 +297,7 @@ class AsteriskVpnService : VpnService() {
     }
 
     companion object {
-        private const val LogTag = "AsteriskVpnService"
+        private const val LogTag = "StarseaVpnService"
         private const val RuntimeShutdownTimeoutMillis = 1_000L
 
         @Volatile
@@ -310,7 +310,7 @@ class AsteriskVpnService : VpnService() {
             val result = CompletableDeferred<Result<Unit>>()
             pendingStart = result
             try {
-                context.startService(AsteriskVpnServiceIntents.startIntent(context, config))
+                context.startService(StarseaVpnServiceIntents.startIntent(context, config))
                 withTimeout(10_000.milliseconds) {
                     result.await()
                 }.getOrThrow()
@@ -323,7 +323,7 @@ class AsteriskVpnService : VpnService() {
 
         internal fun stop(context: Context) {
             running = false
-            context.startService(AsteriskVpnServiceIntents.stopIntent(context))
+            context.startService(StarseaVpnServiceIntents.stopIntent(context))
         }
 
         internal fun isRunning(): Boolean {

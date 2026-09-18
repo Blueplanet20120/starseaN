@@ -309,7 +309,7 @@ internal fun SettingsBottomSheetsHost(
                         sheetState.showServiceControl = false
                     } catch (error: Throwable) {
                         if (error is CancellationException) throw error
-                        AndroidAppLogger.error("ServiceControl", "Failed to restart asteriskd", error)
+                        AndroidAppLogger.error("ServiceControl", "Failed to restart starsead", error)
                         serviceControlError = error.message?.takeIf(String::isNotBlank)
                             ?: serviceControlFailedMessage
                     } finally {

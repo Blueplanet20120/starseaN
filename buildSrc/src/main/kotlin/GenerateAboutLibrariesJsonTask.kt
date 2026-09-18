@@ -101,8 +101,8 @@ abstract class GenerateAboutLibrariesJsonTask : DefaultTask() {
         val bundledRuntimeLibraries = listOf(
             library(
                 "github:Asterisk4Magisk/asteriskd",
-                ProjectConfig.ASTERISKD_VERSION,
-                "asteriskd",
+                ProjectConfig.STARSEAD_VERSION,
+                "starsead",
                 "A root Android daemon that synchronizes local-address bypass rules and pinned eBPF maps.",
                 "https://github.com/Asterisk4Magisk/asteriskd",
                 "https://github.com/Asterisk4Magisk/asteriskd",

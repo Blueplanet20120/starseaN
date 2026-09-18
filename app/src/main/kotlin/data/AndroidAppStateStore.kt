@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
@@ -133,12 +132,11 @@ class AndroidAppStateStore private constructor(
         }
     }
 
-    private fun buildDatabase(): AsteriskAppDatabase {
-        migrateLegacyDatabaseIfNeeded()
+    private fun buildDatabase(): StarseaAppDatabase {
         return Room.databaseBuilder(
             appContext,
-            AsteriskAppDatabase::class.java,
-            AsteriskDatabaseName,
+            StarseaAppDatabase::class.java,
+            StarseaDatabaseName,
         )
             // Keep committed state in the main DB file for file-based backup tools.
             .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
@@ -147,24 +145,10 @@ class AndroidAppStateStore private constructor(
             .build()
     }
 
-    private fun migrateLegacyDatabaseIfNeeded() {
-        val newDb = appContext.getDatabasePath(AsteriskDatabaseName)
-        if (newDb.exists()) return
-        val oldDb = appContext.getDatabasePath(LegacyAsteriskDatabaseName)
-        if (!oldDb.exists()) return
-        oldDb.copyTo(newDb, overwrite = false)
-        listOf("-journal", "-shm", "-wal").forEach { suffix ->
-            val extra = File(oldDb.path + suffix)
-            if (extra.exists()) {
-                extra.copyTo(File(newDb.path + suffix), overwrite = false)
-            }
-        }
-    }
-
     private fun resetDatabase() {
         runCatching { database.close() }
             .onFailure { error -> AndroidAppLogger.warn(LogTag, "Failed to close app state database before reset", error) }
-        runCatching { appContext.deleteDatabase(AsteriskDatabaseName) }
+        runCatching { appContext.deleteDatabase(StarseaDatabaseName) }
             .onFailure { error -> AndroidAppLogger.warn(LogTag, "Failed to delete app state database during reset", error) }
         database = buildDatabase()
         dao = database.appStateDao()

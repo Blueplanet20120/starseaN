@@ -1,0 +1,53 @@
+// Copyright 2026, starseaN contributors
+// SPDX-License-Identifier: GPL-3.0
+
+package app
+
+/**
+ * Default whitelist packages for per-app proxy.
+ * Keep in sync with `assets/preset-apps.txt`.
+ */
+val PresetProxyAppPackageNames: List<String> = listOf(
+    "md.obsidian",
+    "android",
+    "com.google.android.ncm.overlay.common",
+    "app.morphe.android.youtube",
+    "com.google.android.gms",
+    "com.okinc.okex.gp",
+    "com.google.android.googlequicksearchbox",
+    "com.google.android.printservice.recommendation",
+    "com.google.android.marvin.talkback",
+    "com.rifsxd.ksunext",
+    "com.google.android.wifi.resources.xiaomi",
+    "com.android.se",
+    "app.morphe.manager",
+    "org.telegram.messenger",
+    "com.google.android.overlay.gmsconfig",
+    "com.scanauthgen",
+    "com.google.android.wifi.resources.overlay.target",
+    "com.android.providers.telephony",
+    "app.revanced.android.gms",
+    "com.android.providers.downloads",
+    "com.google.android.wifi.resources.overlay.spf",
+    "com.google.android.documentsui",
+    "air.com.rosettastone.mobile.CoursePlayer",
+    "com.google.android.cellbroadcastreceiver.overlay.miui",
+    "com.android.vending",
+    "com.google.android.uwb.resources.overlay.common",
+    "com.google.android.ext.shared",
+    "com.sevtinge.hyperceiler",
+    "com.google.android.apps.bard",
+    "com.android.chrome",
+    "com.android.providers.downloads.ui",
+    "com.google.android.accessibility.switchaccess",
+    "com.google.android.wifi.resources.overlay.common",
+    "com.google.android.onetimeinitializer",
+    "be.mygod.vpnhotspot",
+    "li.songe.gkd",
+    "com.google.android.cellbroadcastservice.overlay.miui",
+    "com.android.settings",
+    "com.v2ray.ang",
+    "com.google.android.gms.location.history",
+    "com.google.android.configupdater",
+    "com.google.android.gsf",
+)

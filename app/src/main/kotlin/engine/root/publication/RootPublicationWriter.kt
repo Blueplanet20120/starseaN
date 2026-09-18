@@ -8,7 +8,7 @@ import java.io.File
 internal object RootPublicationWriter {
     fun write(layout: RootRuntimeLayout, coreConfigBytes: ByteArray, daemonConfigBytes: ByteArray) {
         writeFile(File(layout.configPath), coreConfigBytes)
-        writeFile(File(layout.asteriskdConfigPath), daemonConfigBytes)
+        writeFile(File(layout.starseadConfigPath), daemonConfigBytes)
     }
 
     private fun writeFile(file: File, content: ByteArray) {

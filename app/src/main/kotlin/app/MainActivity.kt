@@ -184,12 +184,12 @@ class MainActivity : ComponentActivity() {
         if (!data.isSubscriptionInstallConfigUri()) return
         val config = intent.toSubscriptionInstallConfigOrNull()
         if (config == null) {
-            (application as AsteriskApplication).appScope.launch {
+            (application as StarseaApplication).appScope.launch {
                 tipNotifier.show(getString(R.string.subscription_install_config_invalid))
             }
             return
         }
-        (application as AsteriskApplication).appScope.launch {
+        (application as StarseaApplication).appScope.launch {
             runCatching {
                 subscriptionInstallConfigUseCase.install(config)
             }.onSuccess { result ->

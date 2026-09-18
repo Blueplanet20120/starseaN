@@ -153,7 +153,7 @@ internal data class RootFailureReport(
             val attemptLogs = buildList {
                 readText(shell, "${layout.logDirectoryPath}/error.log", PerFileLineCap)
                     ?.let { add("[error.log]\n" + it.takeLast(3_000)) }
-                readText(shell, layout.asteriskdLogPath, PerFileLineCap)
+                readText(shell, layout.starseadLogPath, PerFileLineCap)
                     ?.let { add("[starsead.log]\n" + it.takeLast(3_000)) }
             }.filter { it.isNotBlank() }.joinToString("\n")
 

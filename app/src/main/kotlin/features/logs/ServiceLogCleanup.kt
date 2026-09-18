@@ -17,7 +17,7 @@ internal fun clearServiceLogsAsApp(logDirectory: File, logTag: String) {
 internal fun clearServiceLogRepositories() {
     AndroidCoreLogRepository.clearInMemory()
     AndroidAccessLogRepository.clearInMemory()
-    AndroidAsteriskdLogRepository.clearInMemory()
+    AndroidStarseadLogRepository.clearInMemory()
 }
 
 internal fun clearServiceLogDirectoryBestEffort(

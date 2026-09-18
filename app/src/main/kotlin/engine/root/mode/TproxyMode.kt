@@ -13,9 +13,9 @@ import engine.proxy.buildLocalSocksInbound
 import engine.proxy.toLocalProxyOptions
 import engine.root.config.RootConfigBuildContext
 import engine.root.config.RootModeStartConfig
-import engine.root.config.buildAsteriskdConfig
-import engine.root.daemon.config.AsteriskdMode
-import engine.root.daemon.config.AsteriskdModeOptions
+import engine.root.config.buildStarseadConfig
+import engine.root.daemon.config.StarseadMode
+import engine.root.daemon.config.StarseadModeOptions
 import engine.xray.XrayProtocols
 import engine.xray.XrayTags
 import engine.xray.toJsonStringArray
@@ -36,11 +36,11 @@ internal fun RootConfigBuildContext.buildTproxyStartConfig(): RootModeStartConfi
     return RootModeStartConfig(
         root = rootStartConfig,
         localProxyOptions = appState.toLocalProxyOptions(),
-        asteriskdConfig = rootStartConfig.buildAsteriskdConfig(
-            mode = AsteriskdMode.Tproxy,
+        starseadConfig = rootStartConfig.buildStarseadConfig(
+            mode = StarseadMode.Tproxy,
             iptablesConfig = iptablesConfig,
             virtualInterfaces = emptyList(),
-            modeOptions = AsteriskdModeOptions(
+            modeOptions = StarseadModeOptions(
                 transparentPort = tproxyPort,
                 tunnelName = null,
             ),

@@ -6,4 +6,4 @@ package engine.root.runtime
 import android.content.Context
 import engine.root.publication.rootRuntimeLayout
 
-internal fun Context.rootAsteriskdLogPath(): String = applicationContext.rootRuntimeLayout().asteriskdLogPath
+internal fun Context.rootStarseadLogPath(): String = applicationContext.rootRuntimeLayout().starseadLogPath

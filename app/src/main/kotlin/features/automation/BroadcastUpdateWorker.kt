@@ -14,7 +14,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import app.AsteriskApplication
+import app.StarseaApplication
 import app.R
 import app.resourceFileUpdateSource
 import features.logs.AndroidAppLogger
@@ -58,7 +58,7 @@ internal class BroadcastUpdateWorker(
     }
 
     override suspend fun doWork(): Result {
-        val application = applicationContext as AsteriskApplication
+        val application = applicationContext as StarseaApplication
         val kind = BroadcastUpdateKind.entries.firstOrNull {
             it.name == inputData.getString(BroadcastUpdateKindKey)
         } ?: return Result.failure()

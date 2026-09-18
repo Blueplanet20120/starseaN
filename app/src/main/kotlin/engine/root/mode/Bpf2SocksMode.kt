@@ -12,11 +12,11 @@ import engine.proxy.toLocalProxyOptions
 import engine.root.config.RootConfigBuildContext
 import engine.root.config.RootModeStartConfig
 import engine.root.config.bpf2SocksBridgePortValue
-import engine.root.config.buildAsteriskdConfig
+import engine.root.config.buildStarseadConfig
 import engine.root.config.tun2SocksInternalProxyPortValue
-import engine.root.daemon.config.AsteriskdBpf2SocksHelper
-import engine.root.daemon.config.AsteriskdMode
-import engine.root.daemon.config.AsteriskdModeOptions
+import engine.root.daemon.config.StarseadBpf2SocksHelper
+import engine.root.daemon.config.StarseadMode
+import engine.root.daemon.config.StarseadModeOptions
 import engine.xray.XrayProtocols
 import engine.xray.XrayTags
 import engine.xray.toJsonStringArray
@@ -42,12 +42,12 @@ internal fun RootConfigBuildContext.buildBpf2SocksStartConfig(): RootModeStartCo
     return RootModeStartConfig(
         root = rootStartConfig,
         localProxyOptions = localProxyOptions,
-        asteriskdConfig = rootStartConfig.buildAsteriskdConfig(
-            mode = AsteriskdMode.Bpf2Socks,
+        starseadConfig = rootStartConfig.buildStarseadConfig(
+            mode = StarseadMode.Bpf2Socks,
             iptablesConfig = iptablesConfig,
             virtualInterfaces = emptyList(),
-            modeOptions = AsteriskdModeOptions(transparentPort = null, tunnelName = null),
-            helper = AsteriskdBpf2SocksHelper(
+            modeOptions = StarseadModeOptions(transparentPort = null, tunnelName = null),
+            helper = StarseadBpf2SocksHelper(
                 executablePath = rootStartConfig.runtimePaths.bpf2SocksExecutablePath,
                 bridgeListenAddress = RootBpf2SocksListenAddress,
                 bridgePort = appState.bpf2SocksBridgePortValue(),

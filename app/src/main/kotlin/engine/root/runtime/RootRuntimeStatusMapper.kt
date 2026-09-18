@@ -7,38 +7,38 @@ import engine.proxy.ProxyEngineStatus
 import engine.root.runtime.model.RootRuntimeMode
 import engine.root.runtime.model.RootRuntimeOwner
 import engine.root.runtime.model.RootRuntimeSnapshot
-import engine.root.daemon.config.AsteriskdMode
-import engine.root.daemon.config.AsteriskdOwner
-import engine.root.daemon.control.AsteriskdControlResponse
-import engine.root.daemon.control.AsteriskdPhase
-import engine.root.daemon.control.AsteriskdResultCode
-import engine.root.daemon.control.AsteriskdSnapshot
+import engine.root.daemon.config.StarseadMode
+import engine.root.daemon.config.StarseadOwner
+import engine.root.daemon.control.StarseadControlResponse
+import engine.root.daemon.control.StarseadPhase
+import engine.root.daemon.control.StarseadResultCode
+import engine.root.daemon.control.StarseadSnapshot
 import system.ShellExecResult
 
-internal fun ShellExecResult.controlResponseOrNull(): AsteriskdControlResponse? =
-    runCatching { engine.root.daemon.control.AsteriskdControlCodec.decodeShellResponse(this) }.getOrNull()
+internal fun ShellExecResult.controlResponseOrNull(): StarseadControlResponse? =
+    runCatching { engine.root.daemon.control.StarseadControlCodec.decodeShellResponse(this) }.getOrNull()
 
-internal fun AsteriskdControlResponse.boundSnapshot(): AsteriskdSnapshot? = when (result.code) {
-    AsteriskdResultCode.Ok,
-    AsteriskdResultCode.AlreadyRunning,
-    AsteriskdResultCode.StopFailed,
+internal fun StarseadControlResponse.boundSnapshot(): StarseadSnapshot? = when (result.code) {
+    StarseadResultCode.Ok,
+    StarseadResultCode.AlreadyRunning,
+    StarseadResultCode.StopFailed,
     -> result.snapshot
-    AsteriskdResultCode.NotRunning -> null
-    else -> error(result.message ?: "asteriskd control request failed")
+    StarseadResultCode.NotRunning -> null
+    else -> error(result.message ?: "starsead control request failed")
 }
 
-internal fun AsteriskdSnapshot.requireOwner(owner: AsteriskdOwner) {
+internal fun StarseadSnapshot.requireOwner(owner: StarseadOwner) {
     if (this.owner != owner) throw RootRuntimeConflictException(this)
 }
 
-internal fun AsteriskdSnapshot.rejectBound(owner: AsteriskdOwner): Nothing {
+internal fun StarseadSnapshot.rejectBound(owner: StarseadOwner): Nothing {
     requireOwner(owner)
     throw RootRuntimeBusyException(this)
 }
 
-internal fun AsteriskdSnapshot.requireRunning(owner: AsteriskdOwner, expectedMode: AsteriskdMode) {
+internal fun StarseadSnapshot.requireRunning(owner: StarseadOwner, expectedMode: StarseadMode) {
     requireOwner(owner)
-    check(phase == AsteriskdPhase.Running && mode == expectedMode)
+    check(phase == StarseadPhase.Running && mode == expectedMode)
 }
 
 internal enum class RootOrdinaryStartDisposition(
@@ -48,25 +48,25 @@ internal enum class RootOrdinaryStartDisposition(
     Relaunch(shutdownBeforeLaunch = true),
 }
 
-internal fun AsteriskdSnapshot.ordinaryStartDisposition(
-    owner: AsteriskdOwner,
-    expectedMode: AsteriskdMode,
+internal fun StarseadSnapshot.ordinaryStartDisposition(
+    owner: StarseadOwner,
+    expectedMode: StarseadMode,
 ): RootOrdinaryStartDisposition {
     requireOwner(owner)
-    if (phase == AsteriskdPhase.Running && mode == expectedMode) {
+    if (phase == StarseadPhase.Running && mode == expectedMode) {
         return RootOrdinaryStartDisposition.Reuse
     }
-    if (phase == AsteriskdPhase.Stopped) {
+    if (phase == StarseadPhase.Stopped) {
         return RootOrdinaryStartDisposition.Relaunch
     }
     rejectBound(owner)
 }
 
-internal fun AsteriskdControlResponse.preflightStart(
-    owner: AsteriskdOwner,
-    expectedMode: AsteriskdMode,
+internal fun StarseadControlResponse.preflightStart(
+    owner: StarseadOwner,
+    expectedMode: StarseadMode,
     explicitRestart: Boolean,
-): AsteriskdSnapshot? {
+): StarseadSnapshot? {
     val snapshot = boundSnapshot() ?: return null
     snapshot.requireOwner(owner)
     if (explicitRestart) return null
@@ -76,29 +76,29 @@ internal fun AsteriskdControlResponse.preflightStart(
     }
 }
 
-internal fun AsteriskdSnapshot.toProxyEngineStatus(
+internal fun StarseadSnapshot.toProxyEngineStatus(
     runMode: Int,
-    expectedMode: AsteriskdMode,
+    expectedMode: StarseadMode,
 ): ProxyEngineStatus {
     val rootSnapshot = RootRuntimeSnapshot(
         owner = RootRuntimeOwner.entries.single { candidate -> candidate.wireValue == owner.wireValue },
         mode = RootRuntimeMode.entries.single { candidate -> candidate.wireValue == mode.wireValue },
-        running = phase == AsteriskdPhase.Running,
+        running = phase == StarseadPhase.Running,
     )
     return ProxyEngineStatus.fromRootSnapshot(
-        localOwner = RootRuntimeOwner.AsteriskNg,
+        localOwner = RootRuntimeOwner.StarseaN,
         runMode = runMode,
         snapshot = rootSnapshot,
-    ).copy(running = owner == AsteriskdOwner.AsteriskNg && phase == AsteriskdPhase.Running && mode == expectedMode)
+    ).copy(running = owner == StarseadOwner.StarseaN && phase == StarseadPhase.Running && mode == expectedMode)
 }
 
-internal fun AsteriskdSnapshot.toStableProxyEngineStatus(
+internal fun StarseadSnapshot.toStableProxyEngineStatus(
     runMode: Int,
-    expectedMode: AsteriskdMode,
+    expectedMode: StarseadMode,
 ): ProxyEngineStatus? = when (phase) {
-    AsteriskdPhase.Running,
-    AsteriskdPhase.Stopped,
-    AsteriskdPhase.Failed,
+    StarseadPhase.Running,
+    StarseadPhase.Stopped,
+    StarseadPhase.Failed,
     -> toProxyEngineStatus(runMode, expectedMode)
     else -> null
 }

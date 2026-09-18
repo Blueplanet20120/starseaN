@@ -79,7 +79,7 @@ internal class RootBootScriptUseCase(
         request: ProxyEngineStartRequest,
     ) {
         val config = RootModeEngine.prepareConfig(appContext, runMode, request)
-        controller.publishBoot(config.root, config.asteriskdConfig)
+        controller.publishBoot(config.root, config.starseadConfig)
     }
 }
 

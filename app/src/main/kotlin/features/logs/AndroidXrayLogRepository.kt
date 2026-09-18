@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
-import engine.root.runtime.rootAsteriskdLogPath
+import engine.root.runtime.rootStarseadLogPath
 
 internal object AndroidCoreLogRepository : AndroidXrayLogRepository(
     logFile = { context -> context.androidXrayErrorLog() },
@@ -20,14 +20,14 @@ internal object AndroidAccessLogRepository : AndroidXrayLogRepository(
     logTag = "AndroidAccessLogRepository",
 )
 
-internal object AndroidAsteriskdLogRepository : AndroidXrayLogRepository(
+internal object AndroidStarseadLogRepository : AndroidXrayLogRepository(
     logFile = { context ->
         CoreLogFile(
-            path = context.rootAsteriskdLogPath(),
+            path = context.rootStarseadLogPath(),
             defaultLevel = "info",
         )
     },
-    logTag = "AndroidAsteriskdLogRepository",
+    logTag = "AndroidStarseadLogRepository",
 )
 
 internal abstract class AndroidXrayLogRepository(

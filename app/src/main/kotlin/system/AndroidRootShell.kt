@@ -75,7 +75,7 @@ internal object AndroidRootShell {
         }
         Shell.EXECUTOR.execute {
             val callbackExecutor = Executors.newSingleThreadExecutor { runnable ->
-                Thread(runnable, "asteriskd-watch-callback").apply { isDaemon = true }
+                Thread(runnable, "starsead-watch-callback").apply { isDaemon = true }
             }
             val stdoutBacking = Collections.synchronizedList(mutableListOf<String>())
             val stderr = Collections.synchronizedList(mutableListOf<String>())

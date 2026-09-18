@@ -46,6 +46,10 @@ internal data class ProxyAppListItem(
     val selectionKeys: List<String>,
 )
 
+internal fun ProxyAppListItem.isSelected(selectedAppKeys: Set<String>): Boolean {
+    return selectionKeys.any { key -> key in selectedAppKeys } || app.packageName in selectedAppKeys
+}
+
 @Immutable
 internal data class ProxyAppListPreparedData(
     val displayedUserSpaces: List<AndroidUserSpace> = emptyList(),
@@ -210,13 +214,25 @@ private fun List<AppPackageEntry>.toListItems(
         .toList()
 }
 
+internal fun List<ProxyAppListItem>.sortedSelectedFirst(
+    selectedAppKeys: Set<String>,
+): List<ProxyAppListItem> {
+    if (isEmpty()) return this
+    return sortedWith(
+        compareByDescending<ProxyAppListItem> { item -> item.isSelected(selectedAppKeys) }
+            .thenBy { item -> item.app.name.lowercase() }
+            .thenBy { item -> item.app.packageName },
+    )
+}
+
 internal fun List<AppPackageEntry>.sortedForProxyAppListRefresh(
     selectedAppKeys: Set<String>,
 ): List<AppPackageEntry> {
     val selectionInfo = selectionInfo()
     return sortedWith(
         compareByDescending<AppPackageEntry> { app ->
-            app.selectionKeys(selectionInfo).any { key -> key in selectedAppKeys }
+            app.selectionKeys(selectionInfo).any { key -> key in selectedAppKeys } ||
+                app.packageName in selectedAppKeys
         }
             .thenBy { app -> app.groupSortName(selectionInfo) }
             .thenBy { app -> app.groupSortKey(selectionInfo) }

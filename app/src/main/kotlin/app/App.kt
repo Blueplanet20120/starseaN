@@ -17,7 +17,7 @@ import app.effects.LauncherIconSynchronizer
 import app.effects.ResourceFileSynchronizer
 import app.effects.RootBootScriptSynchronizer
 import features.logs.AndroidAccessLogRepository
-import features.logs.AndroidAsteriskdLogRepository
+import features.logs.AndroidStarseadLogRepository
 import features.logs.AndroidCoreLogRepository
 import features.logs.AndroidLogcatRepository
 import data.backup.AppBackupUseCase
@@ -50,7 +50,7 @@ fun App(
 ) {
     val appContext = LocalContext.current.applicationContext
     val systemUiSnapshot = appContext.currentSystemUiSnapshot()
-    val application = appContext as AsteriskApplication
+    val application = appContext as StarseaApplication
     val appScope = application.appScope
     val stateStore = remember(application) { application.stateStore }
     val rootAccess = remember { AndroidRootShellGateway() }
@@ -176,7 +176,7 @@ fun App(
             logFileCreator = logFileCreator,
             coreLogRepository = AndroidCoreLogRepository,
             accessLogRepository = AndroidAccessLogRepository,
-            rootLogRepository = AndroidAsteriskdLogRepository,
+            rootLogRepository = AndroidStarseadLogRepository,
             logcatRepository = AndroidLogcatRepository,
         )
     }

@@ -23,7 +23,7 @@ VPN Service is an independent non-ROOT execution path. Even on a rooted device, 
 - The VPN path must not start, query, stop, or depend on `starsead`, and must not connect to `@starsead.control`.
 - The VPN path must not publish ROOT configuration, manage ROOT boot scripts, or access ROOT state, logs, or binaries.
 - The VPN path must not modify iptables/nftables, policy routing, sysctl, tether/dnsmasq, BPF, TC, or ROOT network interfaces.
-- Missing ROOT access, a missing `asteriskd`, or conflicting ROOT resources must not affect VPN startup or shutdown.
+- Missing ROOT access, a missing `starsead`, or conflicting ROOT resources must not affect VPN startup or shutdown.
 - `engine/vpn` and VPN-only call chains must not depend on `engine/root`. Put reusable models and pure functions in side-effect-free shared layers.
 - When switching from ROOT to VPN, any active ROOT cycle must be stopped by the ROOT lifecycle boundary before entering VPN. The VPN runtime itself must not perform ROOT cleanup.
 - Changes to proxy orchestration, mode selection, or lifecycle handling must include a regression check that the entire VPN lifecycle performs zero ROOT operations.
@@ -34,15 +34,15 @@ VPN Service is an independent non-ROOT execution path. Even on a rooted device, 
 - Core: Xray; ROOT owner/core: `starsean` / `xray`.
 - ROOT modes: TPROXY, TUN2SOCKS, and BPF2SOCKS.
 - `app/`: Android application, Compose UI, data layer, VPN/ROOT orchestration, and core adapters.
-- `asteriskd/`: the ROOT supervisor native submodule shared by all three apps.
+- `starsead/`: the ROOT supervisor native submodule shared by all three apps.
 - `bpfmatcher/`, `bpf2socks/`, and `hevtun/`: native helper modules.
 - `buildSrc/`: versions, package name, SDK levels, dependency versions, and build conventions.
 
 Do not edit `.gradle/`, `build/`, module-level `build/` directories, or other generated output. Do not commit build artifacts as source files.
 
-## asteriskd Constraints
+## starsead Constraints
 
-The following rules apply only to ROOT/asteriskd changes. They do not justify expanding work into VPN or unrelated features.
+The following rules apply only to ROOT/starsead changes. They do not justify expanding work into VPN or unrelated features.
 
 - All three apps share the control endpoint `@starsead.control` and BPF namespace `/sys/fs/bpf/starsea`; ROOT instances are mutually exclusive.
 - Keep fixed shared resource names, including `STARSEA_FAKE_IP_ICMP`, identical across all three apps. Do not reintroduce per-app or PID-derived namespaces.
@@ -53,7 +53,7 @@ The following rules apply only to ROOT/asteriskd changes. They do not justify ex
 - Do not add legacy-resource cleanup or migration. Ignore old per-app BPF paths and remnants such as `asteriskbox_hotspot_recovery_<number>`.
 - Do not add scanning, adoption, or forced termination of child processes left after a crash. A visible port-conflict failure on the next launch is acceptable.
 - With service control enabled, `stop` in a resident `monitor` supervisor ends only the active service cycle; only `shutdown` exits the supervisor. Related changes must cover this regression.
-- When changing the `asteriskd` protocol, configuration schema, resource names, or native source, also check the AsteriskBOX and AsteriskMETA submodule versions, sources, and downstream Kotlin adapters so all three contracts remain aligned.
+- When changing the `starsead` protocol, configuration schema, resource names, or native source, also check the AsteriskBOX and AsteriskMETA submodule versions, sources, and downstream Kotlin adapters so all three contracts remain aligned.
 
 ## Implementation and Change Discipline
 
@@ -70,13 +70,13 @@ Use the repository's Gradle wrapper on Windows/PowerShell. When native submodule
 
 ```powershell
 .\gradlew.bat :app:test :app:lintDebug :app:assembleDebug `
-  -x :asteriskd:syncAsteriskdVersion `
+  -x :starsead:syncStarseadVersion `
   -x :bpfmatcher:syncBpfMatcherVersion `
   -x :bpf2socks:syncBpf2SocksVersion `
   -x :hevtun:syncHevSocks5TunnelVersion
 ```
 
-- When changing another module, add that module's `test`, `lintDebug`, and `assembleDebug` tasks. ROOT/native changes must at least build `:asteriskd:assembleDebug` and `:app:assembleDebug`.
+- When changing another module, add that module's `test`, `lintDebug`, and `assembleDebug` tasks. ROOT/native changes must at least build `:starsead:assembleDebug` and `:app:assembleDebug`.
 - Keep lint clean. Do not hide new findings with a baseline, broad suppressions, or disabled rules.
 - Documentation-only changes require at least `git diff --check`; do not trigger a full Android build without a technical reason.
 - Sign release builds only when the user requests device verification. Treat the keystore path, passwords, and alias as external secrets; never persist them in the repository, scripts, logs, or documentation.
@@ -85,12 +85,12 @@ Use the repository's Gradle wrapper on Windows/PowerShell. When native submodule
 
 Scale verification to the affected surface. Verify shared behavior in all three apps, and never treat host/Gradle tests alone as sufficient proof of ROOT behavior.
 
-- VPN regression: start, run, and stop VPN without invoking any ROOT capability. Confirm there are no `asteriskd` control requests, ROOT permission requests, ROOT file publications, or ROOT network-resource changes.
+- VPN regression: start, run, and stop VPN without invoking any ROOT capability. Confirm there are no `starsead` control requests, ROOT permission requests, ROOT file publications, or ROOT network-resource changes.
 - ROOT matrix: cover every ROOT mode supported by this app with IPv6 both enabled and disabled.
 - bpfmatcher: test matcher-supported modes with the matcher both enabled and disabled. For unsupported modes, verify it cannot be enabled incorrectly or alter behavior.
 - Service control: cover ordinary startup and the resident supervisor used when service control is enabled; verify `stop`, another start, and `shutdown`.
 - Lifecycle: at minimum cover startup, status, graceful stop, duplicate-start/mutual exclusion, failure exit, and subsequent startup.
-- Cross-app exclusion: when another `asteriskd` owner is active, the app must report a clear foreign-owner conflict and must not seize resources.
+- Cross-app exclusion: when another `starsead` owner is active, the app must report a clear foreign-owner conflict and must not seize resources.
 
 For device testing on an authorized adb device:
 

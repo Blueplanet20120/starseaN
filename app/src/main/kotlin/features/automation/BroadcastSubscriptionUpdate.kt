@@ -3,7 +3,7 @@
 
 package features.automation
 
-import app.AsteriskApplication
+import app.StarseaApplication
 import features.logs.AndroidAppLogger
 import features.proxy.server.usecase.withUpdatedSubscriptionServers
 import features.subscription.usecase.toSubscriptionFetchOptions
@@ -11,7 +11,7 @@ import features.subscription.usecase.updateSubscriptions
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
-internal suspend fun AsteriskApplication.updateBroadcastSubscriptions(progress: BroadcastUpdateProgress): Boolean {
+internal suspend fun StarseaApplication.updateBroadcastSubscriptions(progress: BroadcastUpdateProgress): Boolean {
     val ids = stateStore.state.value.subscriptionGroups.filter { it.url.isNotBlank() }.map { it.id }
     var failures = 0
     for (id in ids) {

@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskMETA contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 import org.gradle.api.DefaultTask
@@ -18,7 +18,7 @@ import java.io.File
 import java.util.Properties
 import javax.inject.Inject
 
-abstract class BuildAsteriskdTask : DefaultTask() {
+abstract class BuildStarseadTask : DefaultTask() {
     @get:Inject
     abstract val execOperations: ExecOperations
 
@@ -40,7 +40,7 @@ abstract class BuildAsteriskdTask : DefaultTask() {
 
     init {
         group = "resources"
-        description = "Build the native asteriskd helper."
+        description = "Build the native starsead helper."
     }
 
     @TaskAction
@@ -51,12 +51,17 @@ abstract class BuildAsteriskdTask : DefaultTask() {
             ?.sortedBy(File::getName)
             .orEmpty()
         if (sources.isEmpty()) {
-            throw GradleException("No asteriskd C sources found in ${sourceDir.absolutePath}")
+            throw GradleException("No starsead C sources found in ${sourceDir.absolutePath}")
+        }
+        val outputDir = outputDirectory.get().asFile
+        val outputs = targetAbis.get().map { abi -> outputDir.resolve("$abi/libstarsead.so") }
+        if (outputs.all { output -> NativeOutputReuse.isCurrent(output, listOf(sourceDir)) }) {
+            logger.lifecycle("Skipping starsead: native outputs are up to date")
+            return
         }
         val ndkDir = findNdkDir()
-        val outputDir = outputDirectory.get().asFile
         outputDir.mkdirs()
-        targetAbis.get().map { abi -> abi.toAsteriskdAbiTarget() }.forEach { target ->
+        targetAbis.get().map { abi -> abi.toStarseadAbiTarget() }.forEach { target ->
             val output = outputDir.resolve("${target.androidAbi}/libstarsead.so")
             output.parentFile.mkdirs()
             execOperations.exec {
@@ -75,12 +80,12 @@ abstract class BuildAsteriskdTask : DefaultTask() {
                 )
             }
             if (!output.exists() || output.length() <= 0) {
-                throw GradleException("Failed to build asteriskd: ${output.absolutePath}")
+                throw GradleException("Failed to build starsead: ${output.absolutePath}")
             }
         }
     }
 
-    private fun findNdkClang(ndkDir: File, target: AsteriskdAbiTarget): File {
+    private fun findNdkClang(ndkDir: File, target: StarseadAbiTarget): File {
         val hostTag = when {
             System.getProperty("os.name").startsWith("Windows", ignoreCase = true) -> "windows-x86_64"
             System.getProperty("os.name").contains("Mac", ignoreCase = true) -> "darwin-x86_64"
@@ -118,7 +123,7 @@ abstract class BuildAsteriskdTask : DefaultTask() {
     }
 }
 
-private enum class AsteriskdAbiTarget(
+private enum class StarseadAbiTarget(
     val androidAbi: String,
     val clangTarget: String,
 ) {
@@ -128,9 +133,9 @@ private enum class AsteriskdAbiTarget(
     X64("x86_64", "x86_64-linux-android"),
 }
 
-private fun String.toAsteriskdAbiTarget(): AsteriskdAbiTarget {
-    return AsteriskdAbiTarget.entries.firstOrNull { target -> target.androidAbi == this }
-        ?: throw GradleException("Unsupported asteriskd ABI: $this")
+private fun String.toStarseadAbiTarget(): StarseadAbiTarget {
+    return StarseadAbiTarget.entries.firstOrNull { target -> target.androidAbi == this }
+        ?: throw GradleException("Unsupported starsead ABI: $this")
 }
 
 

@@ -15,7 +15,7 @@ import engine.proxy.ProxyEngineStatus
 internal class VpnXrayEngine(
     private val context: Context,
     private val requestVpnPermission: suspend (Intent) -> Boolean,
-    private val runtimeRunning: () -> Boolean = AsteriskVpnService::isRunning,
+    private val runtimeRunning: () -> Boolean = StarseaVpnService::isRunning,
 ) : AndroidModeProxyEngine {
     override val runMode: Int = RunModeVpnService
 
@@ -41,14 +41,14 @@ internal class VpnXrayEngine(
         if (prepareIntent != null && !requestVpnPermission(prepareIntent)) {
             error(context.getString(R.string.error_vpn_permission_denied))
         }
-        AsteriskVpnService.start(
+        StarseaVpnService.start(
             context = context,
             config = VpnXrayConfigFactory.create(context, request),
         )
     }
 
     override suspend fun stop(): ProxyEngineStatus {
-        AsteriskVpnService.stop(context)
+        StarseaVpnService.stop(context)
         return status()
     }
 

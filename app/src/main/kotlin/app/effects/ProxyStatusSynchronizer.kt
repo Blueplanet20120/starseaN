@@ -90,7 +90,7 @@ internal fun ProxyStatusSynchronizer(
                     } catch (error: Throwable) {
                         AndroidAppLogger.warn(
                             ProxyStatusWatchLogTag,
-                            "asteriskd status watch failed",
+                            "starsead status watch failed",
                             error,
                         )
                     }

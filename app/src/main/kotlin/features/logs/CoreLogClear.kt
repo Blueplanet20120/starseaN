@@ -9,7 +9,7 @@ import engine.xray.clearCoreLogFilesAsApp
 import engine.xray.prepareXrayCoreLogPaths
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import engine.root.runtime.rootAsteriskdLogPath
+import engine.root.runtime.rootStarseadLogPath
 import java.io.File
 
 internal suspend fun Context.clearCoreLogFile(logFile: XrayLogFile) {
@@ -26,8 +26,8 @@ internal suspend fun Context.clearCoreLogFile(logFile: XrayLogFile) {
     }
 }
 
-internal suspend fun Context.clearAsteriskdLogFile() {
-    val logFile = File(applicationContext.rootAsteriskdLogPath())
+internal suspend fun Context.clearStarseadLogFile() {
+    val logFile = File(applicationContext.rootStarseadLogPath())
     if (!logFile.exists()) return
     withContext(Dispatchers.IO) {
         require(logFile.isFile && logFile.canonicalFile == logFile.absoluteFile)

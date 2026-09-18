@@ -36,7 +36,7 @@ internal class RootModeEngine(
 ) : AndroidModeProxyEngine {
     private val controller = RootSupervisorController(context, rootAccess)
 
-    internal val daemonMode: engine.root.daemon.config.AsteriskdMode
+    internal val daemonMode: engine.root.daemon.config.StarseadMode
         get() = definition.daemonMode
 
     override val runMode: Int
@@ -80,12 +80,12 @@ internal class RootModeEngine(
         LocalProxyRuntime.clear()
         val rootContext = context.prepareRootConfigBuildContext(request)
         val config = definition.buildConfig(rootContext)
-        require(config.asteriskdConfig.mode == definition.daemonMode)
+        require(config.starseadConfig.mode == definition.daemonMode)
         return runCatching {
             val snapshot = if (explicitRestart) {
-                controller.restart(config.root, config.asteriskdConfig)
+                controller.restart(config.root, config.starseadConfig)
             } else {
-                controller.start(config.root, config.asteriskdConfig)
+                controller.start(config.root, config.starseadConfig)
             }
             controller.requireRunning(snapshot, definition.daemonMode)
             LocalProxyRuntime.update(config.localProxyOptions)
@@ -139,8 +139,8 @@ internal class RootModeEngine(
     suspend fun reconfigureServiceControl(request: ProxyEngineStartRequest): Boolean {
         if (!rootAccess.hasRootAccess()) error(context.getString(definition.rootRequiredErrorResId))
         val config = definition.buildConfig(context.prepareRootConfigBuildContext(request))
-        require(config.asteriskdConfig.mode == definition.daemonMode)
-        val wasRunning = controller.reconfigureServiceControl(config.root, config.asteriskdConfig)
+        require(config.starseadConfig.mode == definition.daemonMode)
+        val wasRunning = controller.reconfigureServiceControl(config.root, config.starseadConfig)
         if (wasRunning) {
             LocalProxyRuntime.update(config.localProxyOptions)
         } else {
@@ -180,7 +180,7 @@ internal class RootModeEngine(
         fun prepareConfig(context: Context, runMode: Int, request: ProxyEngineStartRequest): RootModeStartConfig {
             val definition = RootModeCatalog.require(runMode)
             return definition.buildConfig(context.prepareRootConfigBuildContext(request)).also { config ->
-                require(config.asteriskdConfig.mode == definition.daemonMode)
+                require(config.starseadConfig.mode == definition.daemonMode)
             }
         }
 

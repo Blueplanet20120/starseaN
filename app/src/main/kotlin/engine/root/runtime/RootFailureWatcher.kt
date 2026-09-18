@@ -45,7 +45,7 @@ internal object RootFailureWatcher {
             val store = AndroidAppStateStore.get(context.applicationContext)
             if (store.state.value.runMode == RunModeVpnService) return
             // Capture before scheduling: a failure arriving immediately after launch is fresh.
-            val baseline = File(layout.asteriskdStatePath).lastModified()
+            val baseline = File(layout.starseadStatePath).lastModified()
             // Attaching to an externally restarted resident service is also a new episode.
             delivery.beginAttempt()
             job = scope.launch {
@@ -83,7 +83,7 @@ internal object RootFailureWatcher {
         baseline: Long,
         rootModeSelected: () -> Boolean,
     ) {
-        val stateFile = File(layout.asteriskdStatePath)
+        val stateFile = File(layout.starseadStatePath)
         val episode = RootFailureEpisode(baseline)
         var observedAttempt = currentAttempt()
         while (rootModeSelected()) {
@@ -96,7 +96,7 @@ internal object RootFailureWatcher {
             val mtime = stateFile.lastModified()
             if (episode.needsRead(mtime)) {
                 val state = diagnosticOrNull {
-                    RootFailureReport.readText(shell, layout.asteriskdStatePath)?.let(::JSONObject)
+                    RootFailureReport.readText(shell, layout.starseadStatePath)?.let(::JSONObject)
                 }
                 if (state != null) {
                     val failure = state.optJSONObject("failure")

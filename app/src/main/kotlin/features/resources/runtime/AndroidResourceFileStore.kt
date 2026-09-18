@@ -258,7 +258,7 @@ internal class AndroidResourceFileStore(
     fun currentPaths(): XrayResourceFilePaths {
         return XrayResourceFilePaths(
             dataDir = dataDir.absolutePath,
-            asteriskdPath = File(appContext.applicationInfo.nativeLibraryDir, AsteriskdLibraryName).absolutePath,
+            starseadPath = File(appContext.applicationInfo.nativeLibraryDir, StarseadLibraryName).absolutePath,
             bpfMatcherPath = File(appContext.applicationInfo.nativeLibraryDir, BpfMatcherLibraryName).absolutePath,
             bpf2socksPath = File(appContext.applicationInfo.nativeLibraryDir, Bpf2SocksLibraryName).absolutePath,
             xrayCorePath = file(ResourceFileKind.XrayCore).absolutePath,
@@ -305,7 +305,7 @@ internal fun shouldRestoreBundledResourceFile(
 
 internal data class XrayResourceFilePaths(
     val dataDir: String,
-    val asteriskdPath: String,
+    val starseadPath: String,
     val bpfMatcherPath: String,
     val bpf2socksPath: String,
     val xrayCorePath: String,
@@ -361,7 +361,7 @@ private fun Context.packageUpdatedAtMillis(): Long {
     }.getOrDefault(0L)
 }
 
-private const val AsteriskdLibraryName = "libstarsead.so"
+private const val StarseadLibraryName = "libstarsead.so"
 private const val BpfMatcherLibraryName = "libbpf-matcher.so"
 private const val Bpf2SocksLibraryName = "libbpf2socks.so"
 private const val XrayCoreLibraryName = "libxray.so"

@@ -12,6 +12,6 @@ internal object RootBootConfigWriter {
         encodedDaemonConfig: String,
     ) {
         File(layout.configPath).writeBytes(coreConfigBytes)
-        File(layout.asteriskdConfigPath).writeBytes(encodedDaemonConfig.toByteArray(Charsets.UTF_8))
+        File(layout.starseadConfigPath).writeBytes(encodedDaemonConfig.toByteArray(Charsets.UTF_8))
     }
 }

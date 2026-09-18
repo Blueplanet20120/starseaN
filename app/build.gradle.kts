@@ -18,6 +18,9 @@ val generatedXrayCoreJniLibsDir: Provider<Directory> = layout.buildDirectory.dir
 val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 val protobufVersion = versionCatalog.findVersion("protobuf").get().requiredVersion
 val grpcVersion = versionCatalog.findVersion("grpc").get().requiredVersion
+val releaseVersionName = appVersionName()
+val releaseVersionCode = appVersionCode()
+val packagedAbis = nativeAndroidAbis()
 
 android {
     namespace = "app"
@@ -27,8 +30,8 @@ android {
         applicationId = ProjectConfig.PACKAGE_NAME
         minSdk = ProjectConfig.MIN_SDK
         targetSdk = ProjectConfig.TARGET_SDK
-        versionCode = getGitVersionCode()
-        versionName = ProjectConfig.VERSION_NAME
+        versionCode = releaseVersionCode
+        versionName = releaseVersionName
     }
 
     androidResources {
@@ -49,8 +52,8 @@ android {
         abi {
             isEnable = true
             reset()
-            include(*ProjectConfig.SUPPORTED_ANDROID_ABIS.toTypedArray())
-            isUniversalApk = true
+            include(*packagedAbis.toTypedArray())
+            isUniversalApk = packagedAbis.size > 1
         }
     }
 
@@ -118,7 +121,7 @@ dependencies {
     implementation(libs.dexlib2)
     //noinspection UseTomlInstead
     implementation("com.github.2dust:libv2ray:${ProjectConfig.ANDROID_LIB_XRAY_LITE_VERSION}@aar")
-    implementation(dependencies.project(":asteriskd"))
+    implementation(dependencies.project(":starsead"))
     implementation(dependencies.project(":bpfmatcher"))
     implementation(dependencies.project(":bpf2socks"))
     implementation(dependencies.project(":hevtun"))
@@ -177,8 +180,8 @@ val generateProjectInfo = tasks.register<GenerateProjectInfoTask>("generateProje
     description = "Generate ProjectInfo object for the app"
     packageName.set("app")
     projectName.set(ProjectConfig.PROJECT_NAME)
-    versionName.set(ProjectConfig.VERSION_NAME)
-    versionCode.set(getGitVersionCode())
+    versionName.set(releaseVersionName)
+    versionCode.set(releaseVersionCode)
     xrayCoreVersion.set(ProjectConfig.XRAY_CORE_VERSION)
     androidLibXrayLiteVersion.set(ProjectConfig.ANDROID_LIB_XRAY_LITE_VERSION)
     hevSocks5TunnelVersion.set(ProjectConfig.HEV_SOCKS5_TUNNEL_VERSION)

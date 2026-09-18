@@ -6,19 +6,19 @@ package engine.root.daemon.config
 import app.ServiceControlSettings
 import features.settings.servicecontrol.normalizeServiceControlSettings
 
-internal enum class AsteriskdOwner(val wireValue: String) {
-    AsteriskNg("starsean"),
+internal enum class StarseadOwner(val wireValue: String) {
+    StarseaN("starsean"),
     AsteriskBox("asteriskbox"),
     AsteriskMeta("asteriskmeta"),
 }
 
-internal enum class AsteriskdCoreType(val wireValue: String) {
+internal enum class StarseadCoreType(val wireValue: String) {
     Xray("xray"),
     SingBox("sing-box"),
     Mihomo("mihomo"),
 }
 
-internal enum class AsteriskdMode(val wireValue: String) {
+internal enum class StarseadMode(val wireValue: String) {
     Tproxy("tproxy"),
     Tun("tun"),
     Tun2Socks("tun2socks"),
@@ -27,88 +27,88 @@ internal enum class AsteriskdMode(val wireValue: String) {
     ;
 
     companion object {
-        fun fromWire(value: String): AsteriskdMode = entries.firstOrNull { it.wireValue == value }
-            ?: throw IllegalArgumentException("Unknown asteriskd mode")
+        fun fromWire(value: String): StarseadMode = entries.firstOrNull { it.wireValue == value }
+            ?: throw IllegalArgumentException("Unknown starsead mode")
     }
 }
 
-internal enum class AsteriskdAppPolicyMode(val wireValue: String) {
+internal enum class StarseadAppPolicyMode(val wireValue: String) {
     Global("global"),
     Blacklist("blacklist"),
     Whitelist("whitelist"),
 }
 
-internal data class AsteriskdConfig(
-    val owner: AsteriskdOwner,
-    val coreType: AsteriskdCoreType,
+internal data class StarseadConfig(
+    val owner: StarseadOwner,
+    val coreType: StarseadCoreType,
     val coreExecutablePath: String,
     val coreConfigPath: String,
     val statePath: String,
     val logPath: String,
-    val mode: AsteriskdMode,
-    val core: AsteriskdCoreConfig,
-    val network: AsteriskdNetworkConfig,
-    val modeOptions: AsteriskdModeOptions,
-    val matcher: AsteriskdMatcher?,
-    val helper: AsteriskdHelper?,
-    val serviceControl: AsteriskdServiceControlConfig,
+    val mode: StarseadMode,
+    val core: StarseadCoreConfig,
+    val network: StarseadNetworkConfig,
+    val modeOptions: StarseadModeOptions,
+    val matcher: StarseadMatcher?,
+    val helper: StarseadHelper?,
+    val serviceControl: StarseadServiceControlConfig,
 )
 
-internal data class AsteriskdServiceControlConfig(
+internal data class StarseadServiceControlConfig(
     val enabled: Boolean,
-    val schedule: AsteriskdScheduleControl,
-    val wifi: AsteriskdWifiControl,
+    val schedule: StarseadScheduleControl,
+    val wifi: StarseadWifiControl,
 )
 
-internal data class AsteriskdScheduleControl(
+internal data class StarseadScheduleControl(
     val enabled: Boolean,
     val startCron: String,
     val stopCron: String,
 )
 
-internal data class AsteriskdWifiControl(
+internal data class StarseadWifiControl(
     val enabled: Boolean,
-    val connectStart: AsteriskdWifiRule,
-    val connectStop: AsteriskdWifiRule,
-    val disconnectStart: AsteriskdWifiRule,
-    val disconnectStop: AsteriskdWifiRule,
+    val connectStart: StarseadWifiRule,
+    val connectStop: StarseadWifiRule,
+    val disconnectStart: StarseadWifiRule,
+    val disconnectStop: StarseadWifiRule,
 )
 
-internal data class AsteriskdWifiRule(
+internal data class StarseadWifiRule(
     val enabled: Boolean,
     val ssids: List<String>,
     val bssids: List<String>,
 )
 
-internal fun ServiceControlSettings.toAsteriskdServiceControlConfig(): AsteriskdServiceControlConfig {
+internal fun ServiceControlSettings.toStarseadServiceControlConfig(): StarseadServiceControlConfig {
     val value = normalizeServiceControlSettings(this)
-    return AsteriskdServiceControlConfig(
+    return StarseadServiceControlConfig(
         enabled = value.enabled,
-        schedule = AsteriskdScheduleControl(
+        schedule = StarseadScheduleControl(
             enabled = value.schedule.enabled,
             startCron = value.schedule.startCron,
             stopCron = value.schedule.stopCron,
         ),
-        wifi = AsteriskdWifiControl(
+        wifi = StarseadWifiControl(
             enabled = value.wifi.enabled,
-            connectStart = value.wifi.connectStart.toAsteriskdWifiRule(),
-            connectStop = value.wifi.connectStop.toAsteriskdWifiRule(),
-            disconnectStart = value.wifi.disconnectStart.toAsteriskdWifiRule(),
-            disconnectStop = value.wifi.disconnectStop.toAsteriskdWifiRule(),
+            connectStart = value.wifi.connectStart.toStarseadWifiRule(),
+            connectStop = value.wifi.connectStop.toStarseadWifiRule(),
+            disconnectStart = value.wifi.disconnectStart.toStarseadWifiRule(),
+            disconnectStop = value.wifi.disconnectStop.toStarseadWifiRule(),
         ),
     )
 }
 
-private fun app.ServiceControlWifiRule.toAsteriskdWifiRule(): AsteriskdWifiRule =
-    AsteriskdWifiRule(enabled = enabled, ssids = ssids, bssids = bssids)
+private fun app.ServiceControlWifiRule.toStarseadWifiRule(): StarseadWifiRule =
+    StarseadWifiRule(enabled = enabled, ssids = ssids, bssids = bssids)
 
-internal data class AsteriskdCoreConfig(
+internal data class StarseadCoreConfig(
     val workingDirectory: String,
     val readinessTimeoutMilliseconds: Int,
     val ageSecretKey: String?,
 )
 
-internal data class AsteriskdNetworkConfig(
+internal data class StarseadNetworkConfig(
     val enableIpv6: Boolean,
     val disableSystemIpv6: Boolean,
     val enableLocalDns: Boolean,
@@ -119,29 +119,29 @@ internal data class AsteriskdNetworkConfig(
     val hotspotInterfacePrefixes: List<String>,
     val proxyPrivateCidrs: List<String>,
     val bypassPrivateCidrs: List<String>,
-    val appPolicy: AsteriskdAppPolicy,
+    val appPolicy: StarseadAppPolicy,
 )
 
-internal data class AsteriskdAppPolicy(
-    val mode: AsteriskdAppPolicyMode,
+internal data class StarseadAppPolicy(
+    val mode: StarseadAppPolicyMode,
     val uids: List<Int>,
     val bypassUids: List<Int>,
     val directCidrPathV4: String?,
     val directCidrPathV6: String?,
 )
 
-internal data class AsteriskdModeOptions(
+internal data class StarseadModeOptions(
     val transparentPort: Int?,
     val tunnelName: String?,
 )
 
-internal data class AsteriskdMatcher(
+internal data class StarseadMatcher(
     val executablePath: String,
 )
 
-internal sealed interface AsteriskdHelper
+internal sealed interface StarseadHelper
 
-internal data class AsteriskdHevSocks5TunnelHelper(
+internal data class StarseadHevSocks5TunnelHelper(
     val executablePath: String,
     val socksHost: String,
     val socksPort: Int,
@@ -153,9 +153,9 @@ internal data class AsteriskdHevSocks5TunnelHelper(
     val tcpFastOpen: Boolean,
     val tcpReadWriteTimeoutMilliseconds: Int = 300000,
     val udpReadWriteTimeoutMilliseconds: Int = 60000,
-) : AsteriskdHelper
+) : StarseadHelper
 
-internal data class AsteriskdBpf2SocksHelper(
+internal data class StarseadBpf2SocksHelper(
     val executablePath: String,
     val bridgeListenAddress: String,
     val bridgePort: Int,
@@ -173,4 +173,4 @@ internal data class AsteriskdBpf2SocksHelper(
     val udpIdleTimeoutSeconds: Int = 60,
     val maxUdpPendingBytes: Int = 64 * 1024 * 1024,
     val dnsTransactionTimeoutMilliseconds: Int = 60000,
-) : AsteriskdHelper
+) : StarseadHelper

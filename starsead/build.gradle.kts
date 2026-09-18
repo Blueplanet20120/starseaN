@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskMETA contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 plugins {
@@ -6,16 +6,16 @@ plugins {
 }
 
 val generatedJniLibsDir: Provider<Directory> = layout.buildDirectory.dir("generated/jniLibs")
-val asteriskdSubmoduleDir = layout.projectDirectory.dir("src/main/native")
+val starseadSubmoduleDir = layout.projectDirectory.dir("src/main/native")
 
 android {
-    namespace = "asteriskd"
+    namespace = "starsead"
     compileSdk = ProjectConfig.TARGET_SDK
 
     defaultConfig {
         minSdk = ProjectConfig.MIN_SDK
         ndk {
-            abiFilters += ProjectConfig.SUPPORTED_ANDROID_ABIS
+            abiFilters += nativeAndroidAbis()
         }
     }
 
@@ -30,24 +30,24 @@ android {
     }
 }
 
-val syncAsteriskdVersion = tasks.register<SyncGitSubmoduleVersionTask>("syncAsteriskdVersion") {
-    submoduleVersion.set(ProjectConfig.ASTERISKD_VERSION)
+val syncStarseadVersion = tasks.register<SyncGitSubmoduleVersionTask>("syncStarseadVersion") {
+    submoduleVersion.set(ProjectConfig.STARSEAD_VERSION)
     repositoryRootDirectory.set(rootProject.layout.projectDirectory)
-    submoduleDirectory.set(asteriskdSubmoduleDir)
-    submodulePath.set(asteriskdSubmoduleDir.asFile.relativeTo(rootProject.projectDir).invariantSeparatorsPath)
+    submoduleDirectory.set(starseadSubmoduleDir)
+    submodulePath.set(starseadSubmoduleDir.asFile.relativeTo(rootProject.projectDir).invariantSeparatorsPath)
 }
 
-val buildAsteriskd = tasks.register<BuildAsteriskdTask>("buildAsteriskd") {
-    dependsOn(syncAsteriskdVersion)
-    sourceDirectory.set(asteriskdSubmoduleDir)
+val buildStarsead = tasks.register<BuildStarseadTask>("buildStarsead") {
+    dependsOn(syncStarseadVersion)
+    sourceDirectory.set(starseadSubmoduleDir)
     outputDirectory.set(generatedJniLibsDir)
     rootProject.layout.projectDirectory.file("local.properties")
         .takeIf { it.asFile.exists() }
         ?.let(localPropertiesFile::set)
     minSdk.set(ProjectConfig.MIN_SDK)
-    targetAbis.set(ProjectConfig.SUPPORTED_ANDROID_ABIS)
+    targetAbis.set(nativeAndroidAbis())
 }
 
 tasks.named("preBuild") {
-    dependsOn(buildAsteriskd)
+    dependsOn(buildStarsead)
 }

@@ -8,7 +8,7 @@ import engine.root.runtime.RootOperationResult
 import engine.root.runtime.model.RootRuntimeOwner
 
 internal fun RootRuntimeOwner.productName(): String = when (this) {
-    RootRuntimeOwner.AsteriskNg -> "starseaN"
+    RootRuntimeOwner.StarseaN -> "starseaN"
     RootRuntimeOwner.AsteriskMeta -> "AsteriskMETA"
     RootRuntimeOwner.AsteriskBox -> "AsteriskBOX"
 }

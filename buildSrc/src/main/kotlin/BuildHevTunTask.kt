@@ -53,18 +53,20 @@ abstract class BuildHevTunTask : DefaultTask() {
     fun build() {
         val artifact = HevTunArtifact.fromName(artifact.get())
         val abi = androidAbi.get()
-        val ndkBuild = findNdkBuild(findNdkDir())
-        val sourceDir = prepareBuildSource(sourceDirectory.get().asFile)
+        val originalSourceDir = sourceDirectory.get().asFile
         val finalOutput = outputFile.get().asFile
+        if (NativeOutputReuse.isCurrent(finalOutput, listOf(originalSourceDir))) {
+            logger.lifecycle("Skipping Hev TUN ${artifact.displayName} for $abi: ${finalOutput.name} is up to date")
+            return
+        }
+        val ndkBuild = findNdkBuild(findNdkDir())
+        val sourceDir = prepareBuildSource(originalSourceDir)
         val outputDir = finalOutput.parentFile
         val ndkLibsOutDir = outputDir.parentFile
         val projectDir = temporaryDir.resolve("ndk-project")
         val jniDir = projectDir.resolve("jni")
         val appBuildScript = jniDir.resolve("Android.mk")
 
-        if (projectDir.exists()) {
-            projectDir.deleteRecursively()
-        }
         jniDir.mkdirs()
         writeGeneratedAndroidMk(appBuildScript, sourceDir)
         outputDir.mkdirs()
@@ -144,12 +146,27 @@ abstract class BuildHevTunTask : DefaultTask() {
 
     private fun prepareBuildSource(sourceDir: File): File {
         val patchedSourceDir = temporaryDir.resolve("patched-source")
-        if (patchedSourceDir.exists()) {
-            patchedSourceDir.deleteRecursively()
-        }
-        sourceDir.copyRecursively(patchedSourceDir, overwrite = true)
+        copyTreePreservingTimestamps(sourceDir, patchedSourceDir)
         replaceSymlinkPlaceholderFiles(patchedSourceDir)
         return patchedSourceDir
+    }
+
+    private fun copyTreePreservingTimestamps(from: File, to: File) {
+        from.walkTopDown().forEach { src ->
+            val dest = to.resolve(src.relativeTo(from).path)
+            if (src.isDirectory) {
+                dest.mkdirs()
+                return@forEach
+            }
+            val unchanged = dest.isFile &&
+                dest.length() == src.length() &&
+                dest.lastModified() == src.lastModified()
+            if (!unchanged) {
+                dest.parentFile.mkdirs()
+                src.copyTo(dest, overwrite = true)
+                dest.setLastModified(src.lastModified())
+            }
+        }
     }
 
     private fun replaceSymlinkPlaceholderFiles(sourceDir: File) {

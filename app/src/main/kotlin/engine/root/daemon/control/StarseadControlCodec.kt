@@ -3,9 +3,9 @@
 
 package engine.root.daemon.control
 
-import engine.root.daemon.config.AsteriskdCoreType
-import engine.root.daemon.config.AsteriskdMode
-import engine.root.daemon.config.AsteriskdOwner
+import engine.root.daemon.config.StarseadCoreType
+import engine.root.daemon.config.StarseadMode
+import engine.root.daemon.config.StarseadOwner
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -18,8 +18,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import system.ShellExecResult
 
-internal object AsteriskdControlCodec {
-    fun decodeResponse(payload: String): AsteriskdControlResponse {
+internal object StarseadControlCodec {
+    fun decodeResponse(payload: String): StarseadControlResponse {
         val root = parseClosedPayload(payload)
         root.requireExactKeys("protocolVersion", "requestId", "result")
         require(root.requiredInt("protocolVersion") == ProtocolVersion)
@@ -27,23 +27,23 @@ internal object AsteriskdControlCodec {
         require(RequestIdRegex.matches(requestId))
         val resultObject = root.requiredObject("result")
         resultObject.requireExactKeys("code", "snapshot", "message")
-        val code = enumWire<AsteriskdResultCode>(resultObject.requiredString("code"))
+        val code = enumWire<StarseadResultCode>(resultObject.requiredString("code"))
         val snapshot = resultObject["snapshot"].toNullableObject()?.toSnapshot()
         val message = resultObject["message"].toNullableString()
         validateResultNullability(code, snapshot, message)
-        return AsteriskdControlResponse(requestId, AsteriskdControlResult(code, snapshot, message))
+        return StarseadControlResponse(requestId, StarseadControlResult(code, snapshot, message))
     }
 
     fun decodeShellResponse(
         expectedRequestId: String,
         result: ShellExecResult,
-    ): AsteriskdControlResponse {
+    ): StarseadControlResponse {
         val response = decodeShellResponse(result)
         require(response.requestId == expectedRequestId)
         return response
     }
 
-    fun decodeShellResponse(result: ShellExecResult): AsteriskdControlResponse {
+    fun decodeShellResponse(result: ShellExecResult): StarseadControlResponse {
         require('\n' !in result.stdout && '\r' !in result.stdout)
         val response = decodeResponse(result.stdout)
         val expectedExitCode = response.result.code.exitCode
@@ -54,13 +54,13 @@ internal object AsteriskdControlCodec {
         return response
     }
 
-    fun decodeEvent(payload: String): AsteriskdControlEvent {
+    fun decodeEvent(payload: String): StarseadControlEvent {
         val root = parseClosedPayload(payload)
         root.requireExactKeys("protocolVersion", "event")
         require(root.requiredInt("protocolVersion") == ProtocolVersion)
         val value = root.requiredObject("event")
         value.requireExactKeys("sequence", "type", "snapshot", "details")
-        val event = AsteriskdControlEvent(
+        val event = StarseadControlEvent(
             sequence = value.requiredLong("sequence"),
             type = enumWire(value.requiredString("type")),
             snapshot = value.requiredObject("snapshot").toSnapshot(),
@@ -70,7 +70,7 @@ internal object AsteriskdControlCodec {
         return event
     }
 
-    private fun JsonObject.toSnapshot(): AsteriskdSnapshot {
+    private fun JsonObject.toSnapshot(): StarseadSnapshot {
         requireExactKeys(
             "phase", "owner", "coreType", "mode", "supervisorPid", "corePid",
             "helperType", "helperPid", "matcherConfigured", "matcherActive", "rules",
@@ -79,10 +79,10 @@ internal object AsteriskdControlCodec {
         val rulesObject = requiredObject("rules")
         rulesObject.requireExactKeys("active", "generation", "categories")
         val categories = rulesObject.requiredArray("categories").map { element ->
-            enumWire<AsteriskdRuleCategory>(element.requiredStringValue())
+            enumWire<StarseadRuleCategory>(element.requiredStringValue())
         }
         require(categories.distinct() == categories && categories == categories.sortedBy { it.ordinal })
-        val rules = AsteriskdRulesSnapshot(
+        val rules = StarseadRulesSnapshot(
             active = rulesObject.requiredBoolean("active"),
             generation = rulesObject.requiredLong("generation"),
             categories = categories,
@@ -91,16 +91,16 @@ internal object AsteriskdControlCodec {
 
         val networkObject = requiredObject("network")
         networkObject.requireExactKeys("ipv4Ready", "ipv6Enabled", "ipv6Ready")
-        val network = AsteriskdNetworkSnapshot(
+        val network = StarseadNetworkSnapshot(
             ipv4Ready = networkObject.requiredBoolean("ipv4Ready"),
             ipv6Enabled = networkObject.requiredBoolean("ipv6Enabled"),
             ipv6Ready = networkObject.requiredBoolean("ipv6Ready"),
         )
-        val snapshot = AsteriskdSnapshot(
+        val snapshot = StarseadSnapshot(
             phase = enumWire(requiredString("phase")),
             owner = enumWire(requiredString("owner")),
             coreType = enumWire(requiredString("coreType")),
-            mode = AsteriskdMode.fromWire(requiredString("mode")),
+            mode = StarseadMode.fromWire(requiredString("mode")),
             supervisorPid = requiredInt("supervisorPid"),
             corePid = getValue("corePid").toNullableInt(),
             helperType = getValue("helperType").toNullableString()?.let(::enumWire),
@@ -116,62 +116,62 @@ internal object AsteriskdControlCodec {
     }
 }
 
-internal val AsteriskdResultCode.exitCode: Int
+internal val StarseadResultCode.exitCode: Int
     get() = when (this) {
-        AsteriskdResultCode.Ok -> 0
-        AsteriskdResultCode.AlreadyRunning -> 4
-        AsteriskdResultCode.NotRunning -> 3
-        AsteriskdResultCode.PermissionDenied -> 77
-        AsteriskdResultCode.InvalidRequest,
-        AsteriskdResultCode.ConfigInvalid,
-        AsteriskdResultCode.UnsupportedCombination,
+        StarseadResultCode.Ok -> 0
+        StarseadResultCode.AlreadyRunning -> 4
+        StarseadResultCode.NotRunning -> 3
+        StarseadResultCode.PermissionDenied -> 77
+        StarseadResultCode.InvalidRequest,
+        StarseadResultCode.ConfigInvalid,
+        StarseadResultCode.UnsupportedCombination,
         -> 64
-        AsteriskdResultCode.StartFailed,
-        AsteriskdResultCode.StopFailed,
-        AsteriskdResultCode.InternalError,
+        StarseadResultCode.StartFailed,
+        StarseadResultCode.StopFailed,
+        StarseadResultCode.InternalError,
         -> 1
     }
 
-private fun AsteriskdSnapshot.validate() {
+private fun StarseadSnapshot.validate() {
     require(supervisorPid > 0 && (corePid == null || corePid > 0) && (helperPid == null || helperPid > 0))
     requireOwnerCore(owner, coreType)
     val expectedHelper = when (mode) {
-        AsteriskdMode.Tun2Socks -> AsteriskdHelperType.HevSocks5Tunnel
-        AsteriskdMode.Bpf2Socks -> AsteriskdHelperType.Bpf2Socks
-        AsteriskdMode.Tproxy, AsteriskdMode.Tun, AsteriskdMode.Ebpf -> null
+        StarseadMode.Tun2Socks -> StarseadHelperType.HevSocks5Tunnel
+        StarseadMode.Bpf2Socks -> StarseadHelperType.Bpf2Socks
+        StarseadMode.Tproxy, StarseadMode.Tun, StarseadMode.Ebpf -> null
     }
     require(helperType == expectedHelper)
     require(helperType != null || helperPid == null)
     require(!matcherActive || matcherConfigured)
-    if (mode == AsteriskdMode.Tun || mode == AsteriskdMode.Ebpf) {
+    if (mode == StarseadMode.Tun || mode == StarseadMode.Ebpf) {
         require(!matcherConfigured && !matcherActive)
         require(!rules.active && rules.generation == 0L && rules.categories.isEmpty())
     }
-    if (phase == AsteriskdPhase.Running) {
+    if (phase == StarseadPhase.Running) {
         require(network.ipv4Ready && network.ipv6Ready && corePid != null && error == null)
         require(helperType == null || helperPid != null)
         require(!matcherConfigured || matcherActive)
-        require(mode == AsteriskdMode.Tun || mode == AsteriskdMode.Ebpf || rules.active)
+        require(mode == StarseadMode.Tun || mode == StarseadMode.Ebpf || rules.active)
     } else {
         require(!network.ipv4Ready && !network.ipv6Ready)
     }
-    require(phase != AsteriskdPhase.Failed || error != null)
+    require(phase != StarseadPhase.Failed || error != null)
 }
 
 private fun requireOwnerCore(
-    owner: AsteriskdOwner,
-    coreType: AsteriskdCoreType,
+    owner: StarseadOwner,
+    coreType: StarseadCoreType,
 ) {
     require(
-        (owner == AsteriskdOwner.AsteriskNg && coreType == AsteriskdCoreType.Xray) ||
-            (owner == AsteriskdOwner.AsteriskBox && coreType == AsteriskdCoreType.SingBox) ||
-            (owner == AsteriskdOwner.AsteriskMeta && coreType == AsteriskdCoreType.Mihomo),
+        (owner == StarseadOwner.StarseaN && coreType == StarseadCoreType.Xray) ||
+            (owner == StarseadOwner.AsteriskBox && coreType == StarseadCoreType.SingBox) ||
+            (owner == StarseadOwner.AsteriskMeta && coreType == StarseadCoreType.Mihomo),
     )
 }
 
-private fun JsonObject.toControlError(): AsteriskdControlError {
+private fun JsonObject.toControlError(): StarseadControlError {
     requireExactKeys("code", "component", "message", "exitCode", "signal")
-    val error = AsteriskdControlError(
+    val error = StarseadControlError(
         code = enumWire(requiredString("code")),
         component = enumWire(requiredString("component")),
         message = requiredString("message"),
@@ -179,7 +179,7 @@ private fun JsonObject.toControlError(): AsteriskdControlError {
         signal = getValue("signal").toNullableInt(),
     )
     require(error.message.isNotEmpty())
-    if (error.code == AsteriskdFailureCode.ChildExited) {
+    if (error.code == StarseadFailureCode.ChildExited) {
         require((error.exitCode != null) xor (error.signal != null))
     } else {
         require(error.exitCode == null && error.signal == null)
@@ -187,18 +187,18 @@ private fun JsonObject.toControlError(): AsteriskdControlError {
     return error
 }
 
-private fun validateResultNullability(code: AsteriskdResultCode, snapshot: AsteriskdSnapshot?, message: String?) {
+private fun validateResultNullability(code: StarseadResultCode, snapshot: StarseadSnapshot?, message: String?) {
     when (code) {
-        AsteriskdResultCode.Ok -> require(snapshot != null && message == null)
-        AsteriskdResultCode.AlreadyRunning -> require(snapshot != null && !message.isNullOrEmpty())
-        AsteriskdResultCode.StopFailed -> require(snapshot?.phase == AsteriskdPhase.Failed && !message.isNullOrEmpty())
-        AsteriskdResultCode.InternalError -> require(!message.isNullOrEmpty())
-        AsteriskdResultCode.NotRunning,
-        AsteriskdResultCode.PermissionDenied,
-        AsteriskdResultCode.InvalidRequest,
-        AsteriskdResultCode.ConfigInvalid,
-        AsteriskdResultCode.UnsupportedCombination,
-        AsteriskdResultCode.StartFailed,
+        StarseadResultCode.Ok -> require(snapshot != null && message == null)
+        StarseadResultCode.AlreadyRunning -> require(snapshot != null && !message.isNullOrEmpty())
+        StarseadResultCode.StopFailed -> require(snapshot?.phase == StarseadPhase.Failed && !message.isNullOrEmpty())
+        StarseadResultCode.InternalError -> require(!message.isNullOrEmpty())
+        StarseadResultCode.NotRunning,
+        StarseadResultCode.PermissionDenied,
+        StarseadResultCode.InvalidRequest,
+        StarseadResultCode.ConfigInvalid,
+        StarseadResultCode.UnsupportedCombination,
+        StarseadResultCode.StartFailed,
         -> require(snapshot == null && !message.isNullOrEmpty())
     }
 }
@@ -234,15 +234,15 @@ private fun JsonElement?.toNullableString(): String? = when (this) {
 private fun JsonElement.toNullableInt(): Int? = if (this === JsonNull) null else jsonPrimitive.content.toInt()
 private inline fun <reified T : Enum<T>> enumWire(value: String): T = enumValues<T>().firstOrNull { entry ->
     val wire = when (entry) {
-        is AsteriskdOwner -> entry.wireValue
-        is AsteriskdCoreType -> entry.wireValue
-        is AsteriskdPhase -> entry.wireValue
-        is AsteriskdResultCode -> entry.wireValue
-        is AsteriskdEventType -> entry.wireValue
-        is AsteriskdHelperType -> entry.wireValue
-        is AsteriskdRuleCategory -> entry.wireValue
-        is AsteriskdFailureCode -> entry.wireValue
-        is AsteriskdComponent -> entry.wireValue
+        is StarseadOwner -> entry.wireValue
+        is StarseadCoreType -> entry.wireValue
+        is StarseadPhase -> entry.wireValue
+        is StarseadResultCode -> entry.wireValue
+        is StarseadEventType -> entry.wireValue
+        is StarseadHelperType -> entry.wireValue
+        is StarseadRuleCategory -> entry.wireValue
+        is StarseadFailureCode -> entry.wireValue
+        is StarseadComponent -> entry.wireValue
         else -> error("Unsupported wire enum")
     }
     wire == value

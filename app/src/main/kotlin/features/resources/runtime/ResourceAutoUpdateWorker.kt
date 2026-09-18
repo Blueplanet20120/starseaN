@@ -7,7 +7,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import app.AsteriskApplication
+import app.StarseaApplication
 import app.ResourceFileKind
 import app.resourceFileUpdateSource
 import features.logs.AndroidAppLogger
@@ -29,7 +29,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class ResourceAutoUpdateWorker(context: Context, parameters: WorkerParameters) :
     CoroutineWorker(context, parameters) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val application = applicationContext as AsteriskApplication
+        val application = applicationContext as StarseaApplication
         val progress = ResourceAutoUpdateProgress(applicationContext, id.toString())
         fun enabled(): Boolean = application.stateStore.state.value.let { state ->
             resourceAutoUpdateIntervalMillis(state.enableResourceAutoUpdate, state.resourceAutoUpdateInterval) != null

@@ -54,9 +54,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          version_name="$(sed -n 's/^[[:space:]]*const val VERSION_NAME = "\([^"]*\)".*/\1/p' buildSrc/src/main/kotlin/BuildConfig.kt | head -n 1)"
+          version_name="$(sed -n 's/^[[:space:]]*VERSION_NAME=//p' version.properties | head -n 1 | tr -d '\r')"
           if [ -z "$version_name" ]; then
-            echo "::error::Unable to read ProjectConfig.VERSION_NAME from buildSrc/src/main/kotlin/BuildConfig.kt."
+            echo "::error::Unable to read VERSION_NAME from version.properties."
             exit 1
           fi
 
@@ -65,7 +65,7 @@ jobs:
             is_release=true
             echo "Detected formal release version: $version_name"
           else
-            echo "::notice::ProjectConfig.VERSION_NAME is '$version_name', not strict x.y.z. GitHub Release creation will be skipped."
+            echo "::notice::VERSION_NAME is '$version_name', not strict x.y.z. GitHub Release creation will be skipped."
           fi
 
           create_github_release=false

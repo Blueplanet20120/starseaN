@@ -23,7 +23,7 @@ import java.util.UUID
 internal class AppSettingsPreferences(
     context: Context,
 ) {
-    private val preferences = context.migratedSettingsPreferences()
+    private val preferences = context.getSharedPreferences(PreferencesName, Context.MODE_PRIVATE)
 
     @SuppressLint("UseKtx") // The raw API exposes commit()'s success result for this installation identifier.
     fun getOrCreateSubscriptionHwid(): String {
@@ -428,7 +428,6 @@ internal class AppSettingsPreferences(
 }
 
 private const val PreferencesName = "starsean_settings"
-private const val LegacyPreferencesName = "asteriskng_settings"
 private const val KeyColorMode = "color_mode"
 private const val KeyLanguageMode = "language_mode"
 private const val KeySeedIndex = "seed_index"
@@ -517,25 +516,5 @@ private const val KeyExternalInterfaces = "external_interfaces"
 private const val KeyIgnoredInterfaces = "ignored_interfaces"
 private const val KeyPrivateAddressCidrs = "private_address_cidrs"
 private const val KeyProxyAppListMode = "proxy_app_list_mode"
-
-private fun Context.migratedSettingsPreferences(): SharedPreferences {
-    val prefs = getSharedPreferences(PreferencesName, Context.MODE_PRIVATE)
-    if (prefs.all.isNotEmpty()) return prefs
-    val legacyAll = getSharedPreferences(LegacyPreferencesName, Context.MODE_PRIVATE).all
-    if (legacyAll.isEmpty()) return prefs
-    prefs.edit {
-        legacyAll.forEach { (key, value) ->
-            when (value) {
-                is Boolean -> putBoolean(key, value)
-                is Float -> putFloat(key, value)
-                is Int -> putInt(key, value)
-                is Long -> putLong(key, value)
-                is String -> putString(key, value)
-                is Set<*> -> @Suppress("UNCHECKED_CAST") putStringSet(key, value as Set<String>)
-            }
-        }
-    }
-    return prefs
-}
 
 private val SubscriptionHwidLock = Any()

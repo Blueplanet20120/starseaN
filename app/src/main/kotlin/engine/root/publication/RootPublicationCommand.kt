@@ -13,7 +13,7 @@ internal object RootPublicationCommand {
             RootPublicationRequiredTools.forEach { tool ->
                 appendLine("command -v $tool >/dev/null 2>&1 || { printf '%s\\n' 'root_start missing_tool=$tool' >&2; exit 70; }")
             }
-            appendLine("[ -x ${layout.asteriskdPath.shellQuote()} ] || exit 70")
+            appendLine("[ -x ${layout.starseadPath.shellQuote()} ] || exit 70")
             appendLine("[ -d ${layout.dataDir.shellQuote()} ] || exit 70")
             bundle.restartExpectedOwner?.let { owner ->
                 appendConditionalStop(layout, owner)
@@ -30,7 +30,7 @@ internal object RootPublicationCommand {
         return buildString {
             appendLine("set -eu")
             appendStatusMustBePublishable(layout)
-            listOf(layout.configPath, layout.asteriskdConfigPath).forEach { path ->
+            listOf(layout.configPath, layout.starseadConfigPath).forEach { path ->
                 appendLine("[ -f ${path.shellQuote()} ] && [ ! -L ${path.shellQuote()} ] || exit 70")
             }
             if (bundle.bootEnabled) {
@@ -45,9 +45,9 @@ internal object RootPublicationCommand {
             }
             if (launchCommand != null) {
                 appendLine(
-                    "nohup ${layout.asteriskdPath.shellQuote()} $launchCommand " +
-                        "--config ${layout.asteriskdConfigPath.shellQuote()} " +
-                        "</dev/null >/dev/null 2>>${layout.asteriskdLogPath.shellQuote()} &",
+                    "nohup ${layout.starseadPath.shellQuote()} $launchCommand " +
+                        "--config ${layout.starseadConfigPath.shellQuote()} " +
+                        "</dev/null >/dev/null 2>>${layout.starseadLogPath.shellQuote()} &",
                 )
             }
         }.trimEnd()
@@ -55,12 +55,12 @@ internal object RootPublicationCommand {
 
     private fun StringBuilder.appendStatusMustBePublishable(layout: RootRuntimeLayout) {
         appendLine("set +e")
-        appendLine("asteriskd_status=\"$(${layout.asteriskdPath.shellQuote()} status)\"")
-        appendLine("asteriskd_status_code=\"$?\"")
+        appendLine("starsead_status=\"$(${layout.starseadPath.shellQuote()} status)\"")
+        appendLine("starsead_status_code=\"$?\"")
         appendLine("set -e")
-        appendLine("if [ \"\$asteriskd_status_code\" -ne 3 ]; then")
-        appendLine("  printf '%s\\n' \"\$asteriskd_status\"")
-        appendLine("  exit \"\$asteriskd_status_code\"")
+        appendLine("if [ \"\$starsead_status_code\" -ne 3 ]; then")
+        appendLine("  printf '%s\\n' \"\$starsead_status\"")
+        appendLine("  exit \"\$starsead_status_code\"")
         appendLine("fi")
     }
 
@@ -81,30 +81,30 @@ internal object RootPublicationCommand {
         expectedOwner: String,
     ) {
         appendLine("set +e")
-        appendLine("asteriskd_status=\"$(${layout.asteriskdPath.shellQuote()} status)\"")
-        appendLine("asteriskd_status_code=\"\$?\"")
+        appendLine("starsead_status=\"$(${layout.starseadPath.shellQuote()} status)\"")
+        appendLine("starsead_status_code=\"\$?\"")
         appendLine("set -e")
-        appendLine("if [ \"\$asteriskd_status_code\" -ne 3 ]; then")
-        appendLine("  case \"\$asteriskd_status\" in")
+        appendLine("if [ \"\$starsead_status_code\" -ne 3 ]; then")
+        appendLine("  case \"\$starsead_status\" in")
         appendLine("    *'\"owner\":\"$expectedOwner\"'*) ;;")
-        appendLine("    *) printf '%s\\n' \"\$asteriskd_status\"; exit \"\$asteriskd_status_code\" ;;")
+        appendLine("    *) printf '%s\\n' \"\$starsead_status\"; exit \"\$starsead_status_code\" ;;")
         appendLine("  esac")
         appendLine("  set +e")
-        appendLine("  asteriskd_shutdown=\"$(${layout.asteriskdPath.shellQuote()} shutdown)\"")
-        appendLine("  asteriskd_shutdown_code=\"\$?\"")
+        appendLine("  starsead_shutdown=\"$(${layout.starseadPath.shellQuote()} shutdown)\"")
+        appendLine("  starsead_shutdown_code=\"\$?\"")
         appendLine("  set -e")
-        appendLine("  [ \"\$asteriskd_shutdown_code\" -eq 0 ] || [ \"\$asteriskd_shutdown_code\" -eq 3 ] || { printf '%s\\n' \"\$asteriskd_shutdown\"; exit \"\$asteriskd_shutdown_code\"; }")
-        appendLine("  asteriskd_attempt=0")
-        appendLine("  while [ \"\$asteriskd_attempt\" -lt $SocketReleasePollAttempts ]; do")
+        appendLine("  [ \"\$starsead_shutdown_code\" -eq 0 ] || [ \"\$starsead_shutdown_code\" -eq 3 ] || { printf '%s\\n' \"\$starsead_shutdown\"; exit \"\$starsead_shutdown_code\"; }")
+        appendLine("  starsead_attempt=0")
+        appendLine("  while [ \"\$starsead_attempt\" -lt $SocketReleasePollAttempts ]; do")
         appendLine("    set +e")
-        appendLine("    ${layout.asteriskdPath.shellQuote()} status >/dev/null")
-        appendLine("    asteriskd_status_code=\"\$?\"")
+        appendLine("    ${layout.starseadPath.shellQuote()} status >/dev/null")
+        appendLine("    starsead_status_code=\"\$?\"")
         appendLine("    set -e")
-        appendLine("    [ \"\$asteriskd_status_code\" -eq 3 ] && break")
-        appendLine("    asteriskd_attempt=\$((asteriskd_attempt + 1))")
+        appendLine("    [ \"\$starsead_status_code\" -eq 3 ] && break")
+        appendLine("    starsead_attempt=\$((starsead_attempt + 1))")
         appendLine("    sleep 0.1")
         appendLine("  done")
-        appendLine("  [ \"\$asteriskd_status_code\" -eq 3 ] || exit 75")
+        appendLine("  [ \"\$starsead_status_code\" -eq 3 ] || exit 75")
         appendLine("fi")
     }
 

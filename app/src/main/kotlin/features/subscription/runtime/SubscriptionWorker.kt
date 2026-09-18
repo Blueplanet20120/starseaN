@@ -6,7 +6,7 @@ package features.subscription.runtime
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import app.AsteriskApplication
+import app.StarseaApplication
 import features.proxy.server.usecase.ProxyServerListSubscriptionUpdateResult
 import features.proxy.server.usecase.withUpdatedSubscriptionServers
 import features.subscription.usecase.toSubscriptionFetchOptions
@@ -19,7 +19,7 @@ internal class SubscriptionWorker(
     override suspend fun doWork(): Result {
         val groupId = inputData.getInt(SubscriptionGroupIdKey, MissingGroupId)
         if (groupId == MissingGroupId) return Result.success()
-        val application = applicationContext as? AsteriskApplication ?: return Result.failure()
+        val application = applicationContext as? StarseaApplication ?: return Result.failure()
         val runner = SubscriptionWorkerRunner(
             stateProvider = { application.stateStore.state.value },
             update = { requestedGroupId -> application.updateSubscription(requestedGroupId) },
@@ -31,7 +31,7 @@ internal class SubscriptionWorker(
         }
     }
 
-    private suspend fun AsteriskApplication.updateSubscription(
+    private suspend fun StarseaApplication.updateSubscription(
         groupId: Int,
     ): ProxyServerListSubscriptionUpdateResult {
         val group = stateStore.state.value.subscriptionGroups.firstOrNull { it.id == groupId }

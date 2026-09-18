@@ -3,12 +3,12 @@
 
 package engine.root.daemon
 
-import engine.root.daemon.control.AsteriskdControlCodec
-import engine.root.daemon.control.AsteriskdControlResponse
-import engine.root.daemon.control.AsteriskdEventType
-import engine.root.daemon.control.AsteriskdPhase
-import engine.root.daemon.control.AsteriskdResultCode
-import engine.root.daemon.control.AsteriskdSnapshot
+import engine.root.daemon.control.StarseadControlCodec
+import engine.root.daemon.control.StarseadControlResponse
+import engine.root.daemon.control.StarseadEventType
+import engine.root.daemon.control.StarseadPhase
+import engine.root.daemon.control.StarseadResultCode
+import engine.root.daemon.control.StarseadSnapshot
 import features.logs.AndroidAppLogger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -19,18 +19,18 @@ import system.ShellExecOptions
 import utils.shellQuote
 import kotlin.time.Duration.Companion.milliseconds
 
-internal class AsteriskdClient(
+internal class StarseadClient(
     private val shell: RootShellGateway,
     private val watchRetryDelaysMilliseconds: List<Long> = DefaultWatchRetryDelaysMilliseconds,
 ) {
-    suspend fun status(executablePath: String): AsteriskdControlResponse = runControl(executablePath, "status")
+    suspend fun status(executablePath: String): StarseadControlResponse = runControl(executablePath, "status")
 
-    suspend fun stop(executablePath: String): AsteriskdControlResponse = runControl(executablePath, "stop")
+    suspend fun stop(executablePath: String): StarseadControlResponse = runControl(executablePath, "stop")
 
-    suspend fun shutdown(executablePath: String): AsteriskdControlResponse =
+    suspend fun shutdown(executablePath: String): StarseadControlResponse =
         runControl(executablePath, "shutdown")
 
-    fun observeStatus(executablePath: String): Flow<AsteriskdSnapshot> = channelFlow {
+    fun observeStatus(executablePath: String): Flow<StarseadSnapshot> = channelFlow {
         var retryIndex = 0
         while (isActive) {
             val stream = StatusWatchStream { snapshot -> trySend(snapshot) }
@@ -51,20 +51,20 @@ internal class AsteriskdClient(
         }
     }
 
-    suspend fun awaitStopped(executablePath: String): AsteriskdSnapshot {
+    suspend fun awaitStopped(executablePath: String): StarseadSnapshot {
         var delayMilliseconds = InitialWatchRetryDelayMilliseconds
         while (true) {
             val response = status(executablePath)
-            response.result.snapshot?.takeIf { it.phase == AsteriskdPhase.Stopped }?.let { return it }
-            check(response.result.code == AsteriskdResultCode.NotRunning ||
-                response.result.code == AsteriskdResultCode.Ok
-            ) { response.result.message ?: "asteriskd monitor failed" }
+            response.result.snapshot?.takeIf { it.phase == StarseadPhase.Stopped }?.let { return it }
+            check(response.result.code == StarseadResultCode.NotRunning ||
+                response.result.code == StarseadResultCode.Ok
+            ) { response.result.message ?: "starsead monitor failed" }
             delay(delayMilliseconds.milliseconds)
             delayMilliseconds = (delayMilliseconds * 2L).coerceAtMost(MaxWatchRetryDelayMilliseconds)
         }
     }
 
-    suspend fun awaitRunning(executablePath: String): AsteriskdSnapshot {
+    suspend fun awaitRunning(executablePath: String): StarseadSnapshot {
         val command =
             "timeout -k 1s ${WatchProcessTimeoutSeconds}s " +
                 "${executablePath.shellQuote()} watch --until-running"
@@ -88,7 +88,7 @@ internal class AsteriskdClient(
             }
             error(
                 result.stderr.ifBlank {
-                    "asteriskd watch ended before a running or failed event"
+                    "starsead watch ended before a running or failed event"
                 },
             )
         }
@@ -97,11 +97,11 @@ internal class AsteriskdClient(
     private suspend fun runControl(
         executablePath: String,
         requestId: String,
-    ): AsteriskdControlResponse {
+    ): StarseadControlResponse {
         val command = "${executablePath.shellQuote()} $requestId"
         val result = shell.exec(command, ShellExecOptions(logFailure = false))
         return runCatching {
-            AsteriskdControlCodec.decodeShellResponse(requestId, result)
+            StarseadControlCodec.decodeShellResponse(requestId, result)
         }.getOrElse { error ->
             AndroidAppLogger.error(
                 LogTag,
@@ -114,7 +114,7 @@ internal class AsteriskdClient(
     }
 
     private companion object {
-        const val LogTag = "AsteriskdClient"
+        const val LogTag = "StarseadClient"
         const val InitialWatchRetryDelayMilliseconds = 10L
         const val MaxWatchRetryDelayMilliseconds = 250L
         const val WatchProcessTimeoutSeconds = 16L
@@ -128,7 +128,7 @@ internal class AsteriskdClient(
     }
 
     private class StatusWatchStream(
-        private val onSnapshot: (AsteriskdSnapshot) -> Unit,
+        private val onSnapshot: (StarseadSnapshot) -> Unit,
     ) {
         private var initialReceived = false
         private var lastSequence = 0L
@@ -137,35 +137,35 @@ internal class AsteriskdClient(
 
         fun accept(line: String) {
             if (!initialReceived) {
-                val response = AsteriskdControlCodec.decodeResponse(line)
+                val response = StarseadControlCodec.decodeResponse(line)
                 require(response.requestId == "watch")
                 initialReceived = true
-                if (response.result.code == AsteriskdResultCode.NotRunning) {
+                if (response.result.code == StarseadResultCode.NotRunning) {
                     notRunningReceived = true
                     return
                 }
-                check(response.result.code == AsteriskdResultCode.Ok) {
-                    response.result.message ?: "asteriskd watch request failed"
+                check(response.result.code == StarseadResultCode.Ok) {
+                    response.result.message ?: "starsead watch request failed"
                 }
                 onSnapshot(requireNotNull(response.result.snapshot))
                 return
             }
             check(!notRunningReceived && !terminalEventReceived) {
-                "asteriskd watch emitted data after completion"
+                "starsead watch emitted data after completion"
             }
-            val event = AsteriskdControlCodec.decodeEvent(line)
-            require(event.sequence > lastSequence) { "asteriskd watch event sequence regressed" }
+            val event = StarseadControlCodec.decodeEvent(line)
+            require(event.sequence > lastSequence) { "starsead watch event sequence regressed" }
             lastSequence = event.sequence
             onSnapshot(event.snapshot)
-            terminalEventReceived = event.type == AsteriskdEventType.Stopped ||
-                event.type == AsteriskdEventType.Failed
+            terminalEventReceived = event.type == StarseadEventType.Stopped ||
+                event.type == StarseadEventType.Failed
         }
 
         fun termination(result: system.ShellExecResult): WatchTermination {
             if (terminalEventReceived) return WatchTermination.FinalEvent
             if (notRunningReceived) return WatchTermination.NotRunning
             if (!initialReceived && result.stderr.isNotBlank()) {
-                AndroidAppLogger.warn(LogTag, "asteriskd watch disconnected: ${result.stderr}")
+                AndroidAppLogger.warn(LogTag, "starsead watch disconnected: ${result.stderr}")
             }
             return WatchTermination.Disconnected
         }
@@ -173,7 +173,7 @@ internal class AsteriskdClient(
 
     private class RunningWatchStream {
         @Volatile
-        var runningSnapshot: AsteriskdSnapshot? = null
+        var runningSnapshot: StarseadSnapshot? = null
             private set
 
         @Volatile
@@ -185,49 +185,49 @@ internal class AsteriskdClient(
 
         fun accept(line: String) {
             if (!initialReceived) {
-                val response = AsteriskdControlCodec.decodeResponse(line)
+                val response = StarseadControlCodec.decodeResponse(line)
                 require(response.requestId == "watch")
                 initialReceived = true
-                if (response.result.code == AsteriskdResultCode.NotRunning) {
+                if (response.result.code == StarseadResultCode.NotRunning) {
                     retryWhenUnbound = true
                     return
                 }
-                check(response.result.code == AsteriskdResultCode.Ok) {
-                    response.result.message ?: "asteriskd watch request failed"
+                check(response.result.code == StarseadResultCode.Ok) {
+                    response.result.message ?: "starsead watch request failed"
                 }
                 val snapshot = requireNotNull(response.result.snapshot)
-                if (snapshot.phase == AsteriskdPhase.Stopped) {
+                if (snapshot.phase == StarseadPhase.Stopped) {
                     retryWhenUnbound = true
                     return
                 }
                 inspect(snapshot)
                 return
             }
-            val event = AsteriskdControlCodec.decodeEvent(line)
-            require(event.sequence > lastSequence) { "asteriskd watch event sequence regressed" }
+            val event = StarseadControlCodec.decodeEvent(line)
+            require(event.sequence > lastSequence) { "starsead watch event sequence regressed" }
             lastSequence = event.sequence
-            if (event.type == AsteriskdEventType.Failed ||
-                event.snapshot.phase == AsteriskdPhase.Failed
+            if (event.type == StarseadEventType.Failed ||
+                event.snapshot.phase == StarseadPhase.Failed
             ) {
                 error(
                     event.details?.message
                         ?: event.snapshot.error?.message
-                        ?: "asteriskd entered failed phase",
+                        ?: "starsead entered failed phase",
                 )
             }
             inspect(event.snapshot)
         }
 
-        private fun inspect(snapshot: AsteriskdSnapshot) {
-            if (snapshot.phase == AsteriskdPhase.Failed) {
-                error(snapshot.error?.message ?: "asteriskd entered failed phase")
+        private fun inspect(snapshot: StarseadSnapshot) {
+            if (snapshot.phase == StarseadPhase.Failed) {
+                error(snapshot.error?.message ?: "starsead entered failed phase")
             }
-            if (snapshot.phase == AsteriskdPhase.Running) {
+            if (snapshot.phase == StarseadPhase.Running) {
                 runningSnapshot = snapshot
                 return
             }
-            check(snapshot.phase != AsteriskdPhase.Stopped) {
-                "asteriskd stopped before reaching running phase"
+            check(snapshot.phase != StarseadPhase.Stopped) {
+                "starsead stopped before reaching running phase"
             }
         }
     }

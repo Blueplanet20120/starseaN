@@ -650,6 +650,8 @@
     <string name="proxy_app_list_scan_china_done">已扫描 %1$d 个应用，发现 %2$d 个中国应用</string>
     <string name="proxy_app_list_scan_china_no_match">已扫描 {scanned} 个应用，未发现中国应用</string>
     <string name="proxy_app_list_scan_china_skipped_global">全应用模式下已跳过</string>
+    <string name="proxy_app_list_apply_preset_apps">默认代理应用</string>
+    <string name="proxy_app_list_apply_preset_apps_done">已应用默认代理应用</string>
     <string name="proxy_app_list_invert_selection">反选</string>
     <string name="proxy_app_list_clear_selection">清空</string>
     <string name="proxy_app_list_invert_done">已反选</string>

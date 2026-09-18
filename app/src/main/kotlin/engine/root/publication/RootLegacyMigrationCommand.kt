@@ -12,29 +12,29 @@ internal object RootLegacyMigrationCommand {
         val dataDir = File(layout.dataDir)
         val legacy = listOf(
             File(dataDir, "config-root.json"), File(dataDir, "xray-root.pid"),
-            File(dataDir, "asteriskd.pid"), File(dataDir, "asteriskd.ready"),
+            File(dataDir, "starsead.pid"), File(dataDir, "starsead.ready"),
             File(dataDir, "stop.sh"), File(dataDir, "bpf-policy.json"),
             File(dataDir, "bpf2socks.json"), File(dataDir, "bpf2socks.pid"),
-            File(dataDir, "tun2socks.pid"), File(dataDir, "logs/asteriskd.log"),
-            File(layout.asteriskdStatePath),
-            File("${layout.asteriskdStatePath}.route-localnet"),
+            File(dataDir, "tun2socks.pid"), File(dataDir, "logs/starsead.log"),
+            File(layout.starseadStatePath),
+            File("${layout.starseadStatePath}.route-localnet"),
         )
         val pidFiles = legacy.filter { it.name.endsWith(".pid") }
         val legacyTunPid = File(dataDir, "tun2socks.pid")
         appendLine("legacy_migrate() {")
-        appendLine("  if { [ -f ${layout.asteriskdConfigPath.shellQuote()} ] && grep -Eq '\"schemaVersion\"[[:space:]]*:[[:space:]]*[23]([,}])' ${layout.asteriskdConfigPath.shellQuote()}; } ||")
-        appendLine("     { [ -f ${layout.asteriskdStatePath.shellQuote()} ] && grep -Eq '\"schemaVersion\"[[:space:]]*:[[:space:]]*2([,}])' ${layout.asteriskdStatePath.shellQuote()}; }; then")
+        appendLine("  if { [ -f ${layout.starseadConfigPath.shellQuote()} ] && grep -Eq '\"schemaVersion\"[[:space:]]*:[[:space:]]*[23]([,}])' ${layout.starseadConfigPath.shellQuote()}; } ||")
+        appendLine("     { [ -f ${layout.starseadStatePath.shellQuote()} ] && grep -Eq '\"schemaVersion\"[[:space:]]*:[[:space:]]*2([,}])' ${layout.starseadStatePath.shellQuote()}; }; then")
         appendLine("    return 0")
         appendLine("  fi")
         appendLine("  legacy_seen=0")
         legacy.forEach { file -> appendLine("  { [ -e ${file.absolutePath.shellQuote()} ] || [ -L ${file.absolutePath.shellQuote()} ]; } && legacy_seen=1") }
         appendLine("  [ \"\$legacy_seen\" -eq 1 ] || return 0")
-        appendLine("  [ -f ${layout.asteriskdConfigPath.shellQuote()} ] && [ ! -L ${layout.asteriskdConfigPath.shellQuote()} ] || return 76")
-        appendLine("  grep -Eq '\"version\"[[:space:]]*:[[:space:]]*3([,}])' ${layout.asteriskdConfigPath.shellQuote()} || return 76")
-        appendLine("  grep -F -q -- ${layout.asteriskdStatePath.shellQuote()} ${layout.asteriskdConfigPath.shellQuote()} || return 76")
-        appendLine("  grep -F -q -- ${File(dataDir, "stop.sh").absolutePath.shellQuote()} ${layout.asteriskdConfigPath.shellQuote()} || return 76")
+        appendLine("  [ -f ${layout.starseadConfigPath.shellQuote()} ] && [ ! -L ${layout.starseadConfigPath.shellQuote()} ] || return 76")
+        appendLine("  grep -Eq '\"version\"[[:space:]]*:[[:space:]]*3([,}])' ${layout.starseadConfigPath.shellQuote()} || return 76")
+        appendLine("  grep -F -q -- ${layout.starseadStatePath.shellQuote()} ${layout.starseadConfigPath.shellQuote()} || return 76")
+        appendLine("  grep -F -q -- ${File(dataDir, "stop.sh").absolutePath.shellQuote()} ${layout.starseadConfigPath.shellQuote()} || return 76")
         appendLine("  if [ -e ${legacyTunPid.absolutePath.shellQuote()} ]; then")
-        appendLine("    grep -F -q -- ${legacyTunPid.absolutePath.shellQuote()} ${layout.asteriskdConfigPath.shellQuote()} || return 76")
+        appendLine("    grep -F -q -- ${legacyTunPid.absolutePath.shellQuote()} ${layout.starseadConfigPath.shellQuote()} || return 76")
         appendLine("  fi")
         appendLine("  legacy_uid=\"$(stat -c %u ${layout.dataDir.shellQuote()})\" || return 76")
         legacy.forEach { file ->
@@ -58,7 +58,7 @@ internal object RootLegacyMigrationCommand {
         appendLine("    [ -r \"\$legacy_proc/cmdline\" ] && [ -r \"\$legacy_proc/status\" ] || return 76")
         appendLine("    legacy_cmdline=\"$(tr '\\0' ' ' < \"\$legacy_proc/cmdline\")\" || return 76")
         appendLine("    case \"\$legacy_cmdline\" in")
-        appendLine("      *${File(dataDir, "config-root.json").absolutePath.shellQuoteForCase()}*|*${layout.asteriskdConfigPath.shellQuoteForCase()}*)")
+        appendLine("      *${File(dataDir, "config-root.json").absolutePath.shellQuoteForCase()}*|*${layout.starseadConfigPath.shellQuoteForCase()}*)")
         appendLine("        legacy_uid_line=\"$(grep '^Uid:' \"\$legacy_proc/status\")\" || return 76")
         appendLine("        set -- \$legacy_uid_line")
         appendLine("        [ \"\$3\" != 0 ] && [ \"\$5\" != 0 ] || return 76")

@@ -6,52 +6,52 @@ package engine.root.config
 import app.modes.ProxyAppListModeBlacklist
 import app.modes.ProxyAppListModeGlobal
 import app.modes.ProxyAppListModeWhitelist
-import engine.root.daemon.config.AsteriskdAppPolicy
-import engine.root.daemon.config.AsteriskdAppPolicyMode
-import engine.root.daemon.config.AsteriskdConfig
-import engine.root.daemon.config.AsteriskdCoreConfig
-import engine.root.daemon.config.AsteriskdCoreType
-import engine.root.daemon.config.AsteriskdHelper
-import engine.root.daemon.config.AsteriskdMatcher
-import engine.root.daemon.config.AsteriskdMode
-import engine.root.daemon.config.AsteriskdModeOptions
-import engine.root.daemon.config.AsteriskdNetworkConfig
-import engine.root.daemon.config.AsteriskdNgConfigFactory
-import engine.root.daemon.config.AsteriskdOwner
-import engine.root.daemon.config.toAsteriskdServiceControlConfig
+import engine.root.daemon.config.StarseadAppPolicy
+import engine.root.daemon.config.StarseadAppPolicyMode
+import engine.root.daemon.config.StarseadConfig
+import engine.root.daemon.config.StarseadCoreConfig
+import engine.root.daemon.config.StarseadCoreType
+import engine.root.daemon.config.StarseadHelper
+import engine.root.daemon.config.StarseadMatcher
+import engine.root.daemon.config.StarseadMode
+import engine.root.daemon.config.StarseadModeOptions
+import engine.root.daemon.config.StarseadNetworkConfig
+import engine.root.daemon.config.StarseadNgConfigFactory
+import engine.root.daemon.config.StarseadOwner
+import engine.root.daemon.config.toStarseadServiceControlConfig
 
 private val RootStartConfig.disableSystemIpv6: Boolean
     get() = !enableIpv6 && enableRootIpv6Disabler
 
-internal fun RootStartConfig.buildAsteriskdConfig(
-    mode: AsteriskdMode,
+internal fun RootStartConfig.buildStarseadConfig(
+    mode: StarseadMode,
     iptablesConfig: RootIptablesConfig,
     virtualInterfaces: List<String>,
-    modeOptions: AsteriskdModeOptions,
-    helper: AsteriskdHelper? = null,
-): AsteriskdConfig {
-    AsteriskdNgConfigFactory.requireRunnableMode(mode)
-    val matcher = if (iptablesConfig.enableEbpfRules && mode != AsteriskdMode.Bpf2Socks) {
-        AsteriskdMatcher(runtimePaths.matcherExecutablePath)
+    modeOptions: StarseadModeOptions,
+    helper: StarseadHelper? = null,
+): StarseadConfig {
+    StarseadNgConfigFactory.requireRunnableMode(mode)
+    val matcher = if (iptablesConfig.enableEbpfRules && mode != StarseadMode.Bpf2Socks) {
+        StarseadMatcher(runtimePaths.matcherExecutablePath)
     } else {
         null
     }
     val useDirectCidrs =
-        iptablesConfig.enableEbpfDirectCidrBypass && (matcher != null || mode == AsteriskdMode.Bpf2Socks)
-    return AsteriskdConfig(
-        owner = AsteriskdOwner.AsteriskNg,
-        coreType = AsteriskdCoreType.Xray,
+        iptablesConfig.enableEbpfDirectCidrBypass && (matcher != null || mode == StarseadMode.Bpf2Socks)
+    return StarseadConfig(
+        owner = StarseadOwner.StarseaN,
+        coreType = StarseadCoreType.Xray,
         coreExecutablePath = runtimePaths.coreExecutablePath,
         coreConfigPath = runtimePaths.coreConfigPath,
         statePath = runtimePaths.statePath,
         logPath = runtimePaths.logPath,
         mode = mode,
-        core = AsteriskdCoreConfig(
+        core = StarseadCoreConfig(
             workingDirectory = runtimePaths.workingDirectory,
             readinessTimeoutMilliseconds = 5000,
             ageSecretKey = null,
         ),
-        network = AsteriskdNetworkConfig(
+        network = StarseadNetworkConfig(
             enableIpv6 = enableIpv6,
             disableSystemIpv6 = disableSystemIpv6,
             enableLocalDns = enableLocalDns,
@@ -68,11 +68,11 @@ internal fun RootStartConfig.buildAsteriskdConfig(
                 iptablesConfig.bypassPrivateIpv4Cidrs +
                     iptablesConfig.bypassPrivateIpv6Cidrs.takeIf { enableIpv6 }.orEmpty()
                 ).distinct(),
-            appPolicy = AsteriskdAppPolicy(
+            appPolicy = StarseadAppPolicy(
                 mode = when (iptablesConfig.proxyAppListMode) {
-                    ProxyAppListModeBlacklist -> AsteriskdAppPolicyMode.Blacklist
-                    ProxyAppListModeWhitelist -> AsteriskdAppPolicyMode.Whitelist
-                    ProxyAppListModeGlobal -> AsteriskdAppPolicyMode.Global
+                    ProxyAppListModeBlacklist -> StarseadAppPolicyMode.Blacklist
+                    ProxyAppListModeWhitelist -> StarseadAppPolicyMode.Whitelist
+                    ProxyAppListModeGlobal -> StarseadAppPolicyMode.Global
                     else -> error("Unsupported application policy mode")
                 },
                 uids = iptablesConfig.proxyApplicationUids.distinct().sorted()
@@ -86,6 +86,6 @@ internal fun RootStartConfig.buildAsteriskdConfig(
         modeOptions = modeOptions,
         matcher = matcher,
         helper = helper,
-        serviceControl = serviceControl.toAsteriskdServiceControlConfig(),
+        serviceControl = serviceControl.toStarseadServiceControlConfig(),
     )
 }

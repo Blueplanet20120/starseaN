@@ -51,7 +51,7 @@ dependencyResolutionManagement {
 }
 
 include(":app")
-include(":asteriskd")
+include(":starsead")
 include(":bpfmatcher")
 include(":bpf2socks")
 include(":hevtun")

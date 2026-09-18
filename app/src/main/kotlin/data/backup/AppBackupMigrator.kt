@@ -4,7 +4,7 @@
 package data.backup
 
 internal fun AppBackupFile.migrateAppBackup(): AppBackupFile {
-    require(format == AppBackupFormat || format == LegacyAppBackupFormat) {
+    require(format == AppBackupFormat) {
         "Invalid backup file format"
     }
     require(version in 1..CurrentAppBackupVersion) {

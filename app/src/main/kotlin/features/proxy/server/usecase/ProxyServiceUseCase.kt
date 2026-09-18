@@ -150,5 +150,5 @@ internal sealed interface ProxyServiceResult {
     data class Failed(val error: Throwable) : ProxyServiceResult
 }
 
-private val LocalRootOwner = RootRuntimeOwner.AsteriskNg
+private val LocalRootOwner = RootRuntimeOwner.StarseaN
 private const val LogTag = "ProxyServiceUseCase"
