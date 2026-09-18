@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 package features.proxy.app
@@ -26,7 +26,7 @@ import java.util.zip.ZipFile
  * The single source of truth for the prefix list is [CHINA_APP_PREFIX_LIST].
  */
 internal object AppScanner {
-    private const val TAG = "AsteriskNG-AppScanner"
+    private const val TAG = "starseaN-AppScanner"
 
     private const val LARGE_DEX_SIZE_BYTES: Long = 15_000_000L
 

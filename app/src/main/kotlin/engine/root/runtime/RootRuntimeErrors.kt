@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 package engine.root.runtime
@@ -13,7 +13,7 @@ internal class RootRuntimeConflictException(
 
 internal class RootRuntimeBusyException(
     val snapshot: AsteriskdSnapshot,
-) : IllegalStateException("AsteriskNG ROOT runtime is ${snapshot.phase.wireValue} in ${snapshot.mode.wireValue} mode")
+) : IllegalStateException("starseaN ROOT runtime is ${snapshot.phase.wireValue} in ${snapshot.mode.wireValue} mode")
 
 internal class RootProtocolException(
     operation: String,

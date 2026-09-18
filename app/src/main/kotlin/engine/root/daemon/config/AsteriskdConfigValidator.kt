@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 package engine.root.daemon.config
@@ -33,7 +33,7 @@ internal object AsteriskdConfigValidator {
             }
             AsteriskdMode.Tun,
             AsteriskdMode.Ebpf,
-            -> error("Unsupported AsteriskNG runtime mode")
+            -> error("Unsupported starseaN runtime mode")
         }
         network.appPolicy.directCidrPathV4?.let { pathV4 ->
             require(pathV4.isNotBlank() && !network.appPolicy.directCidrPathV6.isNullOrBlank())
@@ -67,7 +67,7 @@ internal object AsteriskdConfigValidator {
 internal object AsteriskdNgConfigFactory {
     fun requireRunnableMode(mode: AsteriskdMode) {
         require(mode == AsteriskdMode.Tproxy || mode == AsteriskdMode.Tun2Socks || mode == AsteriskdMode.Bpf2Socks) {
-            "AsteriskNG does not support ${mode.wireValue} as a standalone ROOT mode"
+            "starseaN does not support ${mode.wireValue} as a standalone ROOT mode"
         }
     }
 }

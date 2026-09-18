@@ -1,4 +1,4 @@
-# AsteriskNG Development Guidelines
+# starseaN Development Guidelines
 
 This document applies to this repository and all of its subdirectories. Current user instructions and any more deeply nested `AGENTS.md` take precedence.
 
@@ -6,7 +6,7 @@ This document applies to this repository and all of its subdirectories. Current 
 
 ### Keep All Three Apps Consistent
 
-AsteriskBOX, AsteriskNG, and AsteriskMETA belong to the same product family. When implementing shared capabilities, keep their code structure and UX consistent instead of creating three similar but subtly different implementations.
+AsteriskBOX, starseaN, and AsteriskMETA belong to the same product family. When implementing shared capabilities, keep their code structure and UX consistent instead of creating three similar but subtly different implementations.
 
 - Before making a change, search sibling repositories for equivalent screens, state, use cases, and runtime components. When the other apps are present in the workspace, proactively assess and apply all relevant changes to them.
 - Shared code should use the same top-level layers: `app`, `data`, `engine`, `features`, `system`, `ui`, and `utils`. Equivalent files should use consistent relative paths, names, interfaces, state models, error semantics, log fields, and test locations.

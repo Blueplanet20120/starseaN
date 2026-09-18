@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 @file:OptIn(ExperimentalScrollBarApi::class)
@@ -309,5 +309,5 @@ private fun logExportFileName(title: String): String {
         .joinToString("")
         .trim('-')
         .ifBlank { "logs" }
-    return "asteriskng-$safeTitle-${System.currentTimeMillis()}.log"
+    return "starseaN-$safeTitle-${System.currentTimeMillis()}.log"
 }

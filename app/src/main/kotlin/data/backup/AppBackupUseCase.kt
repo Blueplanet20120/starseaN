@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 package data.backup
@@ -65,5 +65,5 @@ internal fun decodeAppBackup(content: String): AppBackupFile =
 
 private fun defaultBackupFileName(): String {
     val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-    return "asteriskng-backup-$timestamp.json"
+    return "starseaN-backup-$timestamp.json"
 }

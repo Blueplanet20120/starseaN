@@ -1,6 +1,6 @@
 [English](README.md) | 简体中文 | [Русский](README_ru.md) | [Tiếng Việt](README_vi.md)
 
-# AsteriskNG
+# starseaN
 
 一个 Android Xray GUI 客户端，使用 [Xray-core](https://github.com/XTLS/Xray-core)、[AndroidLibXrayLite](https://github.com/2dust/AndroidLibXrayLite)、[hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel) 实现。
 

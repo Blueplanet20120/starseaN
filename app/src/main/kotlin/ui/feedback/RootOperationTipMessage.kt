@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 package ui.feedback
@@ -8,7 +8,7 @@ import engine.root.runtime.RootOperationResult
 import engine.root.runtime.model.RootRuntimeOwner
 
 internal fun RootRuntimeOwner.productName(): String = when (this) {
-    RootRuntimeOwner.AsteriskNg -> "AsteriskNG"
+    RootRuntimeOwner.AsteriskNg -> "starseaN"
     RootRuntimeOwner.AsteriskMeta -> "AsteriskMETA"
     RootRuntimeOwner.AsteriskBox -> "AsteriskBOX"
 }

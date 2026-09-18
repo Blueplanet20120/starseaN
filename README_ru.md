@@ -1,6 +1,6 @@
 [English](README.md) | [简体中文](README_zh_CN.md) | Русский | [Tiếng Việt](README_vi.md)
 
-# AsteriskNG
+# starseaN
 
 Клиент Xray для Android, работающий на базе [Xray-core](https://github.com/XTLS/Xray-core), [AndroidLibXrayLite](https://github.com/2dust/AndroidLibXrayLite) и [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel).
 

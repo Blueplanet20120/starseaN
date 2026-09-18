@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 package engine.vpn
@@ -69,7 +69,7 @@ internal object VpnXrayConfigFactory {
         val dnsHosts = appState.xrayDnsHosts(outboundPlan.dnsHostServers)
 
         return VpnServiceStartConfig(
-            sessionName = "AsteriskNG",
+            sessionName = "starseaN",
             mtu = tunOptions.mtu,
             ipv4Address = tunOptions.ipv4Address.address,
             ipv4PrefixLength = tunOptions.ipv4Address.prefixLength,

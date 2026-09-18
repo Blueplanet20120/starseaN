@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 import org.gradle.api.DefaultTask
@@ -10,7 +10,7 @@ import org.gradle.api.tasks.TaskAction
 
 object ProjectConfig {
     const val JVM_VERSION = 26
-    const val PROJECT_NAME = "AsteriskNG"
+    const val PROJECT_NAME = "starseaN"
     const val VERSION_NAME = "1.4.9-dev"
     const val PACKAGE_NAME = "org.asterisk.zcc.ang"
     const val ASTERISKD_VERSION = "v2.0.32"

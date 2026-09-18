@@ -1,1 +1,1 @@
-rootProject.name = "asteriskng-buildsrc"
+rootProject.name = "starseaN-buildsrc"

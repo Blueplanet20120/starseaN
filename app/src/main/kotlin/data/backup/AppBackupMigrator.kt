@@ -1,10 +1,10 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 package data.backup
 
 internal fun AppBackupFile.migrateAppBackup(): AppBackupFile {
-    require(format == AppBackupFormat) {
+    require(format == AppBackupFormat || format == LegacyAppBackupFormat) {
         "Invalid backup file format"
     }
     require(version in 1..CurrentAppBackupVersion) {

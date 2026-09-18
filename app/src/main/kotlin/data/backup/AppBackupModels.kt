@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 package data.backup
@@ -8,7 +8,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
-internal const val AppBackupFormat = "asteriskng-backup"
+internal const val AppBackupFormat = "starseaN-backup"
+internal const val LegacyAppBackupFormat = "asteriskng-backup"
 internal const val CurrentAppBackupVersion = 1
 
 private val BackupDefaults = AppState()

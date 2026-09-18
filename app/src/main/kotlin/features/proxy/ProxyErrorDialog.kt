@@ -1,4 +1,4 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 package features.proxy
@@ -208,5 +208,5 @@ private fun MonospaceBlock(text: String) {
 
 private fun copyToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-    clipboard?.setPrimaryClip(ClipData.newPlainText("AsteriskNG proxy error", text))
+    clipboard?.setPrimaryClip(ClipData.newPlainText("starseaN proxy error", text))
 }

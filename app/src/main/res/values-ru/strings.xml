@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="app_name">AsteriskNG</string>
+    <string name="app_name">starseaN</string>
     <string name="error_vpn_permission_denied">Не предоставлено разрешение на запуск VPN. Служба VPN не может быть запущена</string>
     <string name="error_vpn_start_config_missing">Отсутствует конфигурация для запуска службы VPN</string>
     <string name="error_vpn_tun_fd_unavailable">Дескриптор файла VPN TUN недоступен</string>
@@ -30,7 +30,7 @@
     <string name="proxy_traffic_stats_notification_channel">Статистика трафика прокси</string>
     <string name="proxy_traffic_stats_notification_speed">Скорость: ^ %1$s / v %2$s</string>
     <string name="proxy_traffic_stats_notification_total">Трафик: ^ %1$s / v %2$s</string>
-    <string name="quick_settings_tile_label">AsteriskNG</string>
+    <string name="quick_settings_tile_label">starseaN</string>
     <string name="quick_settings_tile_running">Прокси работает</string>
     <string name="quick_settings_tile_stopped">Прокси остановлен</string>
     <string name="quick_settings_tile_processing">Обработка…</string>
@@ -97,7 +97,7 @@
     <string name="settings_root_ebpf_matcher_failed">Не удалось проверить поддержку eBPF на устройстве</string>
     <string name="settings_root_ebpf_matcher_unsupported">Это устройство не поддерживает обработку через eBPF</string>
     <string name="settings_root_ebpf_selinux_policy_warning_title">Включить eBPF-файрвол?</string>
-    <string name="settings_root_ebpf_selinux_policy_warning_summary">Инструменты сборки политик SELinux не обнаружены. AsteriskNG может не иметь возможности автоматически добавить необходимые eBPF-разрешения при запуске прокси. Вы все равно можете включить eBPF, но раздача интернета (точка доступа/USB) может не работать, пока ваш рут-фреймворк не предоставит magiskpolicy/supolicy или правила не будут добавлены вручную.</string>
+    <string name="settings_root_ebpf_selinux_policy_warning_summary">Инструменты сборки политик SELinux не обнаружены. starseaN может не иметь возможности автоматически добавить необходимые eBPF-разрешения при запуске прокси. Вы все равно можете включить eBPF, но раздача интернета (точка доступа/USB) может не работать, пока ваш рут-фреймворк не предоставит magiskpolicy/supolicy или правила не будут добавлены вручную.</string>
     <string name="settings_root_ebpf_selinux_policy_warning_confirm">Включить в любом случае</string>
     <string name="settings_root_ipv6_disabler">Отключить системный IPv6</string>
     <string name="settings_root_ipv6_disabler_summary">Предотвращает утечки IPv6-адресов через протокол WebRTC</string>
@@ -469,7 +469,7 @@
     <string name="proxy_editor_custom_format_json">Форматировать JSON</string>
     <string name="proxy_editor_custom_json_invalid">Недопустимый синтаксис JSON конфигурации</string>
     <string name="proxy_editor_custom_override_inbound_dns">Переопределить параметры входящих соединений и DNS</string>
-    <string name="proxy_editor_custom_override_inbound_dns_summary">Использовать конфигурации входящих соединений и DNS, сгенерированные AsteriskNG</string>
+    <string name="proxy_editor_custom_override_inbound_dns_summary">Использовать конфигурации входящих соединений и DNS, сгенерированные starseaN</string>
     <string name="proxy_validation_required_field">Поле {field} является обязательным</string>
     <string name="proxy_validation_server_address_contains_invalid_content">Адрес сервера не должен содержать протокол, путь, пробелы или учетные данные</string>
     <string name="proxy_validation_invalid_server_address">Недопустимый адрес сервера</string>

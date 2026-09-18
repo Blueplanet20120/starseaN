@@ -1,9 +1,9 @@
-// Copyright 2026, AsteriskNG contributors
+// Copyright 2026, starseaN contributors
 // SPDX-License-Identifier: GPL-3.0
 
 @file:Suppress("UnstableApiUsage")
 
-rootProject.name = "AsteriskNG"
+rootProject.name = "starseaN"
 
 pluginManagement {
     repositories {

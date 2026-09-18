@@ -1,6 +1,6 @@
 [English](README.md) | [简体中文](README_zh_CN.md) | [Русский](README_ru.md) | Tiếng Việt
 
-# AsteriskNG
+# starseaN
 
 Ứng dụng khách Xray cho Android, sử dụng [Xray-core](https://github.com/XTLS/Xray-core), [AndroidLibXrayLite](https://github.com/2dust/AndroidLibXrayLite) và [hev-socks5-tunnel](https://github.com/heiher/hev-socks5-tunnel).
 

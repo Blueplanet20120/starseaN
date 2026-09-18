@@ -250,8 +250,8 @@ jobs:
               *universal*) abi="universal" ;;
             esac
 
-            cp "$apk" "release-artifacts/AsteriskNG_${version_name}-${version_code}-${abi}.apk"
-            cp "$apk" "github-release-artifacts/AsteriskNG-${abi}.apk"
+            cp "$apk" "release-artifacts/starseaN_${version_name}-${version_code}-${abi}.apk"
+            cp "$apk" "github-release-artifacts/starseaN-${abi}.apk"
           done
 
           if ! find release-artifacts -type f -name "*.apk" | grep -q .; then
@@ -364,7 +364,7 @@ jobs:
           fi
 
           {
-            echo "## AsteriskNG $TAG_NAME"
+            echo "## starseaN $TAG_NAME"
             echo
             echo "- Version name: $VERSION_NAME"
             echo "- Version code: $VERSION_CODE"
@@ -407,12 +407,12 @@ jobs:
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" github-release-artifacts/*.apk --clobber
             gh release edit "$TAG_NAME" \
-              --title "AsteriskNG $TAG_NAME" \
+              --title "starseaN $TAG_NAME" \
               --notes-file release-notes.md \
               --latest
           else
             gh release create "$TAG_NAME" github-release-artifacts/*.apk \
-              --title "AsteriskNG $TAG_NAME" \
+              --title "starseaN $TAG_NAME" \
               --notes-file release-notes.md \
               --latest
           fi
@@ -476,7 +476,7 @@ jobs:
 
             echo "Uploading $apk_name to Telegram"
 
-            caption="$(printf 'AsteriskNG\n\n%s\n\n%s\n<a href="%s">Commit</a> | <a href="%s">Workflow run</a>' \
+            caption="$(printf 'starseaN\n\n%s\n\n%s\n<a href="%s">Commit</a> | <a href="%s">Workflow run</a>' \
               "$commit_message_html" \
               "$commit_short_id" \
               "$commit_url" \
