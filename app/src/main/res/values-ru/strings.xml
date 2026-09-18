@@ -190,6 +190,11 @@
     <string name="settings_resource_files_replaced">{name} успешно заменен</string>
     <string name="settings_resource_files_restored">{name} восстановлен из встроенных ресурсов приложения</string>
     <string name="settings_resource_files_deleted">{name} удален</string>
+    <string name="settings_xray_core_check_update">Проверить обновления Xray-core</string>
+    <string name="settings_xray_core_already_latest">Xray-core уже последней версии {version}</string>
+    <string name="settings_xray_core_update_title">Обновление Xray-core</string>
+    <string name="settings_xray_core_update_current">Установлено {version}</string>
+    <string name="settings_xray_core_update_latest">Последняя {version}</string>
     <string name="settings_log_level">Уровень логирования</string>
     <string name="settings_sniffing_summary">Перехватывать и определять целевые домены HTTP/TLS для точной маршрутизации</string>
     <string name="settings_sniffing_route_only">Только для маршрутизации (routeOnly)</string>

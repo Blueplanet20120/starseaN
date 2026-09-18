@@ -7,6 +7,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import android.content.Context
 import android.net.Uri
+import android.provider.OpenableColumns
+import app.ProjectInfo
 import app.R
 import app.CustomResourceFileState
 import app.ResourceFileKind
@@ -32,6 +34,8 @@ internal class AndroidResourceFileRepository(
     private val appContext = context.applicationContext
     private val store = AndroidResourceFileStore(appContext)
     private val downloader = AndroidResourceFileDownloader()
+    private val versionStore = AndroidXrayCoreVersionStore(appContext)
+    private val xrayCoreReleaseClient = AndroidXrayCoreReleaseClient(downloader)
 
     suspend fun status(customResourceFiles: List<CustomResourceFileState> = emptyList()): ResourceFilesStatus =
         withContext(Dispatchers.IO) {
@@ -44,7 +48,10 @@ internal class AndroidResourceFileRepository(
             if (!store.shouldPublishBundledXrayCore(resourceFileSource, restoreAfterPackageUpdate = true)) {
                 return@withContext
             }
-            executeCoreCandidateInstall(store::stageBundledXrayCoreCandidate) {
+            executeCoreCandidateInstall(
+                candidateFactory = store::stageBundledXrayCoreCandidate,
+                knownVersion = ProjectInfo.XRAY_CORE_VERSION,
+            ) {
                 AndroidResourceFileLogger.info(
                     "Bundled Xray core replacement deferred because the existing core is ROOT-owned",
                 )
@@ -106,6 +113,87 @@ internal class AndroidResourceFileRepository(
             options = options,
             customResourceFiles = customResourceFiles,
         )
+    }
+
+    fun installedXrayCoreVersion(): String = versionStore.installedVersion()
+
+    suspend fun refreshInstalledXrayCoreVersion(): String {
+        rememberInstalledXrayCoreVersion()
+        return versionStore.installedVersion()
+    }
+
+    suspend fun checkXrayCoreRelease(
+        options: ResourceFileUpdateOptions,
+    ): XrayCoreReleaseCheck = withContext(Dispatchers.IO) {
+        val installed = refreshInstalledXrayCoreVersion()
+        val latest = xrayCoreReleaseClient.fetchLatest(options.toDownloadProxy())
+        val newer = isNewerXrayCoreVersion(latest.tag, installed)
+        AndroidResourceFileLogger.info(
+            "Xray-core check installed=$installed latest=${latest.tag} newer=$newer",
+        )
+        XrayCoreReleaseCheck(
+            installedVersion = installed,
+            latest = latest,
+            isNewer = newer,
+        )
+    }
+
+    suspend fun updateXrayCore(
+        version: String,
+        downloadUrl: String,
+        options: ResourceFileUpdateOptions,
+        customResourceFiles: List<CustomResourceFileState> = emptyList(),
+    ): ResourceFilesStatus = withContext(Dispatchers.IO) {
+        AndroidResourceFileDownloadCancellation.begin()
+        currentCoroutineContext().ensureActive()
+        val notifier = AndroidResourceFileDownloadNotifier(appContext)
+        val downloadProxy = options.toDownloadProxy()
+        if (downloadProxy != null) {
+            AndroidResourceFileLogger.info(
+                "Xray-core update will use local proxy ${downloadProxy.host}:${downloadProxy.port}",
+            )
+        }
+        val zipFile = java.io.File.createTempFile("xray-core-", ".zip", appContext.cacheDir)
+        val result = runCatching {
+            notifier.showProgress("Xray-core $version", progress = null, force = true)
+            downloader.download(downloadUrl, zipFile, downloadProxy) { downloadedBytes, totalBytes ->
+                notifier.showProgress(
+                    fileName = "Xray-core $version",
+                    progress = overallProgress(
+                        fileIndex = 0,
+                        fileCount = 1,
+                        downloadedBytes = downloadedBytes,
+                        totalBytes = totalBytes,
+                    ),
+                )
+            }
+            val candidate = store.stageXrayCoreCandidateFromZip(zipFile)
+            installOrPublishCoreCandidate(
+                candidateFactory = { candidate },
+                knownVersion = version,
+            )
+            store.currentStatus(customResourceFiles)
+        }
+        zipFile.delete()
+        result.onSuccess {
+            runCatching { notifier.showComplete() }
+        }.onFailure { error ->
+            if (error is AndroidResourceFileDownloadCancelledException) {
+                AndroidResourceFileLogger.info("Xray-core update cancelled")
+                runCatching { notifier.showCancelled() }
+            } else {
+                AndroidResourceFileLogger.error("Failed to update Xray-core", error)
+                runCatching { notifier.showFailed(error.message ?: error::class.simpleName.orEmpty()) }
+            }
+        }
+        result.getOrElse { error ->
+            if (error is AndroidResourceFileDownloadCancelledException) {
+                throw AndroidResourceFileDownloadCancelledException(
+                    appContext.getString(R.string.resource_file_download_notification_cancelled),
+                )
+            }
+            throw error
+        }
     }
 
     private suspend fun updateTargets(
@@ -214,7 +302,10 @@ internal class AndroidResourceFileRepository(
         customResourceFiles: List<CustomResourceFileState> = emptyList(),
     ): ResourceFilesStatus = withContext(Dispatchers.IO) {
         if (kind == ResourceFileKind.XrayCore) {
-            installOrPublishCoreCandidate { store.stageXrayCoreCandidate(uri) }
+            installOrPublishCoreCandidate(
+                candidateFactory = { store.stageXrayCoreCandidate(uri) },
+                knownVersion = xrayCoreVersionFromUri(uri) ?: CustomXrayCoreVersion,
+            )
         } else {
             store.replace(kind, uri)
         }
@@ -226,7 +317,10 @@ internal class AndroidResourceFileRepository(
         customResourceFiles: List<CustomResourceFileState> = emptyList(),
     ): ResourceFilesStatus = withContext(Dispatchers.IO) {
         if (kind == ResourceFileKind.XrayCore) {
-            installOrPublishCoreCandidate(store::stageBundledXrayCoreCandidate)
+            installOrPublishCoreCandidate(
+                candidateFactory = store::stageBundledXrayCoreCandidate,
+                knownVersion = ProjectInfo.XRAY_CORE_VERSION,
+            )
         } else {
             store.restoreBundled(kind)
         }
@@ -235,14 +329,16 @@ internal class AndroidResourceFileRepository(
 
     private suspend fun installOrPublishCoreCandidate(
         candidateFactory: () -> java.io.File,
+        knownVersion: String? = null,
     ) {
-        executeCoreCandidateInstall(candidateFactory) {
+        executeCoreCandidateInstall(candidateFactory, knownVersion) {
             error(appContext.getString(R.string.settings_root_required))
         }
     }
 
     private suspend fun executeCoreCandidateInstall(
         candidateFactory: () -> java.io.File,
+        knownVersion: String? = null,
         deferRootOwned: suspend () -> Unit,
     ) {
         val target = store.file(ResourceFileKind.XrayCore)
@@ -250,29 +346,35 @@ internal class AndroidResourceFileRepository(
             targetOwnerUid = target::coreBinaryOwnerUidOrNull,
             rootModeActive = { currentRunMode().isRootRunMode() },
             candidateFactory = candidateFactory,
-            installInitial = { candidate -> installInitialCoreCandidate(candidate) },
-            replaceAppOwned = { candidate -> replaceAppOwnedCoreCandidate(candidate) },
-            replaceWithRoot = { candidate -> replaceCoreCandidateWithRoot(candidate) },
+            installInitial = { candidate -> installInitialCoreCandidate(candidate, knownVersion) },
+            replaceAppOwned = { candidate -> replaceAppOwnedCoreCandidate(candidate, knownVersion) },
+            replaceWithRoot = { candidate -> replaceCoreCandidateWithRoot(candidate, knownVersion) },
             deferRootOwned = deferRootOwned,
         )
     }
 
-    private fun installInitialCoreCandidate(
+    private suspend fun installInitialCoreCandidate(
         candidate: java.io.File,
+        knownVersion: String? = null,
     ) {
         try {
             val installed = store.installInitialXrayCoreCandidate(candidate)
             require(installed || store.file(ResourceFileKind.XrayCore).isFile) {
                 "Failed to install the initial Xray core"
             }
+            rememberInstalledXrayCoreVersion(candidate, knownVersion)
         } finally {
             candidate.delete()
         }
     }
 
-    private fun replaceAppOwnedCoreCandidate(candidate: java.io.File) {
+    private suspend fun replaceAppOwnedCoreCandidate(
+        candidate: java.io.File,
+        knownVersion: String? = null,
+    ) {
         try {
             store.replaceXrayCoreCandidate(candidate)
+            rememberInstalledXrayCoreVersion(candidate, knownVersion)
         } finally {
             candidate.delete()
         }
@@ -280,6 +382,7 @@ internal class AndroidResourceFileRepository(
 
     private suspend fun replaceCoreCandidateWithRoot(
         candidate: java.io.File,
+        knownVersion: String? = null,
     ) {
         try {
             val target = store.file(ResourceFileKind.XrayCore)
@@ -291,9 +394,53 @@ internal class AndroidResourceFileRepository(
                 error(removal.stderr.ifBlank { "Failed to remove the existing Xray core" })
             }
             store.replaceXrayCoreCandidate(candidate)
+            rememberInstalledXrayCoreVersion(candidate, knownVersion)
         } finally {
             candidate.delete()
         }
+    }
+
+    private suspend fun rememberInstalledXrayCoreVersion(
+        candidate: java.io.File? = null,
+        knownVersion: String? = null,
+    ) {
+        val installed = store.file(ResourceFileKind.XrayCore)
+        val probed = candidate?.let(::probeXrayCoreVersion)
+            ?: probeXrayCoreVersion(installed)
+            ?: probeXrayCoreVersionWithShell(installed) { command ->
+                val result = rootShell.exec(command, ShellExecOptions(logFailure = false))
+                listOf(result.stdout, result.stderr)
+                    .filter { it.isNotBlank() }
+                    .joinToString("\n")
+            }
+        val version = probed ?: knownVersion?.trim()?.takeIf(String::isNotEmpty)
+        if (version != null) {
+            versionStore.setInstalledVersion(normalizeXrayCoreVersion(version))
+            AndroidResourceFileLogger.info(
+                "Xray-core remembered version=$version probed=${probed != null}",
+            )
+        }
+    }
+
+    private fun xrayCoreVersionFromUri(uri: Uri): String? {
+        val names = buildList {
+            add(uri.lastPathSegment.orEmpty())
+            add(uri.toString())
+            runCatching {
+                appContext.contentResolver.query(
+                    uri,
+                    arrayOf(OpenableColumns.DISPLAY_NAME),
+                    null,
+                    null,
+                    null,
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        add(cursor.getString(0).orEmpty())
+                    }
+                }
+            }
+        }
+        return names.firstNotNullOfOrNull(::xrayCoreVersionFromName)
     }
 }
 

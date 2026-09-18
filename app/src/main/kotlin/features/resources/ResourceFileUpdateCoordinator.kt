@@ -79,6 +79,16 @@ internal sealed interface ResourceFileUpdateRequest {
             }
         }
     }
+
+    class XrayCore(
+        val version: String,
+        val downloadUrl: String,
+        val options: ResourceFileUpdateOptions,
+        customResourceFiles: List<CustomResourceFileState>,
+    ) : ResourceFileUpdateRequest {
+        val customResourceFiles = customResourceFiles.toList()
+        override val targets = setOf(ResourceFileUpdateTarget.BuiltIn(ResourceFileKind.XrayCore))
+    }
 }
 
 internal data class ResourceFileUpdateQueueEntry(

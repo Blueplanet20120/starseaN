@@ -629,3 +629,73 @@ private fun Long.toReadableDateTime(): String {
     if (this <= 0L) return "-"
     return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(this))
 }
+
+@Composable
+internal fun XrayCoreUpdateDialog(
+    show: Boolean,
+    currentVersion: String,
+    latestTitle: String,
+    latestVersion: String,
+    notes: String,
+    onDismissRequest: () -> Unit,
+    onUpdate: () -> Unit,
+) {
+    WindowDialog(
+        show = show,
+        title = stringResource(R.string.settings_xray_core_update_title),
+        onDismissRequest = onDismissRequest,
+        content = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    text = latestTitle,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MiuixTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                Text(
+                    text = stringResource(R.string.settings_xray_core_update_current)
+                        .formatTemplate("version" to currentVersion),
+                    style = MiuixTheme.textStyles.body2,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier.padding(bottom = 4.dp),
+                )
+                Text(
+                    text = stringResource(R.string.settings_xray_core_update_latest)
+                        .formatTemplate("version" to latestVersion),
+                    style = MiuixTheme.textStyles.body2,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                if (notes.isNotBlank()) {
+                    Text(
+                        text = notes.take(4000),
+                        style = MiuixTheme.textStyles.body2,
+                        color = MiuixTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(bottom = 16.dp),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(
+                        text = stringResource(R.string.common_cancel),
+                        onClick = onDismissRequest,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(20.dp))
+                    TextButton(
+                        text = stringResource(R.string.common_update),
+                        onClick = onUpdate,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        },
+    )
+}

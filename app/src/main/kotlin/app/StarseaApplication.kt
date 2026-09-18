@@ -70,6 +70,12 @@ class StarseaApplication : Application(), SingletonImageLoader.Factory {
                         options = request.options,
                         customResourceFiles = request.customResourceFiles,
                     )
+                    is ResourceFileUpdateRequest.XrayCore -> resourceFileUseCase.updateXrayCore(
+                        version = request.version,
+                        downloadUrl = request.downloadUrl,
+                        options = request.options,
+                        customResourceFiles = request.customResourceFiles,
+                    )
                 }
             },
             cancelRunning = AndroidResourceFileDownloadCancellation::cancel,

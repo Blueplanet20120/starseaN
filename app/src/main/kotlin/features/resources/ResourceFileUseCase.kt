@@ -10,6 +10,9 @@ import app.ResourceFileKind
 import app.ResourceFilesStatus
 import app.ResourceFileUpdateSource
 import features.resources.runtime.AndroidResourceFileRepository
+import features.resources.runtime.XrayCoreReleaseCheck
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import system.AndroidRootShellGateway
 import system.RootShellGateway
 
@@ -56,6 +59,31 @@ class ResourceFileUseCase(
         customResourceFiles: List<CustomResourceFileState> = emptyList(),
     ): ResourceFilesStatus {
         return repository.updateCustom(customFile, options, customResourceFiles)
+    }
+
+    fun installedXrayCoreVersion(): String {
+        return repository.installedXrayCoreVersion()
+    }
+
+    suspend fun refreshInstalledXrayCoreVersion(): String {
+        return withContext(Dispatchers.IO) {
+            repository.refreshInstalledXrayCoreVersion()
+        }
+    }
+
+    suspend fun checkXrayCoreRelease(
+        options: ResourceFileUpdateOptions = ResourceFileUpdateOptions(),
+    ): XrayCoreReleaseCheck {
+        return repository.checkXrayCoreRelease(options)
+    }
+
+    suspend fun updateXrayCore(
+        version: String,
+        downloadUrl: String,
+        options: ResourceFileUpdateOptions = ResourceFileUpdateOptions(),
+        customResourceFiles: List<CustomResourceFileState> = emptyList(),
+    ): ResourceFilesStatus {
+        return repository.updateXrayCore(version, downloadUrl, options, customResourceFiles)
     }
 
     suspend fun renameCustom(

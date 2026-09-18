@@ -186,6 +186,31 @@ internal class AndroidResourceFileStore(
         }
     }
 
+    fun stageXrayCoreCandidateFromZip(zipFile: File): File {
+        val extracted = createXrayCoreCandidateFile()
+        val found = ZipInputStream(zipFile.inputStream()).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                if (!entry.isDirectory && entry.name.substringAfterLast('/') == "xray") {
+                    extracted.outputStream().use { output ->
+                        zip.copyTo(output)
+                        output.flush()
+                        output.fd.sync()
+                    }
+                    return@use true
+                }
+                zip.closeEntry()
+                entry = zip.nextEntry
+            }
+            false
+        }
+        if (!found || extracted.length() <= 0L) {
+            extracted.delete()
+            error("Archive does not contain xray")
+        }
+        return extracted
+    }
+
     private fun writeXrayCoreCandidate(input: java.io.InputStream): File {
         val candidate = createXrayCoreCandidateFile()
         try {
@@ -343,7 +368,7 @@ private fun ResourceFileKind.bundledAssetPathOrNull(): String? {
     }
 }
 
-private fun currentRuntimeAbi(): String {
+internal fun currentRuntimeAbi(): String {
     return Build.SUPPORTED_ABIS.firstOrNull { abi -> abi in SupportedAndroidAbis }
         ?: error("Unsupported CPU ABI: ${Build.SUPPORTED_ABIS.joinToString()}")
 }

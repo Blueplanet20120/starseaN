@@ -98,6 +98,162 @@ internal class AndroidResourceFileDownloader {
         }
         error("Too many redirects")
     }
+
+    fun fetchText(
+        url: String,
+        proxy: AndroidResourceFileDownloadProxy? = null,
+        extraHeaders: Map<String, String> = emptyMap(),
+    ): String {
+        if (proxy != null) {
+            proxy.withAuthenticator {
+                try {
+                    return fetchTextWithRetries(url, proxy, extraHeaders)
+                } catch (_: IOException) {
+                    AndroidResourceFileLogger.info("Proxy download failed, falling back to direct connection")
+                }
+            }
+        }
+        return fetchTextWithRetries(url, null, extraHeaders)
+    }
+
+    private fun fetchTextWithRetries(
+        url: String,
+        proxy: AndroidResourceFileDownloadProxy?,
+        extraHeaders: Map<String, String>,
+    ): String {
+        var lastError: Throwable? = null
+        repeat(MaxRetries) { attempt ->
+            try {
+                return fetchTextWithRedirects(url, proxy, extraHeaders)
+            } catch (error: Throwable) {
+                if (AndroidResourceFileDownloadCancellation.isCancelled()) {
+                    throw AndroidResourceFileDownloadCancelledException()
+                }
+                if (error is IOException && attempt < MaxRetries - 1) {
+                    lastError = error
+                    Thread.sleep(RetryBackoffMs * (1L shl attempt))
+                } else {
+                    throw error
+                }
+            }
+        }
+        throw lastError ?: error("Download failed")
+    }
+
+    private fun fetchTextWithRedirects(
+        url: String,
+        proxy: AndroidResourceFileDownloadProxy?,
+        extraHeaders: Map<String, String>,
+    ): String {
+        var currentUrl = url
+        repeat(MaxRedirects) {
+            val connection = URI.create(currentUrl).toUrlConnection(proxy, extraHeaders)
+            try {
+                AndroidResourceFileDownloadCancellation.track(connection)
+                AndroidResourceFileDownloadCancellation.throwIfCancelled()
+                val code = connection.responseCode
+                AndroidResourceFileDownloadCancellation.throwIfCancelled()
+                if (code in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                        ?: error("Redirect location missing")
+                    currentUrl = URI(currentUrl).resolve(location).toString()
+                    return@repeat
+                }
+                if (code !in 200..299) {
+                    error("HTTP $code")
+                }
+                return connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            } finally {
+                AndroidResourceFileDownloadCancellation.untrack(connection)
+                connection.disconnect()
+            }
+        }
+        error("Too many redirects")
+    }
+
+    fun resolveRedirectChain(
+        url: String,
+        proxy: AndroidResourceFileDownloadProxy? = null,
+    ): List<String> {
+        if (proxy != null) {
+            proxy.withAuthenticator {
+                try {
+                    return resolveRedirectChainOnce(url, proxy)
+                } catch (_: IOException) {
+                    AndroidResourceFileLogger.info("Proxy download failed, falling back to direct connection")
+                }
+            }
+        }
+        return resolveRedirectChainOnce(url, null)
+    }
+
+    private fun resolveRedirectChainOnce(
+        url: String,
+        proxy: AndroidResourceFileDownloadProxy?,
+    ): List<String> {
+        val hops = mutableListOf(url)
+        var currentUrl = url
+        repeat(MaxRedirects) {
+            val connection = URI.create(currentUrl).toUrlConnection(proxy)
+            try {
+                connection.requestMethod = "HEAD"
+                AndroidResourceFileDownloadCancellation.track(connection)
+                AndroidResourceFileDownloadCancellation.throwIfCancelled()
+                val code = connection.responseCode
+                AndroidResourceFileDownloadCancellation.throwIfCancelled()
+                if (code == HttpURLConnection.HTTP_BAD_METHOD || code == 501) {
+                    return resolveRedirectChainWithGet(url, proxy)
+                }
+                if (code in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                        ?: error("Redirect location missing")
+                    currentUrl = URI(currentUrl).resolve(location).toString()
+                    hops += currentUrl
+                    return@repeat
+                }
+                if (code !in 200..299) {
+                    error("HTTP $code")
+                }
+                return hops
+            } finally {
+                AndroidResourceFileDownloadCancellation.untrack(connection)
+                connection.disconnect()
+            }
+        }
+        error("Too many redirects")
+    }
+
+    private fun resolveRedirectChainWithGet(
+        url: String,
+        proxy: AndroidResourceFileDownloadProxy?,
+    ): List<String> {
+        val hops = mutableListOf(url)
+        var currentUrl = url
+        repeat(MaxRedirects) {
+            val connection = URI.create(currentUrl).toUrlConnection(proxy)
+            try {
+                AndroidResourceFileDownloadCancellation.track(connection)
+                AndroidResourceFileDownloadCancellation.throwIfCancelled()
+                val code = connection.responseCode
+                AndroidResourceFileDownloadCancellation.throwIfCancelled()
+                if (code in 300..399) {
+                    val location = connection.getHeaderField("Location")
+                        ?: error("Redirect location missing")
+                    currentUrl = URI(currentUrl).resolve(location).toString()
+                    hops += currentUrl
+                    return@repeat
+                }
+                if (code !in 200..299) {
+                    error("HTTP $code")
+                }
+                return hops
+            } finally {
+                AndroidResourceFileDownloadCancellation.untrack(connection)
+                connection.disconnect()
+            }
+        }
+        error("Too many redirects")
+    }
 }
 
 internal data class AndroidResourceFileDownloadProxy(
@@ -120,6 +276,17 @@ private fun URI.toUrlConnection(proxy: AndroidResourceFileDownloadProxy?): HttpU
         instanceFollowRedirects = false
         requestMethod = "GET"
         setRequestProperty("User-Agent", ResourceFileDefaultUserAgent)
+    }
+}
+
+internal fun URI.toUrlConnection(
+    proxy: AndroidResourceFileDownloadProxy?,
+    extraHeaders: Map<String, String>,
+): HttpURLConnection {
+    return toUrlConnection(proxy).apply {
+        extraHeaders.forEach { (key, value) ->
+            setRequestProperty(key, value)
+        }
     }
 }
 

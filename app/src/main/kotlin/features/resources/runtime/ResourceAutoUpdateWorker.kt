@@ -59,7 +59,8 @@ internal class ResourceAutoUpdateWorker(context: Context, parameters: WorkerPara
             val identity = when (request) {
                 is ResourceFileUpdateRequest.BuiltIn -> "$target|${all.source}"
                 is ResourceFileUpdateRequest.Custom -> "$target|${request.file}"
-                else -> error("Unexpected automatic resource request")
+                is ResourceFileUpdateRequest.All,
+                is ResourceFileUpdateRequest.XrayCore -> error("Unexpected automatic resource request")
             }
             identity.sha256() to request
         }
@@ -78,7 +79,8 @@ internal class ResourceAutoUpdateWorker(context: Context, parameters: WorkerPara
                         enabled() && when (request) {
                             is ResourceFileUpdateRequest.BuiltIn -> current.resourceFileUpdateSource() == all.source
                             is ResourceFileUpdateRequest.Custom -> request.file in current.customResourceFiles
-                            else -> false
+                            is ResourceFileUpdateRequest.All,
+                            is ResourceFileUpdateRequest.XrayCore -> false
                         }
                     }
                 }

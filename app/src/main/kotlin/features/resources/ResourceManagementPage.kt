@@ -37,6 +37,7 @@ import app.collectAppState
 import app.customResourceFileNameOrNull
 import app.resourceFileUpdateSource
 import app.statusOf
+import features.resources.runtime.XrayCoreReleaseCheck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -77,6 +78,9 @@ fun ResourceManagementPage(
     val showCustomResourceFileDialog = remember { mutableStateOf(false) }
     var editingCustomResourceFile by remember { mutableStateOf<CustomResourceFileState?>(null) }
     var pendingCustomResourceFileDeletion by remember { mutableStateOf<CustomResourceFileState?>(null) }
+    var checkingXrayCore by remember { mutableStateOf(false) }
+    var xrayCoreVersion by remember { mutableStateOf(resourceFileUseCase.installedXrayCoreVersion()) }
+    var pendingXrayCoreRelease by remember { mutableStateOf<XrayCoreReleaseCheck?>(null) }
     val customResourceFileNameState = rememberTextFieldState()
     val customResourceFileUrlState = rememberTextFieldState()
     val editCustomResourceFileNameState = rememberTextFieldState()
@@ -86,6 +90,7 @@ fun ResourceManagementPage(
     val replacedMessage = stringResource(R.string.settings_resource_files_replaced)
     val restoredMessage = stringResource(R.string.settings_resource_files_restored)
     val deletedMessage = stringResource(R.string.settings_resource_files_deleted)
+    val xrayCoreAlreadyLatestMessage = stringResource(R.string.settings_xray_core_already_latest)
     val customResourceFileNameInvalidMessage = stringResource(
         R.string.settings_resource_files_custom_name_invalid,
     )
@@ -138,6 +143,51 @@ fun ResourceManagementPage(
         resourceFileUpdateCoordinator.enqueue(
             ResourceFileUpdateRequest.Custom(
                 file = file,
+                options = appState.resourceFileUpdateOptions(),
+                customResourceFiles = appState.customResourceFiles.toList(),
+            ),
+        )
+    }
+
+    fun checkXrayCoreRelease() {
+        if (checkingXrayCore || resourceActionRunning) return
+        if (
+            updateQueueState.displayStateOf(
+                ResourceFileUpdateTarget.BuiltIn(ResourceFileKind.XrayCore),
+            ) != ResourceFileUpdateDisplayState.Idle
+        ) {
+            return
+        }
+        checkingXrayCore = true
+        services.appScope.launch {
+            try {
+                val check = resourceFileUseCase.checkXrayCoreRelease(appState.resourceFileUpdateOptions())
+                withContext(Dispatchers.Main.immediate) {
+                    xrayCoreVersion = check.installedVersion
+                    if (check.isNewer) {
+                        pendingXrayCoreRelease = check
+                    } else {
+                        tipNotifier.show(
+                            xrayCoreAlreadyLatestMessage.formatTemplate("version" to check.latest.tag),
+                        )
+                    }
+                }
+            } catch (error: Throwable) {
+                tipNotifier.showError(error)
+            } finally {
+                withContext(Dispatchers.Main.immediate) {
+                    checkingXrayCore = false
+                }
+            }
+        }
+    }
+
+    fun updateXrayCore(check: XrayCoreReleaseCheck) {
+        pendingXrayCoreRelease = null
+        resourceFileUpdateCoordinator.enqueue(
+            ResourceFileUpdateRequest.XrayCore(
+                version = check.latest.tag,
+                downloadUrl = check.latest.downloadUrl,
                 options = appState.resourceFileUpdateOptions(),
                 customResourceFiles = appState.customResourceFiles.toList(),
             ),
@@ -260,6 +310,7 @@ fun ResourceManagementPage(
 
     LaunchedEffect(appState.customResourceFiles, updateQueueState.completionRevision) {
         status = resourceFileUseCase.status(appState.customResourceFiles)
+        xrayCoreVersion = resourceFileUseCase.refreshInstalledXrayCoreVersion()
     }
     LaunchedEffect(resourceFileUpdateCoordinator, updatedMessage, updatedOneMessage) {
         resourceFileUpdateCoordinator.results.collect { result ->
@@ -273,6 +324,11 @@ fun ResourceManagementPage(
                         is ResourceFileUpdateRequest.Custom -> updatedOneMessage.formatTemplate(
                             "name" to request.file.name,
                         )
+                        is ResourceFileUpdateRequest.XrayCore -> {
+                            val version = resourceFileUseCase.refreshInstalledXrayCoreVersion()
+                            xrayCoreVersion = version
+                            updatedOneMessage.formatTemplate("name" to "Xray-core $version")
+                        }
                     }
                     tipNotifier.show(message)
                 }
@@ -325,20 +381,48 @@ fun ResourceManagementPage(
                 item(key = ResourceFileKind.XrayCore.fileName) {
                     val kind = ResourceFileKind.XrayCore
                     ResourceFileCard(
-                        fileName = kind.displayName,
+                        fileName = "Xray-core $xrayCoreVersion",
                         status = status.statusOf(kind),
+                        updateState = if (checkingXrayCore) {
+                            ResourceFileUpdateDisplayState.Running
+                        } else {
+                            updateQueueState.displayStateOf(
+                                ResourceFileUpdateTarget.BuiltIn(kind),
+                            )
+                        },
                         actionsEnabled = !resourceActionRunning,
                         description = stringResource(R.string.settings_resource_files_root_only),
+                        onUpdate = { checkXrayCoreRelease() },
                         onReplace = {
                             runResourceFileAction(
-                                action = { resourceFileUseCase.replace(kind) },
-                                successMessage = replacedMessage.formatTemplate("name" to kind.displayName),
+                                action = {
+                                    resourceFileUseCase.replace(kind)?.also {
+                                        val version = resourceFileUseCase.refreshInstalledXrayCoreVersion()
+                                        withContext(Dispatchers.Main.immediate) {
+                                            xrayCoreVersion = version
+                                        }
+                                        tipNotifier.show(
+                                            replacedMessage.formatTemplate("name" to "Xray-core $version"),
+                                        )
+                                    }
+                                },
+                                successMessage = null,
                             )
                         },
                         onRestore = {
                             runResourceFileAction(
-                                action = { resourceFileUseCase.restoreBundled(kind) },
-                                successMessage = restoredMessage.formatTemplate("name" to kind.displayName),
+                                action = {
+                                    resourceFileUseCase.restoreBundled(kind).also {
+                                        val version = resourceFileUseCase.refreshInstalledXrayCoreVersion()
+                                        withContext(Dispatchers.Main.immediate) {
+                                            xrayCoreVersion = version
+                                        }
+                                        tipNotifier.show(
+                                            restoredMessage.formatTemplate("name" to "Xray-core $version"),
+                                        )
+                                    }
+                                },
+                                successMessage = null,
                             )
                         },
                     )
@@ -490,6 +574,17 @@ fun ResourceManagementPage(
                     pendingCustomResourceFileDeletion = null
                     deleteCustomResourceFile(file)
                 },
+            )
+        }
+        pendingXrayCoreRelease?.let { check ->
+            XrayCoreUpdateDialog(
+                show = true,
+                currentVersion = check.installedVersion,
+                latestTitle = check.latest.title,
+                latestVersion = check.latest.tag,
+                notes = check.latest.body,
+                onDismissRequest = { pendingXrayCoreRelease = null },
+                onUpdate = { updateXrayCore(check) },
             )
         }
     }

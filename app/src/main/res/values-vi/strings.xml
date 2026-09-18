@@ -211,6 +211,11 @@
     <string name="settings_resource_files_replaced">{name} đã được thay thế</string>
     <string name="settings_resource_files_restored">{name} đã được khôi phục về tệp tích hợp sẵn</string>
     <string name="settings_resource_files_deleted">{name} đã được xóa</string>
+    <string name="settings_xray_core_check_update">Kiểm tra cập nhật Xray-core</string>
+    <string name="settings_xray_core_already_latest">Xray-core đã là phiên bản mới nhất {version}</string>
+    <string name="settings_xray_core_update_title">Cập nhật Xray-core</string>
+    <string name="settings_xray_core_update_current">Đang dùng {version}</string>
+    <string name="settings_xray_core_update_latest">Mới nhất {version}</string>
     <string name="settings_log_level">Cấp độ nhật ký</string>
     <string name="settings_sniffing_summary">Nhận diện tên miền đích HTTP/TLS,… để hỗ trợ định tuyến</string>
     <string name="settings_sniffing_route_only">routeOnly</string>
