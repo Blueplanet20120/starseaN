@@ -461,7 +461,7 @@ jobs:
           path: .last-release-version
           key: last-release-version-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
 
-      - name: Prune old workflow runs and releases
+      - name: Prune old workflow runs, releases, and caches
         if: always()
         continue-on-error: true
         shell: bash
@@ -469,6 +469,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           KEEP_WORKFLOW_RUNS: "5"
           KEEP_RELEASES: "8"
+          KEEP_CACHES_PER_FAMILY: "1"
+          GRADLE_HOME_JUNK_MAX_BYTES: "2048"
         run: |
           set -euo pipefail
 
@@ -492,3 +494,46 @@ jobs:
               gh release delete "$tag" --yes --cleanup-tag || true
             done
           fi
+
+          caches_json="$(gh cache list --limit 500 --json id,key,sizeInBytes,lastAccessedAt,createdAt)"
+          mapfile -t junk_home_ids < <(
+            jq -r --argjson max_bytes "$GRADLE_HOME_JUNK_MAX_BYTES" '
+              .[]
+              | select((.key | startswith("gradle-home-v2")) and (.sizeInBytes < $max_bytes))
+              | .id
+            ' <<<"$caches_json"
+          )
+          for cache_id in "${junk_home_ids[@]+"${junk_home_ids[@]}"}"; do
+            echo "Deleting junk gradle-home cache $cache_id"
+            gh cache delete "$cache_id" || true
+          done
+
+          remaining_json="$(jq --argjson max_bytes "$GRADLE_HOME_JUNK_MAX_BYTES" '
+            map(select((.key | startswith("gradle-home-v2") | not) or (.sizeInBytes >= $max_bytes)))
+          ' <<<"$caches_json")"
+          mapfile -t stale_cache_ids < <(
+            jq -r --argjson keep "$KEEP_CACHES_PER_FAMILY" '
+              def family:
+                if (.key | startswith("last-release-version-")) then
+                  (.key | sub("-[0-9]+-[0-9]+$"; ""))
+                else
+                  (
+                    .key
+                    | sub("-[0-9a-fA-F]{8,}$"; "")
+                    | sub("\\|Linux-[^|]+\\|release\\[[0-9a-fA-F]+\\]$"; "")
+                  )
+                end;
+              def accessed:
+                (.lastAccessedAt // .createdAt // "");
+              group_by(family)
+              | .[]
+              | sort_by(accessed)
+              | reverse
+              | .[$keep:]
+              | .[].id
+            ' <<<"$remaining_json"
+          )
+          for cache_id in "${stale_cache_ids[@]+"${stale_cache_ids[@]}"}"; do
+            echo "Deleting extra cache $cache_id"
+            gh cache delete "$cache_id" || true
+          done
