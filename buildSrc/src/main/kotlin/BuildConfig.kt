@@ -23,7 +23,7 @@ object ProjectConfig {
     const val HEV_SOCKS5_TUNNEL_VERSION = "2.17.1"
     const val TARGET_SDK = 37
     const val MIN_SDK = 26
-    val SUPPORTED_ANDROID_ABIS = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+    val SUPPORTED_ANDROID_ABIS = listOf("arm64-v8a")
 }
 
 fun loadAppVersionName(rootDir: File): String {

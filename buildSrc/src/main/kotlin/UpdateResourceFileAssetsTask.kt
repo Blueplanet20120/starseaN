@@ -30,7 +30,7 @@ abstract class UpdateResourceFileAssetsTask : DefaultTask() {
 
     @TaskAction
     fun updateAssets() {
-        mapOf("arm64-v8a" to "arm64-v8a", "x86_64" to "amd64").forEach { (abi, archiveArch) ->
+        mapOf("arm64-v8a" to "arm64-v8a").forEach { (abi, archiveArch) ->
             downloadZipEntry(
                 url = xrayCoreArchiveUrl(archiveArch),
                 entryName = "xray",
