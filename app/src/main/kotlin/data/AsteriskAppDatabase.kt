@@ -8,7 +8,8 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-internal const val AsteriskDatabaseName = "asteriskng.db"
+internal const val AsteriskDatabaseName = "starsean.db"
+internal const val LegacyAsteriskDatabaseName = "asteriskng.db"
 
 @Database(
     entities = [

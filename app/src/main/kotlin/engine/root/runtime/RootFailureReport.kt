@@ -27,7 +27,7 @@ import kotlinx.coroutines.ensureActive
  * the report, because the report is only useful if it is produced at all.
  *
  * Scope note: the service log directory is cleaned by the ROOT publication step on every start,
- * so `error.log` and `asteriskd.log` describe the attempt that just failed. `logcat.log` is
+ * so `error.log` and `starsead.log` describe the attempt that just failed. `logcat.log` is
  * cumulative, so only its tail is included.
  */
 internal data class RootFailureReport(
@@ -146,15 +146,15 @@ internal data class RootFailureReport(
             layout: RootRuntimeLayout,
             occurredAtEpochMillis: Long,
         ): String {
-            // error.log and asteriskd.log describe the attempt that just failed and are cleared on
+            // error.log and starsead.log describe the attempt that just failed and are cleared on
             // every start, so they are the most valuable part of the report. They are collected
             // first and never truncated away; the cumulative app log fills whatever budget is
             // left, and only its newest lines survive because those sit nearest the failure.
             val attemptLogs = buildList {
                 readText(shell, "${layout.logDirectoryPath}/error.log", PerFileLineCap)
                     ?.let { add("[error.log]\n" + it.takeLast(3_000)) }
-                readText(shell, "${layout.logDirectoryPath}/asteriskd.log", PerFileLineCap)
-                    ?.let { add("[asteriskd.log]\n" + it.takeLast(3_000)) }
+                readText(shell, layout.asteriskdLogPath, PerFileLineCap)
+                    ?.let { add("[starsead.log]\n" + it.takeLast(3_000)) }
             }.filter { it.isNotBlank() }.joinToString("\n")
 
             val appLogBudget = (ServiceLogCharCap - attemptLogs.length).coerceAtLeast(0)

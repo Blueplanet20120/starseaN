@@ -21,16 +21,16 @@ internal data class RootRuntimeLayout(
         get() = File(dataDir, "startup.sh").absolutePath
 
     val asteriskdConfigPath: String
-        get() = File(dataDir, "asteriskd.json").absolutePath
+        get() = File(dataDir, "starsead.json").absolutePath
 
     val asteriskdStatePath: String
-        get() = File(dataDir, "asteriskd.state").absolutePath
+        get() = File(dataDir, "starsead.state").absolutePath
 
     val logDirectoryPath: String
         get() = File(dataDir, "logs").absolutePath
 
     val asteriskdLogPath: String
-        get() = File(logDirectoryPath, "asteriskd.log").absolutePath
+        get() = File(logDirectoryPath, "starsead.log").absolutePath
 }
 
 internal fun Context.rootRuntimeLayout(): RootRuntimeLayout = xrayResourceFilePaths().toRootRuntimeLayout()

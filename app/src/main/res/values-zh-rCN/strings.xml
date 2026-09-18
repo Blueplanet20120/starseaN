@@ -620,7 +620,7 @@
     <string name="settings_service_control_summary">根据条件自动启停代理服务</string>
     <string name="settings_service_control_basic">基础</string>
     <string name="settings_service_control_enable">启用服务控制</string>
-    <string name="settings_service_control_enable_summary">代理服务停止后保持 asteriskd 常驻</string>
+    <string name="settings_service_control_enable_summary">代理服务停止后保持 starsead 常驻</string>
     <string name="settings_service_control_schedule_enable">启用定时控制</string>
     <string name="settings_service_control_wifi_enable">启用 WiFi 控制</string>
     <string name="settings_service_control_schedule">定时控制</string>

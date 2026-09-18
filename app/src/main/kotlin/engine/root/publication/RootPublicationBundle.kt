@@ -20,4 +20,4 @@ internal enum class RootPublicationLaunchMode {
     Monitor,
 }
 
-private val RootPublicationOwners = setOf("asteriskng", "asteriskbox", "asteriskmeta")
+private val RootPublicationOwners = setOf("starsean", "asteriskbox", "asteriskmeta")

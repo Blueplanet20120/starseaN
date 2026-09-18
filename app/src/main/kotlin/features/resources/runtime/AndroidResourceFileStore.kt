@@ -361,7 +361,7 @@ private fun Context.packageUpdatedAtMillis(): Long {
     }.getOrDefault(0L)
 }
 
-private const val AsteriskdLibraryName = "libasteriskd.so"
+private const val AsteriskdLibraryName = "libstarsead.so"
 private const val BpfMatcherLibraryName = "libbpf-matcher.so"
 private const val Bpf2SocksLibraryName = "libbpf2socks.so"
 private const val XrayCoreLibraryName = "libxray.so"

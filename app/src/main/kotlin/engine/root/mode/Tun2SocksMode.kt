@@ -42,7 +42,7 @@ internal fun RootConfigBuildContext.buildTun2SocksStartConfig(): RootModeStartCo
         asteriskdConfig = rootStartConfig.buildAsteriskdConfig(
             mode = AsteriskdMode.Tun2Socks,
             iptablesConfig = iptablesConfig,
-            virtualInterfaces = listOf("asterisk0"),
+            virtualInterfaces = listOf("starsea0"),
             modeOptions = AsteriskdModeOptions(
                 transparentPort = null,
                 tunnelName = null,
@@ -51,7 +51,7 @@ internal fun RootConfigBuildContext.buildTun2SocksStartConfig(): RootModeStartCo
                 executablePath = rootStartConfig.runtimePaths.hevSocks5TunnelExecutablePath,
                 socksHost = Tun2SocksListenAddress,
                 socksPort = socks5ProxyPort,
-                tunnelName = "asterisk0",
+                tunnelName = "starsea0",
                 mtu = tunOptions.mtu,
                 ipv4Address = tunOptions.ipv4Address.address,
                 ipv6Address = tunOptions.ipv6Address.address.takeIf {

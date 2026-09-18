@@ -17,9 +17,9 @@ internal class RootEbpfProbeUseCase(
         return RootEbpfProbeResult.Success(
             probe = NativeMatcherProbe(
                 supported = true,
-                message = "Matcher capability is verified by asteriskd during supervised start",
+                message = "Matcher capability is verified by starsead during supervised start",
             ),
-            selinuxPolicyApplicator = "asteriskd",
+            selinuxPolicyApplicator = "starsead",
         )
     }
 }

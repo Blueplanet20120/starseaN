@@ -620,7 +620,7 @@
     <string name="settings_service_control_summary">Automatically start or stop the proxy service when conditions match</string>
     <string name="settings_service_control_basic">Basic</string>
     <string name="settings_service_control_enable">Enable service control</string>
-    <string name="settings_service_control_enable_summary">Keep asteriskd resident while the proxy service is stopped</string>
+    <string name="settings_service_control_enable_summary">Keep starsead resident while the proxy service is stopped</string>
     <string name="settings_service_control_schedule_enable">Enable scheduled control</string>
     <string name="settings_service_control_wifi_enable">Enable Wi-Fi control</string>
     <string name="settings_service_control_schedule">Scheduled control</string>

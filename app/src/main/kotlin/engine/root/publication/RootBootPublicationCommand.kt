@@ -6,7 +6,7 @@ package engine.root.publication
 import utils.shellQuote
 
 internal const val RootBootScriptDir = "/data/adb/service.d"
-internal const val RootBootScriptPath = "$RootBootScriptDir/asteriskng_start.sh"
+internal const val RootBootScriptPath = "$RootBootScriptDir/starsean_start.sh"
 
 internal object RootBootPublicationCommand {
     fun buildInstallation(layout: RootRuntimeLayout): String = buildString {

@@ -4,7 +4,7 @@
 package engine.root.runtime.model
 
 enum class RootRuntimeOwner(val wireValue: String) {
-    AsteriskNg("asteriskng"),
+    AsteriskNg("starsean"),
     AsteriskBox("asteriskbox"),
     AsteriskMeta("asteriskmeta"),
 }

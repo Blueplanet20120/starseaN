@@ -620,7 +620,7 @@
     <string name="settings_service_control_summary">Tự động khởi động/dừng dịch vụ proxy theo điều kiện</string>
     <string name="settings_service_control_basic">Cơ bản</string>
     <string name="settings_service_control_enable">Bật điều khiển dịch vụ</string>
-    <string name="settings_service_control_enable_summary">Giữ asteriskd thường trú sau khi dịch vụ proxy dừng</string>
+    <string name="settings_service_control_enable_summary">Giữ starsead thường trú sau khi dịch vụ proxy dừng</string>
     <string name="settings_service_control_schedule_enable">Bật điều khiển theo lịch</string>
     <string name="settings_service_control_wifi_enable">Bật điều khiển theo WiFi</string>
     <string name="settings_service_control_schedule">Điều khiển theo lịch</string>

@@ -156,7 +156,7 @@ internal fun buildVpnHevSocks5TunnelConfig(
         mtu = tunOptions.mtu,
         ipv4Address = tunOptions.ipv4Address.address,
         ipv6Address = tunOptions.ipv6Address.address.takeIf { enableIpv6 },
-        tunnelName = "asterisk0",
+        tunnelName = "starsea0",
         enableMultiQueue = true,
         enableTcpFastOpen = true,
     )

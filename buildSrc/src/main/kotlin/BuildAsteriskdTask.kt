@@ -57,7 +57,7 @@ abstract class BuildAsteriskdTask : DefaultTask() {
         val outputDir = outputDirectory.get().asFile
         outputDir.mkdirs()
         targetAbis.get().map { abi -> abi.toAsteriskdAbiTarget() }.forEach { target ->
-            val output = outputDir.resolve("${target.androidAbi}/libasteriskd.so")
+            val output = outputDir.resolve("${target.androidAbi}/libstarsead.so")
             output.parentFile.mkdirs()
             execOperations.exec {
                 commandLine(

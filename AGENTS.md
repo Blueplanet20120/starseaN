@@ -20,7 +20,7 @@ AsteriskBOX, starseaN, and AsteriskMETA belong to the same product family. When 
 VPN Service is an independent non-ROOT execution path. Even on a rooted device, starting, running, and stopping VPN must produce no ROOT side effects.
 
 - The VPN path must not request, probe, or cache ROOT access and must not execute root shell commands.
-- The VPN path must not start, query, stop, or depend on `asteriskd`, and must not connect to `@asteriskd.control`.
+- The VPN path must not start, query, stop, or depend on `starsead`, and must not connect to `@starsead.control`.
 - The VPN path must not publish ROOT configuration, manage ROOT boot scripts, or access ROOT state, logs, or binaries.
 - The VPN path must not modify iptables/nftables, policy routing, sysctl, tether/dnsmasq, BPF, TC, or ROOT network interfaces.
 - Missing ROOT access, a missing `asteriskd`, or conflicting ROOT resources must not affect VPN startup or shutdown.
@@ -30,8 +30,8 @@ VPN Service is an independent non-ROOT execution path. Even on a rooted device, 
 
 ## Repository Structure and Product Boundaries
 
-- Application ID: `org.asterisk.zcc.ang`.
-- Core: Xray; ROOT owner/core: `asteriskng` / `xray`.
+- Application ID: `org.starsean`.
+- Core: Xray; ROOT owner/core: `starsean` / `xray`.
 - ROOT modes: TPROXY, TUN2SOCKS, and BPF2SOCKS.
 - `app/`: Android application, Compose UI, data layer, VPN/ROOT orchestration, and core adapters.
 - `asteriskd/`: the ROOT supervisor native submodule shared by all three apps.
@@ -44,11 +44,11 @@ Do not edit `.gradle/`, `build/`, module-level `build/` directories, or other ge
 
 The following rules apply only to ROOT/asteriskd changes. They do not justify expanding work into VPN or unrelated features.
 
-- All three apps share the control endpoint `@asteriskd.control` and BPF namespace `/sys/fs/bpf/asterisk`; ROOT instances are mutually exclusive.
-- Keep fixed shared resource names, including `ASTERISK_FAKE_IP_ICMP`, identical across all three apps. Do not reintroduce per-app or PID-derived namespaces.
+- All three apps share the control endpoint `@starsead.control` and BPF namespace `/sys/fs/bpf/starsea`; ROOT instances are mutually exclusive.
+- Keep fixed shared resource names, including `STARSEA_FAKE_IP_ICMP`, identical across all three apps. Do not reintroduce per-app or PID-derived namespaces.
 - The control socket is the single-instance authority. Acquire its listener before any ROOT resource operation; do not replace this with state files, configuration files, or process scanning.
 - Startup performs stateless reconciliation against the fixed Asterisk-owned catalog. It must not recover from a saved phase, configuration, owner, IPv6 setting, or matcher setting.
-- `asteriskd.state` is telemetry only and must not drive startup cleanup or recovery.
+- `starsead.state` is telemetry only and must not drive startup cleanup or recovery.
 - Original sysctl and tether/dnsmasq values exist only in the current supervisor's memory and are restored best-effort during graceful cleanup. Do not add persistent recovery paths.
 - Do not add legacy-resource cleanup or migration. Ignore old per-app BPF paths and remnants such as `asteriskbox_hotspot_recovery_<number>`.
 - Do not add scanning, adoption, or forced termination of child processes left after a crash. A visible port-conflict failure on the next launch is acceptable.

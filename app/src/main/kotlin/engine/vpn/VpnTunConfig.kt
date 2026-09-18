@@ -39,7 +39,7 @@ internal fun buildVpnTunInbound(
         }
     }
     val settings = buildJsonObject {
-        put("name", "asterisk0")
+        put("name", "starsea0")
         put("mtu", tunOptions.mtu)
         put("gateway", gateway.toJsonStringArray())
         put("userLevel", 0)

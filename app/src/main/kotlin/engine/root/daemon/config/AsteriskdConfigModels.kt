@@ -7,7 +7,7 @@ import app.ServiceControlSettings
 import features.settings.servicecontrol.normalizeServiceControlSettings
 
 internal enum class AsteriskdOwner(val wireValue: String) {
-    AsteriskNg("asteriskng"),
+    AsteriskNg("starsean"),
     AsteriskBox("asteriskbox"),
     AsteriskMeta("asteriskmeta"),
 }

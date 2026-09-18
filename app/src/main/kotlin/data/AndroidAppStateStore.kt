@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
@@ -133,6 +134,7 @@ class AndroidAppStateStore private constructor(
     }
 
     private fun buildDatabase(): AsteriskAppDatabase {
+        migrateLegacyDatabaseIfNeeded()
         return Room.databaseBuilder(
             appContext,
             AsteriskAppDatabase::class.java,
@@ -143,6 +145,20 @@ class AndroidAppStateStore private constructor(
             .addMigrations(Migration1To2)
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
+    }
+
+    private fun migrateLegacyDatabaseIfNeeded() {
+        val newDb = appContext.getDatabasePath(AsteriskDatabaseName)
+        if (newDb.exists()) return
+        val oldDb = appContext.getDatabasePath(LegacyAsteriskDatabaseName)
+        if (!oldDb.exists()) return
+        oldDb.copyTo(newDb, overwrite = false)
+        listOf("-journal", "-shm", "-wal").forEach { suffix ->
+            val extra = File(oldDb.path + suffix)
+            if (extra.exists()) {
+                extra.copyTo(File(newDb.path + suffix), overwrite = false)
+            }
+        }
     }
 
     private fun resetDatabase() {

@@ -12,7 +12,7 @@ object ProjectConfig {
     const val JVM_VERSION = 26
     const val PROJECT_NAME = "starseaN"
     const val VERSION_NAME = "1.4.9-dev"
-    const val PACKAGE_NAME = "org.asterisk.zcc.ang"
+    const val PACKAGE_NAME = "org.starsean"
     const val ASTERISKD_VERSION = "v2.0.32"
     const val BPF2SOCKS_VERSION = "v1.0.15"
     const val BPF_MATCHER_VERSION = "v1.0.1"

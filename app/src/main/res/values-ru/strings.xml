@@ -610,7 +610,7 @@
     <string name="settings_service_control_summary">Автоматически запускать или останавливать прокси-сервис при выполнении условий</string>
     <string name="settings_service_control_basic">Основные настройки</string>
     <string name="settings_service_control_enable">Включить управление сервисом</string>
-    <string name="settings_service_control_enable_summary">Оставлять asteriskd запущенным после остановки прокси-сервиса</string>
+    <string name="settings_service_control_enable_summary">Оставлять starsead запущенным после остановки прокси-сервиса</string>
     <string name="settings_service_control_schedule_enable">Включить управление по расписанию</string>
     <string name="settings_service_control_wifi_enable">Включить управление по Wi-Fi</string>
     <string name="settings_service_control_schedule">Управление по расписанию</string>
