@@ -12,6 +12,7 @@ local.properties
 captures
 .externalNativeBuild
 .cxx
+.last-release-version
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
 !*.xcodeproj/xcshareddata/

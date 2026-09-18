@@ -39,11 +39,29 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Restore last release version cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .last-release-version
+          key: last-release-version-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            last-release-version-${{ github.ref_name }}-
+
       - name: Read ProjectConfig version
         id: version
         shell: bash
         run: |
           set -euo pipefail
+
+          is_semver() {
+            [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          }
+
+          increment_patch() {
+            local major minor patch
+            IFS=. read -r major minor patch <<< "$1"
+            echo "${major}.${minor}.$((10#$patch + 1))"
+          }
 
           version_name="$(sed -n 's/^[[:space:]]*VERSION_NAME=//p' version.properties | head -n 1 | tr -d '\r')"
           if [ -z "$version_name" ]; then
@@ -51,8 +69,14 @@ jobs:
             exit 1
           fi
 
+          original_version="$version_name"
+          if [ -n "${REQUESTED_VERSION_NAME:-}" ]; then
+            version_name="$REQUESTED_VERSION_NAME"
+            original_version="$version_name"
+          fi
+
           is_release=false
-          if [[ "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if is_semver "$version_name"; then
             is_release=true
             echo "Detected formal release version: $version_name"
           else
@@ -63,6 +87,56 @@ jobs:
           if [ "$is_release" = "true" ] && { [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_REF" = "refs/heads/main" ]; }; then
             create_github_release=true
           fi
+
+          if [ "$create_github_release" = "true" ]; then
+            git fetch --tags --force origin
+
+            cached=""
+            if [ -f .last-release-version ]; then
+              cached="$(tr -d '[:space:]' < .last-release-version)"
+            fi
+            if is_semver "$cached"; then
+              echo "Restored last release version cache: $cached"
+              if [ "$cached" = "$version_name" ]; then
+                version_name="$(increment_patch "$cached")"
+                echo "::notice::Cache already published $cached; bumping VERSION_NAME to $version_name."
+              elif [ "$(printf '%s\n%s\n' "$version_name" "$cached" | sort -V | tail -n1)" = "$cached" ]; then
+                version_name="$cached"
+                echo "::notice::Cache last version $cached is newer than $original_version; starting from cache."
+                version_name="$(increment_patch "$version_name")"
+                echo "::notice::Bumping VERSION_NAME to $version_name for this run."
+              fi
+            fi
+
+            current_sha="$(git rev-parse HEAD)"
+            bumps=0
+            while [ "$bumps" -lt 50 ]; do
+              tag_name="v$version_name"
+              if ! git rev-parse -q --verify "refs/tags/$tag_name" >/dev/null; then
+                break
+              fi
+              tag_sha="$(git rev-list -n 1 "$tag_name")"
+              if [ "$tag_sha" = "$current_sha" ]; then
+                echo "Tag $tag_name already exists on the current commit."
+                break
+              fi
+              next="$(increment_patch "$version_name")"
+              echo "::notice::Tag $tag_name already exists at $tag_sha; bumping VERSION_NAME $version_name -> $next."
+              version_name="$next"
+              bumps=$((bumps + 1))
+            done
+            if [ "$bumps" -ge 50 ]; then
+              echo "::error::Unable to find a free VERSION_NAME after 50 increments."
+              exit 1
+            fi
+
+            if [ "$version_name" != "$original_version" ]; then
+              printf 'VERSION_NAME=%s\n' "$version_name" > version.properties
+              echo "Wrote version.properties VERSION_NAME=$version_name for this build."
+            fi
+          fi
+
+          printf '%s\n' "$version_name" > .last-release-version
 
           echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
           echo "tag_name=v$version_name" >> "$GITHUB_OUTPUT"
@@ -379,6 +453,13 @@ jobs:
               --notes-file release-notes.md \
               --latest
           fi
+
+      - name: Save last release version cache
+        if: success() && steps.version.outputs.create_github_release == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .last-release-version
+          key: last-release-version-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Prune old workflow runs and releases
         if: always()

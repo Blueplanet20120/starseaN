@@ -312,9 +312,6 @@
     <!-- About and licenses -->
     <string name="about_title">关于</string>
     <string name="about_runtime">运行环境</string>
-    <string name="about_other">其他</string>
-    <string name="about_view_source">在 GitHub 查看源码</string>
-    <string name="about_join_telegram">加入我们的 Telegram 频道</string>
     <string name="license_title">第三方开源许可</string>
 
     <!-- Logs -->

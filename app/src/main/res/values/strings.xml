@@ -312,9 +312,6 @@
     <!-- About and licenses -->
     <string name="about_title">About</string>
     <string name="about_runtime">Runtime</string>
-    <string name="about_other">Other</string>
-    <string name="about_view_source">View source on GitHub</string>
-    <string name="about_join_telegram">Join our Telegram channel</string>
     <string name="license_title">Third Party Licenses</string>
 
     <!-- Logs -->

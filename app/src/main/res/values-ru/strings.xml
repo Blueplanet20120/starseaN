@@ -289,9 +289,6 @@
 
     <string name="about_title">О программе</string>
     <string name="about_runtime">Среда выполнения</string>
-    <string name="about_other">Разное</string>
-    <string name="about_view_source">Исходный код на GitHub</string>
-    <string name="about_join_telegram">Наш Telegram-канал</string>
     <string name="license_title">Сторонние лицензии</string>
 
     <string name="core_logs_title">Логи ядра</string>

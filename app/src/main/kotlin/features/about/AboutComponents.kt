@@ -22,7 +22,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import app.LocalAppChromeState
 import app.R
@@ -35,11 +34,8 @@ import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
-private const val ProjectSourceUri = "https://github.com/Blueplanet20120/starseaN"
-private const val TelegramChannelUri = "https://t.me/Asterisk4Magisk"
 private const val AboutIconForegroundScale = 1.0f
 
 @Composable
@@ -136,30 +132,6 @@ internal fun AboutRuntimeCard(
         BasicComponent(
             title = "hev-socks5-tunnel",
             summary = ProjectInfo.HEV_SOCKS5_TUNNEL_VERSION,
-        )
-    }
-}
-
-@Composable
-internal fun AboutLinksCard(
-    title: String,
-    modifier: Modifier = Modifier,
-) {
-    val uriHandler = LocalUriHandler.current
-
-    SmallTitle(text = title)
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-    ) {
-        ArrowPreference(
-            title = stringResource(R.string.about_view_source),
-            onClick = { uriHandler.openUri(ProjectSourceUri) },
-        )
-        ArrowPreference(
-            title = stringResource(R.string.about_join_telegram),
-            onClick = { uriHandler.openUri(TelegramChannelUri) },
         )
     }
 }

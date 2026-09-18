@@ -73,9 +73,6 @@ fun AboutPage(
                 item(key = "about_runtime") {
                     AboutRuntimeCard()
                 }
-                item(key = "about_other") {
-                    AboutLinksCard(title = stringResource(R.string.about_other))
-                }
                 item {
                     Spacer(modifier = Modifier.height(12.dp))
                 }

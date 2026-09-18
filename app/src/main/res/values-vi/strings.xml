@@ -312,9 +312,6 @@
     <!-- About and licenses -->
     <string name="about_title">Giới thiệu</string>
     <string name="about_runtime">Môi trường chạy</string>
-    <string name="about_other">Khác</string>
-    <string name="about_view_source">Xem mã nguồn trên GitHub</string>
-    <string name="about_join_telegram">Tham gia kênh Telegram của chúng tôi</string>
     <string name="license_title">Giấy phép mã nguồn mở bên thứ ba</string>
 
     <!-- Logs -->
