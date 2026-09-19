@@ -62,7 +62,7 @@ abstract class BuildHevTunTask : DefaultTask() {
         val ndkBuild = findNdkBuild(findNdkDir())
         val sourceDir = prepareBuildSource(originalSourceDir)
         val outputDir = finalOutput.parentFile
-        val ndkLibsOutDir = outputDir.parentFile
+        val ndkLibsOutDir = temporaryDir.resolve("libs")
         val projectDir = temporaryDir.resolve("ndk-project")
         val jniDir = projectDir.resolve("jni")
         val appBuildScript = jniDir.resolve("Android.mk")
@@ -88,7 +88,7 @@ abstract class BuildHevTunTask : DefaultTask() {
             )
         }
 
-        val builtOutput = outputDir.resolve(artifact.builtFileName)
+        val builtOutput = ndkLibsOutDir.resolve("$abi/${artifact.builtFileName}")
         if (!builtOutput.exists() || builtOutput.length() <= 0) {
             throw GradleException("Failed to build Hev TUN ${artifact.displayName}: ${builtOutput.absolutePath}")
         }

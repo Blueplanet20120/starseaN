@@ -397,6 +397,7 @@ fun ResourceManagementPage(
                             runResourceFileAction(
                                 action = {
                                     resourceFileUseCase.replace(kind)?.also {
+                                        services.refreshXrayCoreBoot(appState)
                                         val version = resourceFileUseCase.refreshInstalledXrayCoreVersion()
                                         withContext(Dispatchers.Main.immediate) {
                                             xrayCoreVersion = version
@@ -412,7 +413,10 @@ fun ResourceManagementPage(
                         onRestore = {
                             runResourceFileAction(
                                 action = {
-                                    resourceFileUseCase.restoreBundled(kind).also {
+                                    services.restoreSharedXrayCore(
+                                        state = appState,
+                                        onRootStopped = { updateAppState { it.copy(proxyRunning = false) } },
+                                    ).also {
                                         val version = resourceFileUseCase.refreshInstalledXrayCoreVersion()
                                         withContext(Dispatchers.Main.immediate) {
                                             xrayCoreVersion = version

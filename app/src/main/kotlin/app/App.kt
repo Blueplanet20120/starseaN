@@ -222,6 +222,7 @@ fun App(
             ) {
                 AppLockHost {
                     AppContent(padding = padding)
+                    features.resources.SharedCoreMigrationPrompt()
                 }
             }
         }

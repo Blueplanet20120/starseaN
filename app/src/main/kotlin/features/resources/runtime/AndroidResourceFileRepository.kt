@@ -42,20 +42,32 @@ internal class AndroidResourceFileRepository(
             store.status(customResourceFiles)
         }
 
+    suspend fun hasCustomXrayCore(): Boolean = withContext(Dispatchers.IO) {
+        store.hasCustomXrayCore()
+    }
+
+    private suspend fun removeCustomXrayCore() {
+        val target = store.file(ResourceFileKind.XrayCore)
+        sharedCoreReplacementCoordinator.execute(
+            targetOwnerUid = target::coreBinaryOwnerUidOrNull,
+            rootModeActive = { currentRunMode().isRootRunMode() },
+            candidateFactory = { },
+            installInitial = {},
+            replaceAppOwned = { check(target.delete()) { "Failed to remove the custom Xray core" } },
+            replaceWithRoot = {
+                val result = rootShell.exec(
+                    RootCoreRemovalCommand.build(target.absolutePath),
+                    ShellExecOptions(logFailure = false),
+                )
+                check(result.errno == 0) { result.stderr.ifBlank { "Failed to remove the custom Xray core" } }
+            },
+            deferRootOwned = { error(appContext.getString(R.string.settings_root_required)) },
+        )
+    }
+
     suspend fun synchronizeBundledFilesAfterPackageUpdate(resourceFileSource: Int) {
         withContext(Dispatchers.IO) {
             store.synchronizeBundledFilesAfterPackageUpdate(resourceFileSource)
-            if (!store.shouldPublishBundledXrayCore(resourceFileSource, restoreAfterPackageUpdate = true)) {
-                return@withContext
-            }
-            executeCoreCandidateInstall(
-                candidateFactory = store::stageBundledXrayCoreCandidate,
-                knownVersion = ProjectInfo.XRAY_CORE_VERSION,
-            ) {
-                AndroidResourceFileLogger.info(
-                    "Bundled Xray core replacement deferred because the existing core is ROOT-owned",
-                )
-            }
         }
     }
 
@@ -317,10 +329,8 @@ internal class AndroidResourceFileRepository(
         customResourceFiles: List<CustomResourceFileState> = emptyList(),
     ): ResourceFilesStatus = withContext(Dispatchers.IO) {
         if (kind == ResourceFileKind.XrayCore) {
-            installOrPublishCoreCandidate(
-                candidateFactory = store::stageBundledXrayCoreCandidate,
-                knownVersion = ProjectInfo.XRAY_CORE_VERSION,
-            )
+            removeCustomXrayCore()
+            rememberInstalledXrayCoreVersion(knownVersion = ProjectInfo.XRAY_CORE_VERSION)
         } else {
             store.restoreBundled(kind)
         }
@@ -404,7 +414,7 @@ internal class AndroidResourceFileRepository(
         candidate: java.io.File? = null,
         knownVersion: String? = null,
     ) {
-        val installed = store.file(ResourceFileKind.XrayCore)
+        val installed = store.effectiveXrayCoreFile()
         val probed = candidate?.let(::probeXrayCoreVersion)
             ?: probeXrayCoreVersion(installed)
             ?: probeXrayCoreVersionWithShell(installed) { command ->
