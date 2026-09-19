@@ -59,7 +59,7 @@ data class AppState(
     val proxyServerListSort: Int = ProxyServerListSortDefault,
     val proxyRunning: Boolean = false,
 
-    val routeDomainStrategy: Int = 0,
+    val routeDomainStrategy: Int = DefaultRouteDomainStrategy,
     val defaultRouteOutboundTag: String = DefaultRouteOutboundTag,
     val routeRules: List<RouteRule> = DefaultRouteRules,
     val nextRouteRuleId: Int = 10,

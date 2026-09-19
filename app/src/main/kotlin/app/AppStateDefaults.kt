@@ -8,6 +8,7 @@ import features.subscription.DefaultSubscriptionGroupId
 import features.subscription.DefaultSubscriptionUserAgent
 
 const val DefaultRouteOutboundTag = "proxy"
+const val DefaultRouteDomainStrategy = 1
 
 val DefaultSubscriptionGroups = listOf(
     SubscriptionGroupState(
@@ -34,7 +35,7 @@ val DefaultRouteRules = listOf(
     ),
     RouteRule(
         id = 2,
-        remarks = "block_udp_443",
+        remarks = "Block-QUIC",
         outboundTag = "block",
         port = "443",
         protocol = "",
@@ -43,7 +44,32 @@ val DefaultRouteRules = listOf(
     ),
     RouteRule(
         id = 3,
-        remarks = "non-china_site",
+        remarks = "Direct-BT-P2P",
+        outboundTag = "direct",
+        port = "",
+        protocol = "bittorrent",
+        network = "",
+        enabled = true,
+    ),
+    RouteRule(
+        id = 4,
+        remarks = "Direct-Vendor-CN",
+        outboundTag = "direct",
+        domain = listOf(
+            "geosite:apple-cn",
+            "geosite:apple@cn",
+            "geosite:microsoft@cn",
+            "geosite:steam@cn",
+            "geosite:category-games@cn",
+        ),
+        port = "",
+        protocol = "",
+        network = "",
+        enabled = true,
+    ),
+    RouteRule(
+        id = 5,
+        remarks = "Proxy-NonChina-Sites",
         outboundTag = DefaultRouteOutboundTag,
         domain = listOf("geosite:google", "geosite:geolocation-!cn"),
         port = "",
@@ -52,8 +78,8 @@ val DefaultRouteRules = listOf(
         enabled = true,
     ),
     RouteRule(
-        id = 4,
-        remarks = "china_site",
+        id = 6,
+        remarks = "Direct-China-Sites",
         outboundTag = "direct",
         domain = listOf("geosite:cn", "geosite:private"),
         port = "",
@@ -62,8 +88,8 @@ val DefaultRouteRules = listOf(
         enabled = true,
     ),
     RouteRule(
-        id = 5,
-        remarks = "china_ip",
+        id = 7,
+        remarks = "Direct-China-IPs",
         outboundTag = "direct",
         ip = listOf("geoip:cn", "geoip:private"),
         port = "",

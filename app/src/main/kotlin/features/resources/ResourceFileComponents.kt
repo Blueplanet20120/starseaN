@@ -646,9 +646,7 @@ internal fun XrayCoreUpdateDialog(
         onDismissRequest = onDismissRequest,
         content = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     text = latestTitle,
@@ -672,10 +670,8 @@ internal fun XrayCoreUpdateDialog(
                     modifier = Modifier.padding(bottom = 12.dp),
                 )
                 if (notes.isNotBlank()) {
-                    Text(
-                        text = notes.take(4000),
-                        style = MiuixTheme.textStyles.body2,
-                        color = MiuixTheme.colorScheme.onSurface,
+                    XrayCoreReleaseNotesView(
+                        notes = notes,
                         modifier = Modifier.padding(bottom = 16.dp),
                     )
                 }
