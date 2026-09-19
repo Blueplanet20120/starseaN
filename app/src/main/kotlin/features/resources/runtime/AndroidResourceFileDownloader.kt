@@ -15,6 +15,10 @@ import java.net.PasswordAuthentication
 import java.net.Proxy
 import java.net.URI
 
+internal class ResourceFileHttpException(
+    val code: Int,
+) : IOException("HTTP $code")
+
 internal class AndroidResourceFileDownloader {
     fun download(
         url: String,
@@ -50,7 +54,7 @@ internal class AndroidResourceFileDownloader {
                 if (AndroidResourceFileDownloadCancellation.isCancelled()) {
                     throw AndroidResourceFileDownloadCancelledException()
                 }
-                if (error is IOException && attempt < MaxRetries - 1) {
+                if (error.isRetryableDownloadFailure() && attempt < MaxRetries - 1) {
                     lastError = error
                     Thread.sleep(RetryBackoffMs * (1L shl attempt))
                 } else {
@@ -82,7 +86,7 @@ internal class AndroidResourceFileDownloader {
                     return@repeat
                 }
                 if (code !in 200..299) {
-                    error("HTTP $code")
+                    throw ResourceFileHttpException(code)
                 }
                 val totalBytes = connection.contentLengthLong
                 connection.inputStream.use { input ->
@@ -129,7 +133,7 @@ internal class AndroidResourceFileDownloader {
                 if (AndroidResourceFileDownloadCancellation.isCancelled()) {
                     throw AndroidResourceFileDownloadCancelledException()
                 }
-                if (error is IOException && attempt < MaxRetries - 1) {
+                if (error.isRetryableDownloadFailure() && attempt < MaxRetries - 1) {
                     lastError = error
                     Thread.sleep(RetryBackoffMs * (1L shl attempt))
                 } else {
@@ -160,7 +164,7 @@ internal class AndroidResourceFileDownloader {
                     return@repeat
                 }
                 if (code !in 200..299) {
-                    error("HTTP $code")
+                    throw ResourceFileHttpException(code)
                 }
                 return connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
             } finally {
@@ -212,7 +216,7 @@ internal class AndroidResourceFileDownloader {
                     return@repeat
                 }
                 if (code !in 200..299) {
-                    error("HTTP $code")
+                    throw ResourceFileHttpException(code)
                 }
                 return hops
             } finally {
@@ -244,7 +248,7 @@ internal class AndroidResourceFileDownloader {
                     return@repeat
                 }
                 if (code !in 200..299) {
-                    error("HTTP $code")
+                    throw ResourceFileHttpException(code)
                 }
                 return hops
             } finally {
@@ -275,7 +279,10 @@ private fun URI.toUrlConnection(proxy: AndroidResourceFileDownloadProxy?): HttpU
         readTimeout = 60_000
         instanceFollowRedirects = false
         requestMethod = "GET"
-        setRequestProperty("User-Agent", ResourceFileDefaultUserAgent)
+        setRequestProperty(
+            "User-Agent",
+            ResourceFileDefaultUserAgent,
+        )
     }
 }
 
@@ -320,7 +327,15 @@ private val ProxyAuthenticatorLock = Any()
 private const val MaxRedirects = 5
 private const val MaxRetries = 3
 private const val RetryBackoffMs = 1000L
-private const val ResourceFileDefaultUserAgent = "${ProjectInfo.PROJECT_NAME}/v${ProjectInfo.VERSION_NAME}"
+private const val ResourceFileDefaultUserAgent =
+    "${ProjectInfo.PROJECT_NAME}/${ProjectInfo.VERSION_NAME} (+https://github.com/Blueplanet20120/starseaN)"
+
+private fun Throwable.isRetryableDownloadFailure(): Boolean {
+    if (this is ResourceFileHttpException) {
+        return code == 403 || code == 408 || code == 425 || code == 429 || code in 500..599
+    }
+    return this is IOException
+}
 
 internal fun overallProgress(
     fileIndex: Int,

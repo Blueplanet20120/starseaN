@@ -127,6 +127,10 @@ internal class AppSettingsPreferences(
             coreLogLevel = preferences.getInt(KeyCoreLogLevel, defaults.coreLogLevel),
             enableAccessLog = preferences.getBoolean(KeyEnableAccessLog, defaults.enableAccessLog),
             enableResourceAutoUpdate = preferences.getBoolean(KeyEnableResourceAutoUpdate, defaults.enableResourceAutoUpdate),
+            enableResourceUpdateViaProxy = preferences.getBoolean(
+                KeyEnableResourceUpdateViaProxy,
+                defaults.enableResourceUpdateViaProxy,
+            ),
             resourceAutoUpdateInterval = preferences.getString(KeyResourceAutoUpdateInterval, defaults.resourceAutoUpdateInterval)
                 ?: defaults.resourceAutoUpdateInterval,
             resourceFileSource = preferences.getInt(KeyResourceFileSource, defaults.resourceFileSource),
@@ -269,6 +273,7 @@ internal class AppSettingsPreferences(
             .putInt(KeyCoreLogLevel, state.coreLogLevel)
             .putBoolean(KeyEnableAccessLog, state.enableAccessLog)
             .putBoolean(KeyEnableResourceAutoUpdate, state.enableResourceAutoUpdate)
+            .putBoolean(KeyEnableResourceUpdateViaProxy, state.enableResourceUpdateViaProxy)
             .putString(KeyResourceAutoUpdateInterval, state.resourceAutoUpdateInterval)
             .putInt(KeyResourceFileSource, state.resourceFileSource)
             .putString(KeyCustomResourceFileGeoIpUrl, state.customResourceFileGeoIpUrl)
@@ -468,6 +473,7 @@ private const val KeyNextRouteRuleId = "next_route_rule_id"
 private const val KeyCoreLogLevel = "core_log_level"
 private const val KeyEnableAccessLog = "enable_access_log"
 private const val KeyEnableResourceAutoUpdate = "enable_resource_auto_update"
+private const val KeyEnableResourceUpdateViaProxy = "enable_resource_update_via_proxy"
 private const val KeyResourceAutoUpdateInterval = "resource_auto_update_interval"
 private const val KeyResourceFileSource = "resource_file_source"
 private const val KeyCustomResourceFileGeoIpUrl = "custom_resource_file_geoip_url"

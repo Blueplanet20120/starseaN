@@ -70,6 +70,7 @@ data class AppState(
     val coreLogLevel: Int = 3,
     val enableAccessLog: Boolean = false,
     val enableResourceAutoUpdate: Boolean = false,
+    val enableResourceUpdateViaProxy: Boolean = true,
     val resourceAutoUpdateInterval: String = "24",
     val resourceFileSource: Int = ResourceFileSourceLoyalsoldierGithub,
     val customResourceFileGeoIpUrl: String = ResourceFileLoyalsoldierGeoIpUrl,

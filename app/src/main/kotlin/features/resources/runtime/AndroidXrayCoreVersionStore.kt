@@ -40,6 +40,24 @@ internal class AndroidXrayCoreVersionStore(
         preferences.edit()
             .remove(KeyInstalledVersion)
             .remove(KeyUpdatedAtMillis)
+            .remove(KeyKernelVersion)
+            .remove(KeyKernelFingerprint)
+            .apply()
+    }
+
+    fun kernelVersion(fingerprint: String): String? {
+        if (fingerprint.isEmpty() || preferences.getString(KeyKernelFingerprint, null) != fingerprint) {
+            return null
+        }
+        return preferences.getString(KeyKernelVersion, null)?.trim()?.takeIf(String::isNotEmpty)
+    }
+
+    fun setKernelVersion(version: String, fingerprint: String) {
+        val normalized = version.trim()
+        if (normalized.isEmpty() || fingerprint.isEmpty()) return
+        preferences.edit()
+            .putString(KeyKernelVersion, normalized)
+            .putString(KeyKernelFingerprint, fingerprint)
             .apply()
     }
 }
@@ -47,3 +65,5 @@ internal class AndroidXrayCoreVersionStore(
 private const val PreferencesName = "xray_core_version"
 private const val KeyInstalledVersion = "installed_version"
 private const val KeyUpdatedAtMillis = "updated_at_millis"
+private const val KeyKernelVersion = "kernel_version"
+private const val KeyKernelFingerprint = "kernel_fingerprint"

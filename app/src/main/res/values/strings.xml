@@ -207,6 +207,8 @@
     <string name="settings_resource_files_auto_update_interval_title">Update interval</string>
     <string name="settings_resource_files_auto_update_interval">Update interval (hours)</string>
     <string name="settings_resource_files_auto_update_hours">Every %1$s hours</string>
+    <string name="settings_resource_files_update_via_proxy">Update via proxy</string>
+    <string name="settings_resource_files_update_via_proxy_summary">When the proxy is running, download through the local SOCKS port. Per-app selection is not required.</string>
     <string name="settings_resource_files_update">Update resource files</string>
     <string name="settings_resource_files_add_custom">Add custom resource file</string>
     <string name="settings_resource_files_custom_file">Custom resource file</string>
@@ -218,6 +220,7 @@
     <string name="settings_resource_files_missing">Missing</string>
     <string name="settings_resource_files_updated_at">Updated {time}</string>
     <string name="settings_resource_files_size">Size {size}</string>
+    <string name="settings_resource_files_xray_kernel">Xray kernel {version}</string>
     <string name="settings_resource_file_update_queued">Queued for update</string>
     <string name="settings_resource_file_updating">Updating resource file</string>
     <string name="settings_resource_files_updated">Resource files updated</string>

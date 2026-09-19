@@ -8,7 +8,7 @@ import engine.network.toPortOrNull
 
 internal fun AppState.resourceFileUpdateOptions(): ResourceFileUpdateOptions {
     return ResourceFileUpdateOptions(
-        useRunningProxy = proxyRunning,
+        useRunningProxy = enableResourceUpdateViaProxy && proxyRunning,
         fallbackProxyPort = localProxyPort.toPortOrNull(),
         fallbackProxyUsername = localProxyUsername,
         fallbackProxyPassword = localProxyPassword,

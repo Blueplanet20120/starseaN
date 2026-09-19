@@ -120,6 +120,12 @@ internal class AndroidResourceFileStore(
         else File(appContext.applicationInfo.nativeLibraryDir, XrayCoreLibraryName)
     }
 
+    fun effectiveXrayGoJniFile(): File {
+        val custom = File(dataDir, XrayGoJniLibraryName)
+        if (custom.isFile && custom.length() > 0L) return custom
+        return File(appContext.applicationInfo.nativeLibraryDir, XrayGoJniLibraryName)
+    }
+
     fun installInitialXrayCoreCandidate(candidate: File): Boolean {
         return publishCoreBinaryCandidate(candidate, file(ResourceFileKind.XrayCore), replaceExisting = false)
     }

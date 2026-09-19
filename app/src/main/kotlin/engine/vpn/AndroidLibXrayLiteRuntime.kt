@@ -53,6 +53,15 @@ internal object AndroidLibXrayLiteRuntime {
         return coreController?.isRunning == true
     }
 
+    fun packagedXrayCoreVersion(): String? {
+        val raw = runCatching { Libv2ray.checkVersionX() }.getOrNull().orEmpty()
+        val match = Regex("""Xray-core\s+v?(\d+\.\d+\.\d+)""", RegexOption.IGNORE_CASE).find(raw)
+            ?: return null
+        return match.groupValues[1].let { value ->
+            if (value.startsWith("v", ignoreCase = true)) value else "v$value"
+        }.takeIf { it.length in 4..16 }
+    }
+
     private const val LogTag = "AndroidLibXrayLite"
 }
 

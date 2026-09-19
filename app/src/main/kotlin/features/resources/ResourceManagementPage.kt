@@ -439,9 +439,13 @@ fun ResourceManagementPage(
                         sourceOptions = sourceOptions,
                         selectedSource = appState.resourceFileSource,
                         enableResourceAutoUpdate = appState.enableResourceAutoUpdate,
+                        enableResourceUpdateViaProxy = appState.enableResourceUpdateViaProxy,
                         autoUpdateInterval = appState.resourceAutoUpdateInterval,
                         onEnableResourceAutoUpdateChange = { enabled ->
                             updateAppState { state -> state.copy(enableResourceAutoUpdate = enabled) }
+                        },
+                        onEnableResourceUpdateViaProxyChange = { enabled ->
+                            updateAppState { state -> state.copy(enableResourceUpdateViaProxy = enabled) }
                         },
                         onAutoUpdateIntervalChange = { interval ->
                             updateAppState { state -> state.copy(resourceAutoUpdateInterval = interval) }

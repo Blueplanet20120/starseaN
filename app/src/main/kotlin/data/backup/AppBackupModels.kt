@@ -62,6 +62,7 @@ internal data class AppBackupSettings(
     val coreLogLevel: Int = BackupDefaults.coreLogLevel,
     val enableAccessLog: Boolean = BackupDefaults.enableAccessLog,
     val enableResourceAutoUpdate: Boolean = BackupDefaults.enableResourceAutoUpdate,
+    val enableResourceUpdateViaProxy: Boolean = BackupDefaults.enableResourceUpdateViaProxy,
     val resourceAutoUpdateInterval: String = BackupDefaults.resourceAutoUpdateInterval,
     val resourceFileSource: Int = BackupDefaults.resourceFileSource,
     val customResourceFileGeoIpUrl: String = BackupDefaults.customResourceFileGeoIpUrl,

@@ -28,6 +28,26 @@ internal class AndroidXrayCoreReleaseClient(
     private val downloader: AndroidResourceFileDownloader,
 ) {
     fun fetchLatest(proxy: AndroidResourceFileDownloadProxy?): XrayCoreRelease {
+        val errors = mutableListOf<Throwable>()
+        listOf(
+            { fetchLatestFromApi(proxy) },
+            { fetchLatestFromAtom(proxy) },
+            { fetchLatestFromLatestPage(proxy) },
+        ).forEach { source ->
+            try {
+                return source()
+            } catch (error: Throwable) {
+                if (error is AndroidResourceFileDownloadCancelledException) throw error
+                errors += error
+                AndroidResourceFileLogger.info(
+                    "AndroidLibXrayLite check via fallback after ${error.message}",
+                )
+            }
+        }
+        throw errors.lastOrNull() ?: error("AndroidLibXrayLite release check failed")
+    }
+
+    private fun fetchLatestFromApi(proxy: AndroidResourceFileDownloadProxy?): XrayCoreRelease {
         val payload = downloader.fetchText(
             url = ReleasesApiUrl,
             proxy = proxy,
@@ -38,6 +58,23 @@ internal class AndroidXrayCoreReleaseClient(
         )
         val newest = pickNewestLiteRelease(payload)
         AndroidResourceFileLogger.info("AndroidLibXrayLite latest api tag=${newest.tag} aar=${newest.assetName}")
+        return newest
+    }
+
+    private fun fetchLatestFromAtom(proxy: AndroidResourceFileDownloadProxy?): XrayCoreRelease {
+        val payload = downloader.fetchText(url = ReleasesAtomUrl, proxy = proxy)
+        val newest = pickNewestLiteReleaseFromAtom(payload)
+        AndroidResourceFileLogger.info("AndroidLibXrayLite latest atom tag=${newest.tag}")
+        return newest
+    }
+
+    private fun fetchLatestFromLatestPage(proxy: AndroidResourceFileDownloadProxy?): XrayCoreRelease {
+        val hops = downloader.resolveRedirectChain(ReleasesLatestUrl, proxy)
+        val tagUrl = hops.lastOrNull().orEmpty()
+        val tag = tagUrl.substringAfterLast("/tag/").substringBefore('/').trim()
+        require(tag.isNotEmpty() && tag != tagUrl) { "Cannot parse AndroidLibXrayLite latest tag" }
+        val newest = liteRelease(tag)
+        AndroidResourceFileLogger.info("AndroidLibXrayLite latest page tag=${newest.tag}")
         return newest
     }
 }
@@ -71,24 +108,51 @@ internal fun parseLiteRelease(json: JSONObject): XrayCoreRelease? {
         }
     }
     if (downloadUrl.isEmpty()) return null
-    val title = json.optString("name").trim().ifEmpty { "AndroidLibXrayLite $tag" }
+    return liteRelease(
+        tag = tag,
+        title = json.optString("name").trim().ifEmpty { "AndroidLibXrayLite $tag" },
+        body = json.optString("body").trim(),
+        htmlUrl = json.optString("html_url").trim(),
+        downloadUrl = downloadUrl,
+    )
+}
+
+internal fun pickNewestLiteReleaseFromAtom(payload: String): XrayCoreRelease {
+    val tags = LiteReleaseTagInUrlPattern.findAll(payload)
+        .map { match -> match.groupValues[1].trim() }
+        .filter { tag -> tag.isNotEmpty() }
+        .distinct()
+        .toList()
+    val newestTag = tags.maxWithOrNull { left, right -> compareXrayCoreVersion(left, right) }
+        ?: error("No AndroidLibXrayLite tags in releases.atom")
+    return liteRelease(newestTag)
+}
+
+internal fun liteRelease(
+    tag: String,
+    title: String = "AndroidLibXrayLite $tag",
+    body: String = "",
+    htmlUrl: String = "https://github.com/$LiteOwnerRepo/releases/tag/$tag",
+    downloadUrl: String = "https://github.com/$LiteOwnerRepo/releases/download/$tag/libv2ray.aar",
+): XrayCoreRelease {
     return XrayCoreRelease(
         tag = tag,
         title = title,
-        body = json.optString("body").trim(),
-        htmlUrl = json.optString("html_url").trim(),
+        body = body,
+        htmlUrl = htmlUrl,
         assetName = "libv2ray.aar",
         downloadUrl = downloadUrl,
     )
 }
 
-internal fun probeXrayCoreVersion(binary: File): String? {
+internal fun probeXrayCoreVersion(binary: File, allowExecute: Boolean = true): String? {
     if (!binary.isFile || binary.length() <= 0L) return null
     val scanned = scanXrayCoreVersion(binary)
     if (scanned != null) {
         AndroidResourceFileLogger.info("Xray-core scanned ${binary.name}=$scanned size=${binary.length()}")
         return scanned
     }
+    if (!allowExecute) return null
     val executed = executeXrayCoreVersion(binary)
     if (executed != null) {
         AndroidResourceFileLogger.info("Xray-core executed ${binary.name}=$executed")
@@ -119,6 +183,7 @@ internal fun scanXrayCoreVersion(binary: File): String? {
     val overlap = 96
     val buffer = ByteArray(128 * 1024)
     var prefix = ByteArray(0)
+    val found = mutableSetOf<String>()
     binary.inputStream().use { input ->
         while (true) {
             val read = input.read(buffer)
@@ -129,12 +194,13 @@ internal fun scanXrayCoreVersion(binary: File): String? {
                 prefix + buffer.copyOf(read)
             }
             val text = String(chunk, Charsets.ISO_8859_1)
-            val scanned = xrayCoreVersionFromBinaryText(text)
-            if (scanned != null) return scanned
+            found += xrayCoreVersionsFromBinaryText(text)
             prefix = chunk.copyOfRange((chunk.size - overlap).coerceAtLeast(0), chunk.size)
         }
     }
-    return null
+    return found
+        .filter(::isUserFacingXrayReleaseVersion)
+        .maxWithOrNull { left, right -> compareXrayCoreVersion(left, right) }
 }
 
 private fun executeXrayCoreVersion(binary: File): String? {
@@ -156,7 +222,8 @@ internal fun parseXrayVersionOutput(output: String): String? {
     val match = XrayVersionPattern.find(output)
         ?: EmbeddedXrayVersionPattern.find(output)
         ?: return null
-    return normalizeXrayCoreVersion(match.groupValues[1])
+    val version = normalizeXrayCoreVersion(match.groupValues[1])
+    return version.takeIf(::isUserFacingXrayReleaseVersion)
 }
 
 internal fun xrayCoreTagFromUrl(url: String): String? {
@@ -175,15 +242,31 @@ internal fun xrayCoreVersionFromName(name: String): String? {
 }
 
 internal fun xrayCoreVersionFromBinaryText(text: String): String? {
-    val patterns = listOf(
-        EmbeddedXrayVersionPattern,
-        GoModuleVersionPattern,
-    )
-    for (pattern in patterns) {
-        val match = pattern.find(text) ?: continue
-        return normalizeXrayCoreVersion(match.groupValues[1])
+    return xrayCoreVersionsFromBinaryText(text)
+        .filter(::isUserFacingXrayReleaseVersion)
+        .maxWithOrNull { left, right -> compareXrayCoreVersion(left, right) }
+}
+
+internal fun xrayCoreVersionsFromBinaryText(text: String): List<String> {
+    return buildList {
+        EmbeddedXrayVersionPattern.findAll(text).forEach { match ->
+            add(normalizeXrayCoreVersion(match.groupValues[1]))
+        }
+        QuotedReleaseVersionPattern.findAll(text).forEach { match ->
+            add(normalizeXrayCoreVersion(match.groupValues[1]))
+        }
     }
-    return null
+}
+
+internal fun isUserFacingXrayReleaseVersion(version: String): Boolean {
+    val parts = versionParts(version)
+    if (parts.size < 3) return false
+    val major = parts[0]
+    val minor = parts[1]
+    if (major == 1 && minor >= 1_000) return false
+    if (major == 1 && minor in 0..99) return true
+    if (major in 24..29 && minor in 0..12) return true
+    return false
 }
 
 internal fun compareXrayCoreVersion(left: String, right: String): Int {
@@ -218,11 +301,16 @@ private fun versionParts(version: String): List<Int> {
 
 private val XrayVersionPattern = Regex("""(?im)^\s*Xray\s+(v?\d+(?:\.\d+)*)""")
 private val EmbeddedXrayVersionPattern = Regex("""Xray[\s/-]*(v?\d+\.\d+\.\d+)""", RegexOption.IGNORE_CASE)
-private val GoModuleVersionPattern = Regex("""xtls/xray-core[\x00\s/]*v?(\d+\.\d+\.\d+)""", RegexOption.IGNORE_CASE)
+private val QuotedReleaseVersionPattern = Regex(""""(v?(?:1\.\d{1,2}\.\d{1,2}|2[4-9]\.\d{1,2}\.\d{1,2}))"""")
 private val FileNameVersionPattern = Regex("""(?i)(?:^|[^A-Za-z0-9])(v?\d{1,2}\.\d{1,2}\.\d{1,2})(?![0-9])""")
 private val DownloadTagPattern = Regex("""/releases/download/(v?[\d.]+)/""")
+private const val LiteOwnerRepo = "Blueplanet20120/AndroidLibXrayLite"
 private const val ReleasesApiUrl =
-    "https://api.github.com/repos/Blueplanet20120/AndroidLibXrayLite/releases?per_page=40"
+    "https://api.github.com/repos/$LiteOwnerRepo/releases?per_page=40"
+private const val ReleasesAtomUrl = "https://github.com/$LiteOwnerRepo/releases.atom"
+private const val ReleasesLatestUrl = "https://github.com/$LiteOwnerRepo/releases/latest"
+private val LiteReleaseTagInUrlPattern =
+    Regex("""/Blueplanet20120/AndroidLibXrayLite/releases/tag/(v?[^\s"'<>/]+)""")
 internal const val CustomXrayCoreVersion = "custom"
 
 internal fun isPlaceholderNativeLibraryTimestamp(millis: Long): Boolean {

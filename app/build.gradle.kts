@@ -21,7 +21,7 @@ val releaseVersionName = appVersionName()
 val releaseVersionCode = appVersionCode()
 val packagedAbis = nativeAndroidAbis()
 val liteVersion = resolveAndroidLibXrayLiteVersion(project)
-logger.lifecycle("AndroidLibXrayLite: $liteVersion")
+logger.lifecycle("[提示] AndroidLibXrayLite 依赖版本: $liteVersion。")
 
 android {
     namespace = "app"

@@ -207,6 +207,8 @@
     <string name="settings_resource_files_auto_update_interval_title">Chu kỳ cập nhật</string>
     <string name="settings_resource_files_auto_update_interval">Chu kỳ cập nhật (giờ)</string>
     <string name="settings_resource_files_auto_update_hours">Mỗi %1$s giờ</string>
+    <string name="settings_resource_files_update_via_proxy">Cập nhật qua proxy</string>
+    <string name="settings_resource_files_update_via_proxy_summary">Khi proxy đang chạy, tải xuống qua SOCKS cục bộ. Không cần chọn ứng dụng này trong danh sách từng ứng dụng.</string>
     <string name="settings_resource_files_update">Cập nhật tệp tài nguyên</string>
     <string name="settings_resource_files_add_custom">Thêm tệp tài nguyên tùy chỉnh</string>
     <string name="settings_resource_files_custom_file">Tệp tài nguyên tùy chỉnh</string>
@@ -218,6 +220,7 @@
     <string name="settings_resource_files_missing">Thiếu</string>
     <string name="settings_resource_files_updated_at">Cập nhật lúc {time}</string>
     <string name="settings_resource_files_size">Kích thước {size}</string>
+    <string name="settings_resource_files_xray_kernel">Phiên bản nhân Xray: {version}</string>
     <string name="settings_resource_file_update_queued">Đang chờ cập nhật</string>
     <string name="settings_resource_file_updating">Đang cập nhật tệp tài nguyên</string>
     <string name="settings_resource_files_updated">Tệp tài nguyên đã được cập nhật</string>

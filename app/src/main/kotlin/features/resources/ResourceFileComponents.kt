@@ -58,6 +58,7 @@ import top.yukonga.miuix.kmp.icon.extended.Replace
 import top.yukonga.miuix.kmp.icon.extended.Reset
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowDialog
 import ui.text.formatTemplate
@@ -78,8 +79,10 @@ internal fun ResourceFileSourceCard(
     sourceOptions: List<String>,
     selectedSource: Int,
     enableResourceAutoUpdate: Boolean,
+    enableResourceUpdateViaProxy: Boolean,
     autoUpdateInterval: String,
     onEnableResourceAutoUpdateChange: (Boolean) -> Unit,
+    onEnableResourceUpdateViaProxyChange: (Boolean) -> Unit,
     onAutoUpdateIntervalChange: (String) -> Unit,
     selectedUpdateSource: ResourceFileUpdateSource,
     customGeoIpUrl: String,
@@ -174,6 +177,12 @@ internal fun ResourceFileSourceCard(
             interval = autoUpdateInterval,
             onEnabledChange = onEnableResourceAutoUpdateChange,
             onIntervalChange = onAutoUpdateIntervalChange,
+        )
+        SwitchPreference(
+            title = stringResource(R.string.settings_resource_files_update_via_proxy),
+            summary = stringResource(R.string.settings_resource_files_update_via_proxy_summary),
+            checked = enableResourceUpdateViaProxy,
+            onCheckedChange = onEnableResourceUpdateViaProxyChange,
         )
         ArrowPreference(
             title = stringResource(
@@ -363,6 +372,16 @@ private fun ResourceFileCardSurface(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        if (status.kernelVersion.isNotBlank()) {
+                            Text(
+                                text = stringResource(R.string.settings_resource_files_xray_kernel)
+                                    .formatTemplate("version" to status.kernelVersion),
+                                style = MiuixTheme.textStyles.body2,
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                         Text(
                             text = status.updatedAtText(),
                             style = MiuixTheme.textStyles.body2,

@@ -18,15 +18,20 @@ object ProjectConfig {
     const val STARSEAD_VERSION = "v2.0.32"
     const val BPF2SOCKS_VERSION = "v1.0.15"
     const val BPF_MATCHER_VERSION = "v1.0.1"
-    const val ANDROID_LIB_XRAY_LITE_VERSION_FALLBACK = "v26.9.9"
+    const val ANDROID_LIB_XRAY_LITE_VERSION_FALLBACK = "v26.9.10"
     const val HEV_SOCKS5_TUNNEL_VERSION = "2.17.1"
     const val TARGET_SDK = 37
     const val MIN_SDK = 26
     val SUPPORTED_ANDROID_ABIS = listOf("arm64-v8a")
 }
 
+private const val AndroidLibXrayLiteOwnerRepo = "Blueplanet20120/AndroidLibXrayLite"
 private const val AndroidLibXrayLiteReleasesApi =
-    "https://api.github.com/repos/Blueplanet20120/AndroidLibXrayLite/releases/latest"
+    "https://api.github.com/repos/$AndroidLibXrayLiteOwnerRepo/releases/latest"
+private const val AndroidLibXrayLiteReleasesAtom =
+    "https://github.com/$AndroidLibXrayLiteOwnerRepo/releases.atom"
+private const val AndroidLibXrayLiteReleasesLatest =
+    "https://github.com/$AndroidLibXrayLiteOwnerRepo/releases/latest"
 
 fun resolveAndroidLibXrayLiteVersion(project: Project? = null): String {
     val pinned = project?.findProperty("androidLibXrayLiteVersion")?.toString()?.trim().orEmpty()
@@ -37,19 +42,91 @@ fun resolveAndroidLibXrayLiteVersion(project: Project? = null): String {
 }
 
 fun fetchLatestAndroidLibXrayLiteTag(): String? {
+    return fetchGithubJsonTag(AndroidLibXrayLiteReleasesApi)
+        ?: fetchGithubAtomTag(AndroidLibXrayLiteReleasesAtom)
+        ?: fetchGithubLatestRedirectTag(AndroidLibXrayLiteReleasesLatest)
+}
+
+private fun fetchGithubJsonTag(url: String): String? {
+    val body = fetchUrlText(url, accept = "application/vnd.github+json") ?: return null
+    return Regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+private fun fetchGithubAtomTag(url: String): String? {
+    val body = fetchUrlText(url) ?: return null
+    val tags = Regex("/$AndroidLibXrayLiteOwnerRepo/releases/tag/(v?[^\\s\"'<>/]+)")
+        .findAll(body)
+        .map { it.groupValues[1].trim() }
+        .filter { it.isNotEmpty() }
+        .toList()
+    return tags.maxWithOrNull { left, right -> compareLooseVersion(left, right) }
+}
+
+private fun fetchGithubLatestRedirectTag(url: String): String? {
     return try {
-        val connection = java.net.URI(AndroidLibXrayLiteReleasesApi).toURL()
-            .openConnection() as java.net.HttpURLConnection
+        val connection = java.net.URI(url).toURL().openConnection() as java.net.HttpURLConnection
+        connection.instanceFollowRedirects = false
         connection.connectTimeout = 8_000
         connection.readTimeout = 8_000
-        connection.setRequestProperty("Accept", "application/vnd.github+json")
-        connection.setRequestProperty("User-Agent", "starseaN-gradle")
-        val body = connection.inputStream.bufferedReader().use { it.readText() }
-        val tag = Regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1)?.trim()
-        tag?.takeIf { it.isNotEmpty() }
+        applyGithubHeaders(connection)
+        connection.responseCode
+        val location = connection.getHeaderField("Location").orEmpty()
+        connection.disconnect()
+        location.substringAfterLast("/tag/").substringBefore('/').trim().takeIf { it.isNotEmpty() && it != location }
     } catch (_: Exception) {
         null
     }
+}
+
+private fun githubToken(): String {
+    return System.getenv("GITHUB_TOKEN")?.trim().orEmpty()
+        .ifEmpty { System.getenv("GH_TOKEN")?.trim().orEmpty() }
+}
+
+private fun applyGithubHeaders(connection: java.net.HttpURLConnection, accept: String? = null) {
+    connection.setRequestProperty("User-Agent", "starseaN-gradle")
+    connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+    if (accept != null) {
+        connection.setRequestProperty("Accept", accept)
+    }
+    val token = githubToken()
+    if (token.isNotEmpty()) {
+        connection.setRequestProperty("Authorization", "Bearer $token")
+    }
+}
+
+private fun fetchUrlText(url: String, accept: String? = null): String? {
+    return try {
+        val connection = java.net.URI(url).toURL().openConnection() as java.net.HttpURLConnection
+        connection.instanceFollowRedirects = true
+        connection.connectTimeout = 8_000
+        connection.readTimeout = 8_000
+        applyGithubHeaders(connection, accept)
+        val code = connection.responseCode
+        if (code !in 200..299) {
+            connection.disconnect()
+            return null
+        }
+        connection.inputStream.bufferedReader().use { it.readText() }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun compareLooseVersion(left: String, right: String): Int {
+    fun parts(value: String): List<Int> {
+        return value.trim().removePrefix("v").removePrefix("V")
+            .substringBefore('-').substringBefore('+')
+            .split('.').mapNotNull { it.toIntOrNull() }
+    }
+    val leftParts = parts(left)
+    val rightParts = parts(right)
+    val size = maxOf(leftParts.size, rightParts.size)
+    for (index in 0 until size) {
+        val delta = leftParts.getOrElse(index) { 0 } - rightParts.getOrElse(index) { 0 }
+        if (delta != 0) return delta
+    }
+    return 0
 }
 
 fun loadAppVersionName(rootDir: File): String {

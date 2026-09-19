@@ -19,10 +19,10 @@ internal fun ResourceFileSynchronizer(
     stateStore: AndroidAppStateStore,
 ) {
     LaunchedEffect(resourceFileUseCase, stateStore) {
-        stateStore.state.collectResourceSynchronizationStates { state ->
+        suspend fun synchronize(source: Int) {
             try {
                 resourceFileUseCase.synchronizeBundledFilesAfterPackageUpdate(
-                    resourceFileSource = state.resourceFileSource,
+                    resourceFileSource = source,
                 )
             } catch (error: CancellationException) {
                 throw error
@@ -33,6 +33,10 @@ internal fun ResourceFileSynchronizer(
                     error,
                 )
             }
+        }
+        synchronize(stateStore.state.value.resourceFileSource)
+        stateStore.state.collectResourceSynchronizationStates { state ->
+            synchronize(state.resourceFileSource)
         }
     }
 }

@@ -17,6 +17,7 @@ import app.ResourceFileUpdateSource
 import app.modes.isRootRunMode
 import engine.proxy.LocalProxyLoopbackAddress
 import engine.proxy.LocalProxyRuntime
+import engine.vpn.AndroidLibXrayLiteRuntime
 import engine.network.isPort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -72,7 +73,34 @@ internal class AndroidResourceFileRepository(
     suspend fun synchronizeBundledFilesAfterPackageUpdate(resourceFileSource: Int) {
         withContext(Dispatchers.IO) {
             store.synchronizeBundledFilesAfterPackageUpdate(resourceFileSource)
+            adoptPackagedXrayCoreIfNewer()
         }
+    }
+
+    private suspend fun adoptPackagedXrayCoreIfNewer() {
+        val packaged = ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION
+        val installed = versionStore.installedVersion()
+        if (installed.equals(CustomXrayCoreVersion, ignoreCase = true)) {
+            return
+        }
+        if (!isNewerXrayCoreVersion(packaged, installed)) {
+            return
+        }
+        if (store.hasCustomXrayCore()) {
+            runCatching { removeCustomXrayCore() }
+                .onFailure { error ->
+                    AndroidResourceFileLogger.warn(
+                        "Packaged AndroidLibXrayLite $packaged is newer than $installed, but custom core was kept",
+                        error,
+                    )
+                    return
+                }
+        }
+        versionStore.setInstalledVersion(normalizeXrayCoreVersion(packaged))
+        versionStore.touchUpdatedAt(appContext.packageUpdatedAtMillis())
+        AndroidResourceFileLogger.info(
+            "Adopted packaged AndroidLibXrayLite $packaged over remembered $installed",
+        )
     }
 
     suspend fun deleteCustom(
@@ -131,9 +159,18 @@ internal class AndroidResourceFileRepository(
         )
     }
 
-    fun installedXrayCoreVersion(): String = versionStore.installedVersion()
+    fun installedXrayCoreVersion(): String {
+        if (!store.hasCustomXrayCore()) {
+            return ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION
+        }
+        return versionStore.installedVersion()
+    }
 
     suspend fun refreshInstalledXrayCoreVersion(): String {
+        if (!store.hasCustomXrayCore()) {
+            versionStore.setInstalledVersion(ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION)
+            return ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION
+        }
         rememberInstalledXrayCoreVersion()
         return versionStore.installedVersion()
     }
@@ -334,10 +371,8 @@ internal class AndroidResourceFileRepository(
     ): ResourceFilesStatus = withContext(Dispatchers.IO) {
         if (kind == ResourceFileKind.XrayCore) {
             removeCustomXrayCore()
-            rememberInstalledXrayCoreVersion(
-                knownVersion = ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION,
-                recordOperationTime = true,
-            )
+            versionStore.setInstalledVersion(ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION)
+            versionStore.touchUpdatedAt()
         } else {
             store.restoreBundled(kind)
         }
@@ -436,8 +471,24 @@ internal class AndroidResourceFileRepository(
         return status.copy(
             xrayCore = status.xrayCore.copy(
                 updatedAtMillis = resolveXrayCoreUpdatedAt(status.xrayCore.updatedAtMillis),
+                kernelVersion = resolveXrayKernelVersion(),
             ),
         )
+    }
+
+    private fun resolveXrayKernelVersion(): String {
+        val gojni = store.effectiveXrayGoJniFile()
+        val launcher = store.effectiveXrayCoreFile()
+        val fingerprint = listOf(gojni, launcher).joinToString("|") { file ->
+            "${file.absolutePath}:${file.takeIf { it.isFile }?.lastModified() ?: 0}:${file.takeIf { it.isFile }?.length() ?: 0}:kernel-display-v3-checkversionx"
+        }
+        versionStore.kernelVersion(fingerprint)?.let { return it }
+        val probed = AndroidLibXrayLiteRuntime.packagedXrayCoreVersion()
+        if (probed != null) {
+            versionStore.setKernelVersion(probed, fingerprint)
+            AndroidResourceFileLogger.info("Xray kernel from Libv2ray.checkVersionX=$probed")
+        }
+        return probed.orEmpty()
     }
 
     private fun resolveXrayCoreUpdatedAt(fileUpdatedAtMillis: Long): Long {
