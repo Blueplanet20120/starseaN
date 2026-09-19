@@ -3,6 +3,7 @@
 
 package app
 
+import app.modes.AppLockTimeoutImmediate
 import app.modes.ColorModeSystem
 import app.modes.LanguageModeSystem
 import app.modes.ProxyAppListModeWhitelist
@@ -35,6 +36,8 @@ data class AppState(
     val nextSubscriptionGroupId: Int = 4,
     val enableAllProxyGroup: Boolean = false,
     val enableDeletionConfirmation: Boolean = true,
+    val enableAppLock: Boolean = false,
+    val appLockTimeout: Int = AppLockTimeoutImmediate,
 
     val runMode: Int = RunModeVpnService,
     val enableResolveProxyServerDomain: Boolean = false,

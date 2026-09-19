@@ -16,6 +16,7 @@ import app.ServiceControlWifiRule
 import app.modes.ColorModeThemeDark
 import app.modes.ColorModeThemeLight
 import app.modes.ColorModeThemeSystem
+import app.modes.normalizeAppLockTimeout
 import app.modes.normalizeColorMode
 import features.settings.servicecontrol.normalizeServiceControlSettings
 import java.util.UUID
@@ -70,6 +71,10 @@ internal class AppSettingsPreferences(
             enableDeletionConfirmation = preferences.getBoolean(
                 KeyEnableDeletionConfirmation,
                 defaults.enableDeletionConfirmation,
+            ),
+            enableAppLock = preferences.getBoolean(KeyEnableAppLock, defaults.enableAppLock),
+            appLockTimeout = normalizeAppLockTimeout(
+                preferences.getInt(KeyAppLockTimeout, defaults.appLockTimeout),
             ),
             runMode = preferences.getInt(KeyRunMode, defaults.runMode),
             enableResolveProxyServerDomain = preferences.getBoolean(
@@ -238,6 +243,8 @@ internal class AppSettingsPreferences(
             .putInt(KeyNextSubscriptionGroupId, state.nextSubscriptionGroupId)
             .putBoolean(KeyEnableAllProxyGroup, state.enableAllProxyGroup)
             .putBoolean(KeyEnableDeletionConfirmation, state.enableDeletionConfirmation)
+            .putBoolean(KeyEnableAppLock, state.enableAppLock)
+            .putInt(KeyAppLockTimeout, normalizeAppLockTimeout(state.appLockTimeout))
             .putInt(KeyRunMode, state.runMode)
             .putBoolean(KeyEnableResolveProxyServerDomain, state.enableResolveProxyServerDomain)
             .putBoolean(KeyEnableVpnLocalDns, state.enableVpnLocalDns)
@@ -435,6 +442,8 @@ private const val KeySubscriptionHwid = "subscription_hwid"
 private const val KeyNextSubscriptionGroupId = "next_subscription_group_id"
 private const val KeyEnableAllProxyGroup = "enable_all_proxy_group"
 private const val KeyEnableDeletionConfirmation = "enable_deletion_confirmation"
+private const val KeyEnableAppLock = "enable_app_lock"
+private const val KeyAppLockTimeout = "app_lock_timeout"
 private const val KeyRunMode = "run_mode"
 private const val KeyEnableResolveProxyServerDomain = "enable_resolve_proxy_server_domain"
 private const val KeyEnableVpnLocalDns = "enable_vpn_local_dns"

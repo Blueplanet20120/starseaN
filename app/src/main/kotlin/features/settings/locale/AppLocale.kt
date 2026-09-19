@@ -47,7 +47,7 @@ fun ProvideAppLanguage(
     }
     val configuration = remember(context, locale) { context.localizedConfiguration(locale) }
     val localizedContext = remember(context, configuration) {
-        context.createConfigurationContext(configuration)
+        context.localizedContextWrapper(configuration)
     }
 
     SideEffect {
@@ -91,6 +91,19 @@ internal fun Context.localizedAppContext(
 
 private fun Configuration.primaryLocale(): Locale {
     return locales[0] ?: Locale.getDefault()
+}
+
+private fun Context.localizedContextWrapper(configuration: Configuration): Context {
+    val localized = createConfigurationContext(configuration)
+    return object : ContextWrapper(this) {
+        override fun getResources() = localized.resources
+
+        override fun getAssets() = localized.assets
+
+        override fun createConfigurationContext(overrideConfiguration: Configuration): Context {
+            return localized.createConfigurationContext(overrideConfiguration)
+        }
+    }
 }
 
 private fun Context.localizedConfiguration(

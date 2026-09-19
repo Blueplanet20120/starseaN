@@ -70,10 +70,15 @@ internal fun SettingsThemeSection(
 internal fun SettingsSubscriptionsSection(
     enableAllProxyGroup: Boolean,
     enableDeletionConfirmation: Boolean,
+    enableAppLock: Boolean,
+    appLockTimeout: Int,
+    appLockTimeoutOptions: List<String>,
     onOpenGroupManagement: () -> Unit,
     onOpenResourceManagement: () -> Unit,
     onEnableAllProxyGroupChange: (Boolean) -> Unit,
     onEnableDeletionConfirmationChange: (Boolean) -> Unit,
+    onEnableAppLockChange: (Boolean) -> Unit,
+    onAppLockTimeoutChange: (Int) -> Unit,
 ) {
     SmallTitle(text = stringResource(R.string.settings_general))
     SettingsSectionCard {
@@ -99,6 +104,24 @@ internal fun SettingsSubscriptionsSection(
             checked = enableDeletionConfirmation,
             onCheckedChange = onEnableDeletionConfirmationChange,
         )
+        SwitchPreference(
+            title = stringResource(R.string.settings_app_lock),
+            summary = stringResource(R.string.settings_app_lock_summary),
+            checked = enableAppLock,
+            onCheckedChange = onEnableAppLockChange,
+        )
+        AnimatedVisibility(
+            visible = enableAppLock,
+            enter = fadeIn() + expandVertically(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            OverlayDropdownPreference(
+                title = stringResource(R.string.settings_app_lock_timeout),
+                items = appLockTimeoutOptions,
+                selectedIndex = appLockTimeout.coerceIn(appLockTimeoutOptions.indices),
+                onSelectedIndexChange = onAppLockTimeoutChange,
+            )
+        }
     }
 }
 

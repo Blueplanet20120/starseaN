@@ -5,6 +5,7 @@
 
 package features.settings
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -21,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.fragment.app.FragmentActivity
 import app.LocalAppChromeState
 import app.LocalAppServices
 import app.LocalAppStateStore
@@ -38,6 +40,8 @@ import app.navigation.Route
 import data.backup.AppBackupRestorePreview
 import engine.proxy.withResolvedDynamicLocalProxyPort
 import features.proxy.server.usecase.ProxyServiceResult
+import features.lock.canUseAppLock
+import features.lock.promptAppLock
 import features.settings.sheets.externalInterfacesSummary
 import features.settings.sheets.fragmentSettingsSummary
 import features.settings.sheets.ignoredInterfacesSummary
@@ -170,6 +174,17 @@ private fun SettingsContent(
     val restoreCompletedMessage = stringResource(R.string.settings_restore_completed)
     val restoreFailedMessage = stringResource(R.string.settings_restore_failed)
     val selectServerFirstMessage = stringResource(R.string.proxy_server_list_select_first)
+    val appLockTimeoutOptions = listOf(
+        stringResource(R.string.settings_app_lock_timeout_immediate),
+        stringResource(R.string.settings_app_lock_timeout_10s),
+        stringResource(R.string.settings_app_lock_timeout_1m),
+        stringResource(R.string.settings_app_lock_timeout_10m),
+    )
+    val appLockPromptTitle = stringResource(R.string.app_lock_prompt_title)
+    val appLockEnableSubtitle = stringResource(R.string.app_lock_prompt_enable_subtitle)
+    val appLockDisableSubtitle = stringResource(R.string.app_lock_prompt_disable_subtitle)
+    val appLockUnavailableMessage = stringResource(R.string.settings_app_lock_unavailable)
+    val activity = LocalActivity.current as? FragmentActivity
     val localProxySettingsSummary = localProxySettingsSummary(
         port = appState.localProxyPort,
         listenAllInterfaces = appState.localProxyListenAllInterfaces,
@@ -224,6 +239,9 @@ private fun SettingsContent(
                 SettingsSubscriptionsSection(
                     enableAllProxyGroup = appState.enableAllProxyGroup,
                     enableDeletionConfirmation = appState.enableDeletionConfirmation,
+                    enableAppLock = appState.enableAppLock,
+                    appLockTimeout = appState.appLockTimeout,
+                    appLockTimeoutOptions = appLockTimeoutOptions,
                     onOpenGroupManagement = { navigator.push(Route.SubscriptionGroupList) },
                     onOpenResourceManagement = { navigator.push(Route.ResourceManagement) },
                     onEnableAllProxyGroupChange = { enabled ->
@@ -231,6 +249,39 @@ private fun SettingsContent(
                     },
                     onEnableDeletionConfirmationChange = { enabled ->
                         updateAppState { state -> state.copy(enableDeletionConfirmation = enabled) }
+                    },
+                    onEnableAppLockChange = { enabled ->
+                        if (enabled != appState.enableAppLock) {
+                            scope.launch {
+                                val host = activity
+                                if (host == null) {
+                                    tipNotifier.show(appLockUnavailableMessage)
+                                    return@launch
+                                }
+                                if (enabled && !host.canUseAppLock()) {
+                                    tipNotifier.show(appLockUnavailableMessage)
+                                    return@launch
+                                }
+                                val confirmed = if (!enabled && !host.canUseAppLock()) {
+                                    true
+                                } else {
+                                    host.promptAppLock(
+                                        title = appLockPromptTitle,
+                                        subtitle = if (enabled) {
+                                            appLockEnableSubtitle
+                                        } else {
+                                            appLockDisableSubtitle
+                                        },
+                                    )
+                                }
+                                if (confirmed) {
+                                    updateAppState { state -> state.copy(enableAppLock = enabled) }
+                                }
+                            }
+                        }
+                    },
+                    onAppLockTimeoutChange = { index ->
+                        updateAppState { state -> state.copy(appLockTimeout = index) }
                     },
                 )
             }

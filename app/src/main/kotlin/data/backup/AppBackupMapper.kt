@@ -12,6 +12,7 @@ import app.CustomResourceFileState
 import app.ProxyServerState
 import app.SubscriptionGroupState
 import app.modes.RunModeVpnService
+import app.modes.normalizeAppLockTimeout
 import data.PersistedProxyServer
 import data.decodeProxyServer
 import data.toPersistedProxyServer
@@ -57,6 +58,8 @@ private fun AppState.toBackupSettings(): AppBackupSettings {
         seedIndex = seedIndex,
         enableAllProxyGroup = enableAllProxyGroup,
         enableDeletionConfirmation = enableDeletionConfirmation,
+        enableAppLock = enableAppLock,
+        appLockTimeout = appLockTimeout,
         enableResolveProxyServerDomain = enableResolveProxyServerDomain,
         enableVpnLocalDns = enableVpnLocalDns,
         localProxyPort = localProxyPort,
@@ -246,6 +249,8 @@ private fun AppBackupData.toAppState(): AppState {
         ),
         enableAllProxyGroup = settings.enableAllProxyGroup,
         enableDeletionConfirmation = settings.enableDeletionConfirmation,
+        enableAppLock = settings.enableAppLock,
+        appLockTimeout = normalizeAppLockTimeout(settings.appLockTimeout),
         runMode = RunModeVpnService,
         enableResolveProxyServerDomain = settings.enableResolveProxyServerDomain,
         enableVpnLocalDns = settings.enableVpnLocalDns,

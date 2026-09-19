@@ -16,6 +16,7 @@ import app.effects.ProxyStatusSynchronizer
 import app.effects.LauncherIconSynchronizer
 import app.effects.ResourceFileSynchronizer
 import app.effects.RootBootScriptSynchronizer
+import features.lock.AppLockHost
 import features.logs.AndroidAccessLogRepository
 import features.logs.AndroidStarseadLogRepository
 import features.logs.AndroidCoreLogRepository
@@ -219,7 +220,9 @@ fun App(
                 LocalUpdateAppState provides updateAppState,
                 LocalAppServices provides services,
             ) {
-                AppContent(padding = padding)
+                AppLockHost {
+                    AppContent(padding = padding)
+                }
             }
         }
     }

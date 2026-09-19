@@ -27,3 +27,21 @@ const val ProxyServerListLayoutMultiple = 3
 const val ProxyServerListSortDefault = 0
 const val ProxyServerListSortName = 1
 const val ProxyServerListSortLatency = 2
+
+const val AppLockTimeoutImmediate = 0
+const val AppLockTimeoutTenSeconds = 1
+const val AppLockTimeoutOneMinute = 2
+const val AppLockTimeoutTenMinutes = 3
+
+fun normalizeAppLockTimeout(value: Int): Int {
+    return value.coerceIn(AppLockTimeoutImmediate, AppLockTimeoutTenMinutes)
+}
+
+fun appLockTimeoutMillis(value: Int): Long {
+    return when (normalizeAppLockTimeout(value)) {
+        AppLockTimeoutTenSeconds -> 10_000L
+        AppLockTimeoutOneMinute -> 60_000L
+        AppLockTimeoutTenMinutes -> 600_000L
+        else -> 0L
+    }
+}
