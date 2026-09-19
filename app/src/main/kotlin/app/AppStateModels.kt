@@ -73,7 +73,7 @@ enum class ResourceFileKind(
             GeoIpOnlyCnPrivate,
             DirectCidrIpv4,
             DirectCidrIpv6 -> fileName
-            XrayCore -> "Xray-core $XrayCoreVersion"
+            XrayCore -> "AndroidLibXrayLite $XrayCoreVersion"
         }
 }
 

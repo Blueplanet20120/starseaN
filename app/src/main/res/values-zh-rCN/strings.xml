@@ -225,9 +225,9 @@
     <string name="settings_resource_files_replaced">{name} 已替换</string>
     <string name="settings_resource_files_restored">{name} 已恢复为内置文件</string>
     <string name="settings_resource_files_deleted">{name} 已删除</string>
-    <string name="settings_xray_core_check_update">检查 Xray-core 更新</string>
-    <string name="settings_xray_core_already_latest">Xray-core 已是最新版本 {version}</string>
-    <string name="settings_xray_core_update_title">Xray-core 更新</string>
+    <string name="settings_xray_core_check_update">检查 AndroidLibXrayLite 更新</string>
+    <string name="settings_xray_core_already_latest">AndroidLibXrayLite 已是最新版本 {version}</string>
+    <string name="settings_xray_core_update_title">AndroidLibXrayLite 更新</string>
     <string name="settings_xray_core_update_current">当前 {version}</string>
     <string name="settings_xray_core_update_latest">最新 {version}</string>
     <string name="settings_log_level">日志等级</string>

@@ -225,9 +225,9 @@
     <string name="settings_resource_files_replaced">{name} replaced</string>
     <string name="settings_resource_files_restored">{name} restored from bundled assets</string>
     <string name="settings_resource_files_deleted">{name} deleted</string>
-    <string name="settings_xray_core_check_update">Check Xray-core updates</string>
-    <string name="settings_xray_core_already_latest">Xray-core is already the latest version {version}</string>
-    <string name="settings_xray_core_update_title">Xray-core update</string>
+    <string name="settings_xray_core_check_update">Check AndroidLibXrayLite updates</string>
+    <string name="settings_xray_core_already_latest">AndroidLibXrayLite is already the latest version {version}</string>
+    <string name="settings_xray_core_update_title">AndroidLibXrayLite update</string>
     <string name="settings_xray_core_update_current">Installed {version}</string>
     <string name="settings_xray_core_update_latest">Latest {version}</string>
     <string name="settings_log_level">Log level</string>

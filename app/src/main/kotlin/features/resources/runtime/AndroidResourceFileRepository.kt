@@ -39,7 +39,7 @@ internal class AndroidResourceFileRepository(
 
     suspend fun status(customResourceFiles: List<CustomResourceFileState> = emptyList()): ResourceFilesStatus =
         withContext(Dispatchers.IO) {
-            store.status(customResourceFiles)
+            presentedStatus(customResourceFiles)
         }
 
     suspend fun hasCustomXrayCore(): Boolean = withContext(Dispatchers.IO) {
@@ -53,13 +53,17 @@ internal class AndroidResourceFileRepository(
             rootModeActive = { currentRunMode().isRootRunMode() },
             candidateFactory = { },
             installInitial = {},
-            replaceAppOwned = { check(target.delete()) { "Failed to remove the custom Xray core" } },
+            replaceAppOwned = {
+                check(target.delete()) { "Failed to remove the custom Xray core" }
+                store.removeLiteCompanionLibrary()
+            },
             replaceWithRoot = {
                 val result = rootShell.exec(
                     RootCoreRemovalCommand.build(target.absolutePath),
                     ShellExecOptions(logFailure = false),
                 )
                 check(result.errno == 0) { result.stderr.ifBlank { "Failed to remove the custom Xray core" } }
+                store.removeLiteCompanionLibrary()
             },
             deferRootOwned = { error(appContext.getString(R.string.settings_root_required)) },
         )
@@ -76,7 +80,7 @@ internal class AndroidResourceFileRepository(
         customResourceFiles: List<CustomResourceFileState>,
     ): ResourceFilesStatus = withContext(Dispatchers.IO) {
         store.deleteCustom(customFile)
-        store.currentStatus(customResourceFiles)
+        presentedStatus(customResourceFiles)
     }
 
     suspend fun renameCustom(
@@ -85,7 +89,7 @@ internal class AndroidResourceFileRepository(
         customResourceFiles: List<CustomResourceFileState>,
     ): ResourceFilesStatus = withContext(Dispatchers.IO) {
         store.renameCustom(previousFile, customFile)
-        store.currentStatus(customResourceFiles)
+        presentedStatus(customResourceFiles)
     }
 
     suspend fun update(
@@ -141,7 +145,7 @@ internal class AndroidResourceFileRepository(
         val latest = xrayCoreReleaseClient.fetchLatest(options.toDownloadProxy())
         val newer = isNewerXrayCoreVersion(latest.tag, installed)
         AndroidResourceFileLogger.info(
-            "Xray-core check installed=$installed latest=${latest.tag} newer=$newer",
+            "AndroidLibXrayLite check installed=$installed latest=${latest.tag} newer=$newer",
         )
         XrayCoreReleaseCheck(
             installedVersion = installed,
@@ -165,12 +169,12 @@ internal class AndroidResourceFileRepository(
                 "Xray-core update will use local proxy ${downloadProxy.host}:${downloadProxy.port}",
             )
         }
-        val zipFile = java.io.File.createTempFile("xray-core-", ".zip", appContext.cacheDir)
+        val zipFile = java.io.File.createTempFile("libv2ray-", ".aar", appContext.cacheDir)
         val result = runCatching {
-            notifier.showProgress("Xray-core $version", progress = null, force = true)
+            notifier.showProgress("AndroidLibXrayLite $version", progress = null, force = true)
             downloader.download(downloadUrl, zipFile, downloadProxy) { downloadedBytes, totalBytes ->
                 notifier.showProgress(
-                    fileName = "Xray-core $version",
+                    fileName = "AndroidLibXrayLite $version",
                     progress = overallProgress(
                         fileIndex = 0,
                         fileCount = 1,
@@ -179,12 +183,12 @@ internal class AndroidResourceFileRepository(
                     ),
                 )
             }
-            val candidate = store.stageXrayCoreCandidateFromZip(zipFile)
+            val candidate = store.stageXrayCoreCandidateFromAar(zipFile)
             installOrPublishCoreCandidate(
                 candidateFactory = { candidate },
                 knownVersion = version,
             )
-            store.currentStatus(customResourceFiles)
+            presentedStatus(customResourceFiles)
         }
         zipFile.delete()
         result.onSuccess {
@@ -214,7 +218,7 @@ internal class AndroidResourceFileRepository(
         customResourceFiles: List<CustomResourceFileState>,
     ): ResourceFilesStatus {
         if (downloads.isEmpty()) {
-            return store.currentStatus(customResourceFiles)
+            return presentedStatus(customResourceFiles)
         }
         store.dataDir.mkdirs()
         AndroidResourceFileDownloadCancellation.begin()
@@ -247,7 +251,7 @@ internal class AndroidResourceFileRepository(
                     throw ResourceFileDownloadFailedException(download.displayName, error)
                 }
             }
-            store.currentStatus(customResourceFiles)
+            presentedStatus(customResourceFiles)
         }
         result.onSuccess {
             runCatching { notifier.showComplete() }
@@ -305,7 +309,7 @@ internal class AndroidResourceFileRepository(
         customResourceFiles: List<CustomResourceFileState> = emptyList(),
     ): ResourceFilesStatus = withContext(Dispatchers.IO) {
         store.replaceCustom(customFile, uri)
-        store.currentStatus(customResourceFiles)
+        presentedStatus(customResourceFiles)
     }
 
     suspend fun replace(
@@ -321,7 +325,7 @@ internal class AndroidResourceFileRepository(
         } else {
             store.replace(kind, uri)
         }
-        store.currentStatus(customResourceFiles)
+        presentedStatus(customResourceFiles)
     }
 
     suspend fun restoreBundled(
@@ -330,11 +334,14 @@ internal class AndroidResourceFileRepository(
     ): ResourceFilesStatus = withContext(Dispatchers.IO) {
         if (kind == ResourceFileKind.XrayCore) {
             removeCustomXrayCore()
-            rememberInstalledXrayCoreVersion(knownVersion = ProjectInfo.XRAY_CORE_VERSION)
+            rememberInstalledXrayCoreVersion(
+                knownVersion = ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION,
+                recordOperationTime = true,
+            )
         } else {
             store.restoreBundled(kind)
         }
-        store.currentStatus(customResourceFiles)
+        presentedStatus(customResourceFiles)
     }
 
     private suspend fun installOrPublishCoreCandidate(
@@ -372,7 +379,11 @@ internal class AndroidResourceFileRepository(
             require(installed || store.file(ResourceFileKind.XrayCore).isFile) {
                 "Failed to install the initial Xray core"
             }
-            rememberInstalledXrayCoreVersion(candidate, knownVersion)
+            rememberInstalledXrayCoreVersion(
+                candidate = candidate,
+                knownVersion = knownVersion,
+                recordOperationTime = true,
+            )
         } finally {
             candidate.delete()
         }
@@ -384,7 +395,11 @@ internal class AndroidResourceFileRepository(
     ) {
         try {
             store.replaceXrayCoreCandidate(candidate)
-            rememberInstalledXrayCoreVersion(candidate, knownVersion)
+            rememberInstalledXrayCoreVersion(
+                candidate = candidate,
+                knownVersion = knownVersion,
+                recordOperationTime = true,
+            )
         } finally {
             candidate.delete()
         }
@@ -404,15 +419,40 @@ internal class AndroidResourceFileRepository(
                 error(removal.stderr.ifBlank { "Failed to remove the existing Xray core" })
             }
             store.replaceXrayCoreCandidate(candidate)
-            rememberInstalledXrayCoreVersion(candidate, knownVersion)
+            rememberInstalledXrayCoreVersion(
+                candidate = candidate,
+                knownVersion = knownVersion,
+                recordOperationTime = true,
+            )
         } finally {
             candidate.delete()
         }
     }
 
+    private fun presentedStatus(
+        customResourceFiles: List<CustomResourceFileState> = emptyList(),
+    ): ResourceFilesStatus {
+        val status = store.currentStatus(customResourceFiles)
+        return status.copy(
+            xrayCore = status.xrayCore.copy(
+                updatedAtMillis = resolveXrayCoreUpdatedAt(status.xrayCore.updatedAtMillis),
+            ),
+        )
+    }
+
+    private fun resolveXrayCoreUpdatedAt(fileUpdatedAtMillis: Long): Long {
+        val recorded = versionStore.updatedAtMillis()
+        if (recorded > 0L) return recorded
+        if (fileUpdatedAtMillis <= 0L || isPlaceholderNativeLibraryTimestamp(fileUpdatedAtMillis)) {
+            return appContext.packageUpdatedAtMillis()
+        }
+        return fileUpdatedAtMillis
+    }
+
     private suspend fun rememberInstalledXrayCoreVersion(
         candidate: java.io.File? = null,
         knownVersion: String? = null,
+        recordOperationTime: Boolean = false,
     ) {
         val installed = store.effectiveXrayCoreFile()
         val probed = candidate?.let(::probeXrayCoreVersion)
@@ -426,6 +466,9 @@ internal class AndroidResourceFileRepository(
         val version = probed ?: knownVersion?.trim()?.takeIf(String::isNotEmpty)
         if (version != null) {
             versionStore.setInstalledVersion(normalizeXrayCoreVersion(version))
+            if (recordOperationTime) {
+                versionStore.touchUpdatedAt()
+            }
             AndroidResourceFileLogger.info(
                 "Xray-core remembered version=$version probed=${probed != null}",
             )

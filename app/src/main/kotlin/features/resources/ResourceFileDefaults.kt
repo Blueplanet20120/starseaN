@@ -39,4 +39,4 @@ const val ResourceFileDirectCidrIpv4Url =
 const val ResourceFileDirectCidrIpv6Url =
     "https://raw.githubusercontent.com/mayaxcn/china-ip-list/master/chnroute_v6.txt"
 
-const val XrayCoreVersion = ProjectInfo.XRAY_CORE_VERSION
+const val XrayCoreVersion = ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION

@@ -18,12 +18,38 @@ object ProjectConfig {
     const val STARSEAD_VERSION = "v2.0.32"
     const val BPF2SOCKS_VERSION = "v1.0.15"
     const val BPF_MATCHER_VERSION = "v1.0.1"
-    const val XRAY_CORE_VERSION = "v26.9.9"
-    const val ANDROID_LIB_XRAY_LITE_VERSION = "v26.9.9"
+    const val ANDROID_LIB_XRAY_LITE_VERSION_FALLBACK = "v26.9.9"
     const val HEV_SOCKS5_TUNNEL_VERSION = "2.17.1"
     const val TARGET_SDK = 37
     const val MIN_SDK = 26
     val SUPPORTED_ANDROID_ABIS = listOf("arm64-v8a")
+}
+
+private const val AndroidLibXrayLiteReleasesApi =
+    "https://api.github.com/repos/Blueplanet20120/AndroidLibXrayLite/releases/latest"
+
+fun resolveAndroidLibXrayLiteVersion(project: Project? = null): String {
+    val pinned = project?.findProperty("androidLibXrayLiteVersion")?.toString()?.trim().orEmpty()
+    if (pinned.isNotEmpty()) {
+        return pinned
+    }
+    return fetchLatestAndroidLibXrayLiteTag() ?: ProjectConfig.ANDROID_LIB_XRAY_LITE_VERSION_FALLBACK
+}
+
+fun fetchLatestAndroidLibXrayLiteTag(): String? {
+    return try {
+        val connection = java.net.URI(AndroidLibXrayLiteReleasesApi).toURL()
+            .openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 8_000
+        connection.readTimeout = 8_000
+        connection.setRequestProperty("Accept", "application/vnd.github+json")
+        connection.setRequestProperty("User-Agent", "starseaN-gradle")
+        val body = connection.inputStream.bufferedReader().use { it.readText() }
+        val tag = Regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\"").find(body)?.groupValues?.get(1)?.trim()
+        tag?.takeIf { it.isNotEmpty() }
+    } catch (_: Exception) {
+        null
+    }
 }
 
 fun loadAppVersionName(rootDir: File): String {

@@ -14,13 +14,13 @@
             ]
         },
         {
-            "uniqueId": "github:2dust/AndroidLibXrayLite",
+            "uniqueId": "github:Blueplanet20120/AndroidLibXrayLite",
             "artifactVersion": "v26.9.9",
             "name": "AndroidLibXrayLite",
             "description": "Android AAR wrapper for Xray-core, built with gomobile.",
-            "website": "https://github.com/2dust/AndroidLibXrayLite",
+            "website": "https://github.com/Blueplanet20120/AndroidLibXrayLite",
             "scm": {
-                "url": "https://github.com/2dust/AndroidLibXrayLite"
+                "url": "https://github.com/Blueplanet20120/AndroidLibXrayLite"
             },
             "licenses": [
                 "LGPL-3.0"

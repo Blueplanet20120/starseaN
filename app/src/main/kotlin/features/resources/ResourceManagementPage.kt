@@ -327,7 +327,7 @@ fun ResourceManagementPage(
                         is ResourceFileUpdateRequest.XrayCore -> {
                             val version = resourceFileUseCase.refreshInstalledXrayCoreVersion()
                             xrayCoreVersion = version
-                            updatedOneMessage.formatTemplate("name" to "Xray-core $version")
+                            updatedOneMessage.formatTemplate("name" to "AndroidLibXrayLite $version")
                         }
                     }
                     tipNotifier.show(message)
@@ -381,7 +381,7 @@ fun ResourceManagementPage(
                 item(key = ResourceFileKind.XrayCore.fileName) {
                     val kind = ResourceFileKind.XrayCore
                     ResourceFileCard(
-                        fileName = "Xray-core $xrayCoreVersion",
+                        fileName = "AndroidLibXrayLite $xrayCoreVersion",
                         status = status.statusOf(kind),
                         updateState = if (checkingXrayCore) {
                             ResourceFileUpdateDisplayState.Running
@@ -403,7 +403,7 @@ fun ResourceManagementPage(
                                             xrayCoreVersion = version
                                         }
                                         tipNotifier.show(
-                                            replacedMessage.formatTemplate("name" to "Xray-core $version"),
+                                            replacedMessage.formatTemplate("name" to "AndroidLibXrayLite $version"),
                                         )
                                     }
                                 },
@@ -422,7 +422,7 @@ fun ResourceManagementPage(
                                             xrayCoreVersion = version
                                         }
                                         tipNotifier.show(
-                                            restoredMessage.formatTemplate("name" to "Xray-core $version"),
+                                            restoredMessage.formatTemplate("name" to "AndroidLibXrayLite $version"),
                                         )
                                     }
                                 },

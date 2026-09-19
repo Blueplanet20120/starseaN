@@ -52,12 +52,12 @@ abstract class GenerateAboutLibrariesJsonTask : DefaultTask() {
             "com.github.2dust:libv2ray" to
                 { version: String ->
                     library(
-                        "github:2dust/AndroidLibXrayLite",
+                        "github:Blueplanet20120/AndroidLibXrayLite",
                         version,
                         "AndroidLibXrayLite",
                         "Android AAR wrapper for Xray-core, built with gomobile.",
-                        "https://github.com/2dust/AndroidLibXrayLite",
-                        "https://github.com/2dust/AndroidLibXrayLite",
+                        "https://github.com/Blueplanet20120/AndroidLibXrayLite",
+                        "https://github.com/Blueplanet20120/AndroidLibXrayLite",
                         listOf("LGPL-3.0"),
                     )
                 },
@@ -128,7 +128,7 @@ abstract class GenerateAboutLibrariesJsonTask : DefaultTask() {
             ),
             library(
                 "github:XTLS/Xray-core",
-                ProjectConfig.XRAY_CORE_VERSION,
+                resolveAndroidLibXrayLiteVersion(project),
                 "Xray-core",
                 "An open platform for proxy and anti-censorship networking.",
                 "https://github.com/XTLS/Xray-core",

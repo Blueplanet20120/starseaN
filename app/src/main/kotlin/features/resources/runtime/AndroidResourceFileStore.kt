@@ -128,6 +128,10 @@ internal class AndroidResourceFileStore(
         publishCoreBinaryCandidate(candidate, file(ResourceFileKind.XrayCore), replaceExisting = true)
     }
 
+    fun removeLiteCompanionLibrary() {
+        File(dataDir, XrayGoJniLibraryName).delete()
+    }
+
     fun replace(kind: ResourceFileKind, uri: Uri) {
         require(kind != ResourceFileKind.XrayCore) { "Xray core must be replaced through the locked publisher" }
         dataDir.mkdirs()
@@ -144,56 +148,94 @@ internal class AndroidResourceFileStore(
         val uploaded = appContext.contentResolver.openInputStream(uri)?.use(::writeXrayCoreCandidate)
             ?: throw FileNotFoundException(uri.toString())
         val extracted = createXrayCoreCandidateFile()
+        val companion = File.createTempFile("libgojni-", ".so", appContext.cacheDir)
         val found = runCatching {
             ZipInputStream(uploaded.inputStream()).use { zip ->
-                var entry = zip.nextEntry
-                while (entry != null) {
-                    if (!entry.isDirectory && entry.name.substringAfterLast('/') == "xray") {
-                        extracted.outputStream().use { output ->
-                            zip.copyTo(output)
-                            output.flush()
-                            output.fd.sync()
-                        }
-                        return@runCatching true
-                    }
-                    zip.closeEntry()
-                    entry = zip.nextEntry
-                }
-                false
+                extractCoreEntries(zip, extracted, companion)
             }
         }.getOrDefault(false)
         return if (found) {
             uploaded.delete()
+            publishLiteCompanionIfPresent(companion)
+            companion.delete()
             extracted
         } else {
+            companion.delete()
             extracted.delete()
             uploaded
         }
     }
 
-    fun stageXrayCoreCandidateFromZip(zipFile: File): File {
+    fun stageXrayCoreCandidateFromAar(aarFile: File): File {
         val extracted = createXrayCoreCandidateFile()
-        val found = ZipInputStream(zipFile.inputStream()).use { zip ->
-            var entry = zip.nextEntry
-            while (entry != null) {
-                if (!entry.isDirectory && entry.name.substringAfterLast('/') == "xray") {
-                    extracted.outputStream().use { output ->
-                        zip.copyTo(output)
-                        output.flush()
-                        output.fd.sync()
-                    }
-                    return@use true
-                }
-                zip.closeEntry()
-                entry = zip.nextEntry
+        val companion = File.createTempFile("libgojni-", ".so", appContext.cacheDir)
+        val found = try {
+            ZipInputStream(aarFile.inputStream()).use { zip ->
+                extractCoreEntries(zip, extracted, companion)
             }
-            false
+        } catch (error: Throwable) {
+            extracted.delete()
+            companion.delete()
+            throw error
         }
         if (!found || extracted.length() <= 0L) {
             extracted.delete()
-            error("Archive does not contain xray")
+            companion.delete()
+            error("AAR does not contain jni/${currentRuntimeAbi()}/libxray.so")
         }
+        publishLiteCompanionIfPresent(companion)
+        companion.delete()
         return extracted
+    }
+
+    private fun publishLiteCompanionIfPresent(companion: File) {
+        if (companion.length() <= 0L) {
+            companion.delete()
+            return
+        }
+        publishCoreBinaryCandidate(
+            candidate = companion,
+            target = File(dataDir, XrayGoJniLibraryName),
+            replaceExisting = true,
+        )
+    }
+
+    private fun extractCoreEntries(
+        zip: ZipInputStream,
+        executable: File,
+        companion: File?,
+    ): Boolean {
+        val abi = currentRuntimeAbi()
+        val xrayJni = xrayAndroidJniEntry(abi, XrayCoreLibraryName)
+        val gojniJni = xrayAndroidJniEntry(abi, XrayGoJniLibraryName)
+        var foundExecutable = false
+        while (true) {
+            val entry = zip.nextEntry ?: break
+            if (entry.isDirectory) {
+                zip.closeEntry()
+                continue
+            }
+            val name = entry.name
+            val base = name.substringAfterLast('/')
+            val isExecutable = name == xrayJni || base == "xray" || base.equals(XrayCoreLibraryName, ignoreCase = true)
+            val isCompanion = companion != null && name == gojniJni
+            if (isExecutable && !foundExecutable) {
+                executable.outputStream().use { output ->
+                    zip.copyTo(output)
+                    output.flush()
+                    output.fd.sync()
+                }
+                foundExecutable = true
+            } else if (isCompanion) {
+                companion.outputStream().use { output ->
+                    zip.copyTo(output)
+                    output.flush()
+                    output.fd.sync()
+                }
+            }
+            zip.closeEntry()
+        }
+        return foundExecutable
     }
 
     private fun writeXrayCoreCandidate(input: java.io.InputStream): File {
@@ -364,7 +406,7 @@ internal fun currentRuntimeAbi(): String {
         ?: error("Unsupported CPU ABI: ${Build.SUPPORTED_ABIS.joinToString()}")
 }
 
-private fun Context.packageUpdatedAtMillis(): Long {
+internal fun Context.packageUpdatedAtMillis(): Long {
     return runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             packageManager
@@ -381,6 +423,7 @@ private const val StarseadLibraryName = "libstarsead.so"
 private const val BpfMatcherLibraryName = "libbpf-matcher.so"
 private const val Bpf2SocksLibraryName = "libbpf2socks.so"
 private const val XrayCoreLibraryName = "libxray.so"
+private const val XrayGoJniLibraryName = "libgojni.so"
 private const val HevSocks5TunnelLibraryName = "libhev-socks5-tunnel-cli.so"
 private const val XrayBundledResourceFilesDir = "xray"
 
