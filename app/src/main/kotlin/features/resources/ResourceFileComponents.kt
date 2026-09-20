@@ -42,6 +42,7 @@ import app.CustomResourceFileStatus
 import app.R
 import app.ResourceFileStatus
 import app.ResourceFileUpdateSource
+import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
@@ -56,7 +57,6 @@ import top.yukonga.miuix.kmp.icon.extended.Edit
 import top.yukonga.miuix.kmp.icon.extended.Refresh
 import top.yukonga.miuix.kmp.icon.extended.Replace
 import top.yukonga.miuix.kmp.icon.extended.Reset
-import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -184,7 +184,7 @@ internal fun ResourceFileSourceCard(
             checked = enableResourceUpdateViaProxy,
             onCheckedChange = onEnableResourceUpdateViaProxyChange,
         )
-        ArrowPreference(
+        BasicComponent(
             title = stringResource(
                 if (updating) R.string.common_cancel else R.string.settings_resource_files_update,
             ),
