@@ -472,17 +472,12 @@ internal fun SettingsBackupRestoreSection(
 @Composable
 internal fun SettingsAboutSection(
     onOpenAbout: () -> Unit,
-    onOpenLicenses: () -> Unit,
 ) {
     SmallTitle(text = stringResource(R.string.settings_about))
     SettingsSectionCard(bottomPadding = 0.dp) {
         ArrowPreference(
             title = stringResource(R.string.settings_about_project),
             onClick = onOpenAbout,
-        )
-        ArrowPreference(
-            title = stringResource(R.string.settings_open_source_licenses),
-            onClick = onOpenLicenses,
         )
     }
 }

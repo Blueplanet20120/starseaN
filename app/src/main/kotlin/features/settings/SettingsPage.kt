@@ -538,7 +538,6 @@ private fun SettingsContent(
             item(key = "settings_about") {
                 SettingsAboutSection(
                     onOpenAbout = { navigator.push(Route.About) },
-                    onOpenLicenses = { navigator.push(Route.License) },
                 )
             }
         }
