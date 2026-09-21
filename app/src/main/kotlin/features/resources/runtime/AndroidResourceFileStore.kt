@@ -189,6 +189,11 @@ internal class AndroidResourceFileStore(
             companion.delete()
             error("AAR does not contain jni/${currentRuntimeAbi()}/libxray.so")
         }
+        if (companion.length() <= 0L) {
+            extracted.delete()
+            companion.delete()
+            error("AAR does not contain jni/${currentRuntimeAbi()}/libgojni.so")
+        }
         publishLiteCompanionIfPresent(companion)
         companion.delete()
         return extracted
@@ -223,7 +228,7 @@ internal class AndroidResourceFileStore(
             }
             val name = entry.name
             val base = name.substringAfterLast('/')
-            val isExecutable = name == xrayJni || base == "xray" || base.equals(XrayCoreLibraryName, ignoreCase = true)
+            val isExecutable = name == xrayJni || (base == "xray" && name.count { it == '/' } < 2)
             val isCompanion = companion != null && name == gojniJni
             if (isExecutable && !foundExecutable) {
                 executable.outputStream().use { output ->
@@ -310,7 +315,19 @@ internal class AndroidResourceFileStore(
         if (restoreBundledFiles) {
             ensureBundledFiles()
         }
+        ensureLiteCorePermissions()
         return currentPaths()
+    }
+
+    fun ensureLiteCorePermissions() {
+        val publishedCore = file(ResourceFileKind.XrayCore)
+        if (publishedCore.isFile) {
+            publishedCore.applyCoreBinaryPermissions()
+        }
+        val publishedCompanion = File(dataDir, XrayGoJniLibraryName)
+        if (publishedCompanion.isFile) {
+            publishedCompanion.applyCoreBinaryPermissions()
+        }
     }
 
     fun currentPaths(): XrayResourceFilePaths {
@@ -388,6 +405,7 @@ internal fun Context.xrayResourceFilePaths(): XrayResourceFilePaths {
 
 internal fun Context.xrayRootResourceFilePaths(): XrayResourceFilePaths {
     val store = AndroidResourceFileStore(this)
+    store.ensureLiteCorePermissions()
     // VPN only needs resource paths; inspecting the custom CLI belongs to ROOT configuration.
     return store.currentPaths().copy(xrayCorePath = store.effectiveXrayCoreFile().absolutePath)
 }
@@ -471,6 +489,6 @@ private fun replaceFile(source: File, target: File) {
 
 private fun ResourceFileKind.applyPermissions(file: File) {
     if (this == ResourceFileKind.XrayCore) {
-        file.setExecutable(true, false)
+        file.applyCoreBinaryPermissions()
     }
 }

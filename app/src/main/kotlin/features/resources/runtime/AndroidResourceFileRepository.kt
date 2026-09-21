@@ -171,6 +171,10 @@ internal class AndroidResourceFileRepository(
             versionStore.setInstalledVersion(ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION)
             return ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION
         }
+        val existing = versionStore.installedVersion()
+        if (existing.isNotBlank()) {
+            return existing
+        }
         rememberInstalledXrayCoreVersion()
         return versionStore.installedVersion()
     }
@@ -505,23 +509,27 @@ internal class AndroidResourceFileRepository(
         knownVersion: String? = null,
         recordOperationTime: Boolean = false,
     ) {
-        val installed = store.effectiveXrayCoreFile()
-        val probed = candidate?.let(::probeXrayCoreVersion)
-            ?: probeXrayCoreVersion(installed)
-            ?: probeXrayCoreVersionWithShell(installed) { command ->
-                val result = rootShell.exec(command, ShellExecOptions(logFailure = false))
-                listOf(result.stdout, result.stderr)
-                    .filter { it.isNotBlank() }
-                    .joinToString("\n")
-            }
-        val version = probed ?: knownVersion?.trim()?.takeIf(String::isNotEmpty)
+        val normalizedKnownVersion = knownVersion?.trim()?.takeIf(String::isNotEmpty)
+        val version = if (normalizedKnownVersion != null) {
+            normalizedKnownVersion
+        } else {
+            val installed = store.effectiveXrayCoreFile()
+            candidate?.let(::probeXrayCoreVersion)
+                ?: probeXrayCoreVersion(installed)
+                ?: probeXrayCoreVersionWithShell(installed) { command ->
+                    val result = rootShell.exec(command, ShellExecOptions(logFailure = false))
+                    listOf(result.stdout, result.stderr)
+                        .filter { it.isNotBlank() }
+                        .joinToString("\n")
+                }
+        }
         if (version != null) {
             versionStore.setInstalledVersion(normalizeXrayCoreVersion(version))
             if (recordOperationTime) {
                 versionStore.touchUpdatedAt()
             }
             AndroidResourceFileLogger.info(
-                "Xray-core remembered version=$version probed=${probed != null}",
+                "Xray-core remembered version=$version knownVersion=${normalizedKnownVersion != null}",
             )
         }
     }
