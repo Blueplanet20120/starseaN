@@ -178,7 +178,7 @@ internal fun AboutUpdateSection(
                     withContext(Dispatchers.IO) {
                         AndroidResourceFileDownloadCancellation.begin()
                         var lastPercent = Int.MIN_VALUE
-                        downloader.download(url, file, proxy) { downloaded, total ->
+                        downloader.downloadMultipart(url, file, proxy) { downloaded, total ->
                             val percent = if (total > 0L) {
                                 ((downloaded * 100) / total).toInt().coerceIn(0, 100)
                             } else {

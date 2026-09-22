@@ -14,6 +14,12 @@ import java.net.InetSocketAddress
 import java.net.PasswordAuthentication
 import java.net.Proxy
 import java.net.URI
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 internal class ResourceFileHttpException(
     val code: Int,
@@ -37,6 +43,196 @@ internal class AndroidResourceFileDownloader {
             }
         }
         downloadWithRetries(url, target, null, onProgress)
+    }
+
+    fun downloadMultipart(
+        url: String,
+        target: File,
+        proxy: AndroidResourceFileDownloadProxy? = null,
+        workers: Int = MultipartWorkers,
+        onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit = { _, _ -> },
+    ) {
+        val routes = buildList {
+            if (proxy != null) add(proxy)
+            add(null)
+        }.distinct()
+        var lastError: Throwable? = null
+        for (route in routes) {
+            try {
+                runWithProxy(route) {
+                    downloadMultipartOrSingle(url, target, route, workers, onProgress)
+                }
+                return
+            } catch (error: Throwable) {
+                if (error is AndroidResourceFileDownloadCancelledException ||
+                    AndroidResourceFileDownloadCancellation.isCancelled()
+                ) {
+                    throw AndroidResourceFileDownloadCancelledException()
+                }
+                lastError = error
+                if (route == null) throw error
+                target.delete()
+                AndroidResourceFileLogger.info("Proxy download failed, falling back to direct connection")
+            }
+        }
+        throw lastError ?: error("Download failed")
+    }
+
+    private fun downloadMultipartOrSingle(
+        url: String,
+        target: File,
+        proxy: AndroidResourceFileDownloadProxy?,
+        workers: Int,
+        onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit,
+    ) {
+        val remote = probeRemoteFile(url, proxy)
+        val partCount = workers.coerceIn(1, MultipartWorkers)
+        if (remote.ranged && remote.total >= MultipartMinBytes && partCount > 1) {
+            try {
+                AndroidResourceFileLogger.info(
+                    "Multipart download parts=$partCount bytes=${remote.total} proxy=${proxy != null}",
+                )
+                downloadRanges(remote, target, proxy, partCount, onProgress)
+                return
+            } catch (error: Throwable) {
+                if (error is AndroidResourceFileDownloadCancelledException ||
+                    AndroidResourceFileDownloadCancellation.isCancelled()
+                ) {
+                    throw error
+                }
+                target.delete()
+                AndroidResourceFileLogger.info("Multipart download failed, using one connection")
+            }
+        }
+        downloadWithRetries(remote.url, target, proxy, onProgress)
+    }
+
+    private fun probeRemoteFile(
+        url: String,
+        proxy: AndroidResourceFileDownloadProxy?,
+    ): RemoteFile {
+        val finalUrl = resolveRedirectChain(url, proxy).last()
+        val connection = URI.create(finalUrl).toUrlConnection(proxy)
+        try {
+            connection.setRequestProperty("Range", "bytes=0-0")
+            AndroidResourceFileDownloadCancellation.track(connection)
+            val code = connection.responseCode
+            AndroidResourceFileDownloadCancellation.throwIfCancelled()
+            if (code == HttpURLConnection.HTTP_PARTIAL) {
+                val total = contentRangeTotal(connection.getHeaderField("Content-Range"))
+                if (total > 0L) return RemoteFile(finalUrl, total, ranged = true)
+            }
+            return RemoteFile(finalUrl, connection.contentLengthLong, ranged = false)
+        } finally {
+            AndroidResourceFileDownloadCancellation.untrack(connection)
+            connection.disconnect()
+        }
+    }
+
+    private fun downloadRanges(
+        remote: RemoteFile,
+        target: File,
+        proxy: AndroidResourceFileDownloadProxy?,
+        workers: Int,
+        onProgress: (downloadedBytes: Long, totalBytes: Long) -> Unit,
+    ) {
+        target.parentFile?.mkdirs()
+        FileChannel.open(
+            target.toPath(),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.WRITE,
+            StandardOpenOption.TRUNCATE_EXISTING,
+        ).use { channel ->
+            channel.truncate(remote.total)
+        }
+        val chunk = remote.total / workers
+        val downloaded = AtomicLong(0L)
+        val firstError = AtomicReference<Throwable?>(null)
+        val pool = Executors.newFixedThreadPool(workers) { runnable ->
+            Thread(runnable, "app-update-download").apply { isDaemon = true }
+        }
+        try {
+            val tasks = (0 until workers).map { index ->
+                val start = index * chunk
+                val end = if (index == workers - 1) remote.total - 1 else (index + 1) * chunk - 1
+                pool.submit {
+                    try {
+                        downloadRange(remote.url, target, proxy, start, end) { count ->
+                            onProgress(downloaded.addAndGet(count), remote.total)
+                        }
+                    } catch (error: Throwable) {
+                        if (firstError.compareAndSet(null, error) &&
+                            !AndroidResourceFileDownloadCancellation.isCancelled()
+                        ) {
+                            AndroidResourceFileDownloadCancellation.disconnectTracked()
+                        }
+                    }
+                }
+            }
+            tasks.forEach { task -> task.get() }
+            val error = firstError.get()
+            if (error != null) throw error
+            if (downloaded.get() != remote.total) {
+                error("Incomplete download ${downloaded.get()}/${remote.total}")
+            }
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+
+    private fun downloadRange(
+        url: String,
+        target: File,
+        proxy: AndroidResourceFileDownloadProxy?,
+        start: Long,
+        end: Long,
+        onBytes: (Long) -> Unit,
+    ) {
+        val connection = URI.create(url).toUrlConnection(proxy)
+        try {
+            connection.setRequestProperty("Range", "bytes=$start-$end")
+            AndroidResourceFileDownloadCancellation.track(connection)
+            val code = connection.responseCode
+            AndroidResourceFileDownloadCancellation.throwIfCancelled()
+            if (code != HttpURLConnection.HTTP_PARTIAL) {
+                throw IOException("Range request was not accepted")
+            }
+            connection.inputStream.use { input ->
+                FileChannel.open(target.toPath(), StandardOpenOption.WRITE).use { channel ->
+                    val buffer = ByteArray(MultipartBufferSize)
+                    var position = start
+                    while (true) {
+                        AndroidResourceFileDownloadCancellation.throwIfCancelled()
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        val data = ByteBuffer.wrap(buffer, 0, read)
+                        while (data.hasRemaining()) {
+                            val written = channel.write(data, position)
+                            if (written <= 0) throw IOException("Write stalled")
+                            position += written
+                        }
+                        onBytes(read.toLong())
+                    }
+                    if (position != end + 1) {
+                        throw IOException("Short range $start-$end")
+                    }
+                }
+            }
+        } finally {
+            AndroidResourceFileDownloadCancellation.untrack(connection)
+            connection.disconnect()
+        }
+    }
+
+    private fun runWithProxy(
+        proxy: AndroidResourceFileDownloadProxy?,
+        block: () -> Unit,
+    ) {
+        if (proxy == null) {
+            block()
+        } else {
+            proxy.withAuthenticator(block)
+        }
     }
 
     private fun downloadWithRetries(
@@ -327,6 +523,20 @@ private val ProxyAuthenticatorLock = Any()
 private const val MaxRedirects = 5
 private const val MaxRetries = 3
 private const val RetryBackoffMs = 1000L
+private const val MultipartWorkers = 4
+private const val MultipartMinBytes = 4L * 1024L * 1024L
+private const val MultipartBufferSize = 64 * 1024
+
+private data class RemoteFile(
+    val url: String,
+    val total: Long,
+    val ranged: Boolean,
+)
+
+private fun contentRangeTotal(header: String?): Long {
+    val total = header?.substringAfter('/', "")?.trim().orEmpty()
+    return total.toLongOrNull() ?: -1L
+}
 private const val ResourceFileDefaultUserAgent =
     "${ProjectInfo.PROJECT_NAME}/${ProjectInfo.VERSION_NAME} (+https://github.com/Blueplanet20120/starseaN)"
 

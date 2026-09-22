@@ -4,30 +4,39 @@
 package features.resources.runtime
 
 import java.net.HttpURLConnection
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 
 internal object AndroidResourceFileDownloadCancellation {
     private val cancelled = AtomicBoolean(false)
-    private val connection = AtomicReference<HttpURLConnection?>(null)
+    private val connections = ConcurrentHashMap.newKeySet<HttpURLConnection>()
 
     fun begin() {
         cancelled.set(false)
-        connection.set(null)
+        connections.clear()
     }
 
     fun cancel() {
         cancelled.set(true)
-        connection.get()?.disconnect()
+        disconnectTracked()
+    }
+
+    fun disconnectTracked() {
+        connections.forEach { connection ->
+            runCatching { connection.disconnect() }
+        }
     }
 
     fun track(connection: HttpURLConnection) {
-        this.connection.set(connection)
-        throwIfCancelled()
+        connections.add(connection)
+        if (cancelled.get()) {
+            connection.disconnect()
+            throw AndroidResourceFileDownloadCancelledException()
+        }
     }
 
     fun untrack(connection: HttpURLConnection) {
-        this.connection.compareAndSet(connection, null)
+        connections.remove(connection)
     }
 
     fun isCancelled(): Boolean {
