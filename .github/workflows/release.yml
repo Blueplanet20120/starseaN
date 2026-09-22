@@ -316,8 +316,9 @@ jobs:
               *universal*) abi="universal" ;;
             esac
 
-            cp "$apk" "release-artifacts/starseaN_${version_name}-${version_code}-${abi}.apk"
-            cp "$apk" "github-release-artifacts/starseaN-${abi}.apk"
+            versioned_apk="starseaN_${version_name}-${version_code}-${abi}.apk"
+            cp "$apk" "release-artifacts/${versioned_apk}"
+            cp "$apk" "github-release-artifacts/${versioned_apk}"
           done
 
           if ! find release-artifacts -type f -name "*.apk" | grep -q .; then
