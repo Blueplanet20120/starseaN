@@ -64,6 +64,19 @@ jobs:
             echo "${major}.${minor}.$((10#$patch + 1))"
           }
 
+          max_semver() {
+            local winner="" value
+            for value in "$@"; do
+              if ! is_semver "$value"; then
+                continue
+              fi
+              if [ -z "$winner" ] || [ "$(printf '%s\n%s\n' "$winner" "$value" | sort -V | tail -n 1)" = "$value" ]; then
+                winner="$value"
+              fi
+            done
+            printf '%s\n' "$winner"
+          }
+
           version_name="$(sed -n 's/^[[:space:]]*VERSION_NAME=//p' version.properties | head -n 1 | tr -d '\r')"
           if [ -z "$version_name" ]; then
             echo "::error::Unable to read VERSION_NAME from version.properties."
@@ -98,18 +111,24 @@ jobs:
             fi
             if is_semver "$cached"; then
               echo "Restored last release version cache: $cached"
-              if [ "$cached" = "$version_name" ]; then
-                version_name="$(increment_patch "$cached")"
-                echo "::notice::Cache already published $cached; bumping VERSION_NAME to $version_name."
-              elif [ "$(printf '%s\n%s\n' "$version_name" "$cached" | sort -V | tail -n1)" = "$cached" ]; then
-                version_name="$cached"
-                echo "::notice::Cache last version $cached is newer than $original_version; starting from cache."
-                version_name="$(increment_patch "$version_name")"
-                echo "::notice::Bumping VERSION_NAME to $version_name for this run."
-              fi
             fi
 
+            mapfile -t published_versions < <(git tag -l 'v*' | sed -n 's/^v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$/\1/p')
+            highest_published="$(max_semver "$version_name" "$cached" "${published_versions[@]+"${published_versions[@]}"}")"
             current_sha="$(git rev-parse HEAD)"
+            mapfile -t commit_versions < <(git tag --points-at "$current_sha" | sed -n 's/^v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$/\1/p')
+            reuse_version="$(max_semver "${commit_versions[@]+"${commit_versions[@]}"}")"
+
+            if [ -n "${REQUESTED_VERSION_NAME:-}" ]; then
+              echo "Using requested VERSION_NAME=$version_name"
+            elif [ -n "$reuse_version" ]; then
+              version_name="$reuse_version"
+              echo "Tag v$version_name already points at the current commit."
+            else
+              version_name="$(increment_patch "$highest_published")"
+              echo "::notice::Cloud build bumps VERSION_NAME $highest_published -> $version_name."
+            fi
+
             bumps=0
             while [ "$bumps" -lt 50 ]; do
               tag_name="v$version_name"
