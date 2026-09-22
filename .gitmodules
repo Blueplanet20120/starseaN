@@ -1,10 +1,6 @@
 [submodule "hevtun/src/main/jni/hev-socks5-tunnel"]
 	path = hevtun/src/main/jni/hev-socks5-tunnel
 	url = https://github.com/heiher/hev-socks5-tunnel
-[submodule "starsead/src/main/native"]
-	path = starsead/src/main/native
-	url = https://github.com/Asterisk4Magisk/asteriskd.git
-	ignore = dirty
 [submodule "bpf2socks/src/main/native"]
 	path = bpf2socks/src/main/native
 	url = https://github.com/Asterisk4Magisk/bpf2socks.git

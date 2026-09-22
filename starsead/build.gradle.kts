@@ -30,15 +30,7 @@ android {
     }
 }
 
-val syncStarseadVersion = tasks.register<SyncGitSubmoduleVersionTask>("syncStarseadVersion") {
-    submoduleVersion.set(ProjectConfig.STARSEAD_VERSION)
-    repositoryRootDirectory.set(rootProject.layout.projectDirectory)
-    submoduleDirectory.set(starseadSubmoduleDir)
-    submodulePath.set(starseadSubmoduleDir.asFile.relativeTo(rootProject.projectDir).invariantSeparatorsPath)
-}
-
 val buildStarsead = tasks.register<BuildStarseadTask>("buildStarsead") {
-    dependsOn(syncStarseadVersion)
     sourceDirectory.set(starseadSubmoduleDir)
     outputDirectory.set(generatedJniLibsDir)
     rootProject.layout.projectDirectory.file("local.properties")

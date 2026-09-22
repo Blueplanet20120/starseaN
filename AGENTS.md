@@ -70,7 +70,6 @@ Use the repository's Gradle wrapper on Windows/PowerShell. When native submodule
 
 ```powershell
 .\gradlew.bat :app:test :app:lintDebug :app:assembleDebug `
-  -x :starsead:syncStarseadVersion `
   -x :bpfmatcher:syncBpfMatcherVersion `
   -x :bpf2socks:syncBpf2SocksVersion `
   -x :hevtun:syncHevSocks5TunnelVersion
