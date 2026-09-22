@@ -316,7 +316,7 @@ jobs:
               *universal*) abi="universal" ;;
             esac
 
-            versioned_apk="starseaN_${version_name}-${version_code}-${abi}.apk"
+            versioned_apk="starseaN_${abi}_v${version_name}.apk"
             cp "$apk" "release-artifacts/${versioned_apk}"
             cp "$apk" "github-release-artifacts/${versioned_apk}"
           done
@@ -338,7 +338,7 @@ jobs:
       - name: Upload arm64-v8a APK artifact
         uses: actions/upload-artifact@v7
         with:
-          path: release-artifacts/*-arm64-v8a.apk
+          path: release-artifacts/starseaN_arm64-v8a_*.apk
           if-no-files-found: error
           archive: false
 
