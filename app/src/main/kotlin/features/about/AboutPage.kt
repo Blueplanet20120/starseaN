@@ -70,6 +70,9 @@ fun AboutPage(
                 item(key = "about_header") {
                     AboutHeader()
                 }
+                item(key = "about_update") {
+                    AboutUpdateSection()
+                }
                 item(key = "about_runtime") {
                     AboutRuntimeCard()
                 }

@@ -290,7 +290,7 @@
     <string name="settings_access_logs">访问日志</string>
     <string name="settings_logcat">Logcat</string>
     <string name="settings_about">关于</string>
-    <string name="settings_about_project">关于项目</string>
+    <string name="settings_about_project">关于项目及更新</string>
     <string name="settings_open_source_licenses">开源许可</string>
     <string name="settings_transparent_proxy_port">透明代理端口</string>
     <string name="settings_tun2socks_socks5_port">TUN2SOCKS SOCKS5 端口</string>
@@ -332,8 +332,17 @@
     <string name="theme_color_coffee">咖啡色</string>
 
     <!-- About and licenses -->
-    <string name="about_title">关于</string>
+    <string name="about_title">关于项目及更新</string>
     <string name="about_runtime">运行环境</string>
+    <string name="about_update">软件更新</string>
+    <string name="about_check_update">检查更新</string>
+    <string name="about_check_update_summary">当前版本 {version}</string>
+    <string name="about_checking_update">正在检查更新</string>
+    <string name="about_already_latest">当前已是最新版本 {version}</string>
+    <string name="about_update_title">发现新版本</string>
+    <string name="about_update_current">当前版本 {version}</string>
+    <string name="about_update_latest">最新版本 {version}</string>
+    <string name="about_check_update_failed">检查更新失败</string>
     <string name="license_title">第三方开源许可</string>
 
     <!-- Logs -->

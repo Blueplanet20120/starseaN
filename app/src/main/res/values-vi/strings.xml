@@ -290,7 +290,7 @@
     <string name="settings_access_logs">Nhật ký truy cập</string>
     <string name="settings_logcat">Logcat</string>
     <string name="settings_about">Giới thiệu</string>
-    <string name="settings_about_project">Về dự án</string>
+    <string name="settings_about_project">Về dự án và cập nhật</string>
     <string name="settings_open_source_licenses">Giấy phép mã nguồn mở</string>
     <string name="settings_transparent_proxy_port">Cổng proxy trong suốt</string>
     <string name="settings_tun2socks_socks5_port">Cổng SOCKS5 TUN2SOCKS</string>
@@ -332,8 +332,17 @@
     <string name="theme_color_coffee">Nâu cà phê</string>
 
     <!-- About and licenses -->
-    <string name="about_title">Giới thiệu</string>
+    <string name="about_title">Về dự án và cập nhật</string>
     <string name="about_runtime">Môi trường chạy</string>
+    <string name="about_update">Cập nhật phần mềm</string>
+    <string name="about_check_update">Kiểm tra cập nhật</string>
+    <string name="about_check_update_summary">Phiên bản hiện tại {version}</string>
+    <string name="about_checking_update">Đang kiểm tra cập nhật</string>
+    <string name="about_already_latest">Đã là phiên bản mới nhất {version}</string>
+    <string name="about_update_title">Có phiên bản mới</string>
+    <string name="about_update_current">Phiên bản hiện tại {version}</string>
+    <string name="about_update_latest">Phiên bản mới nhất {version}</string>
+    <string name="about_check_update_failed">Kiểm tra cập nhật thất bại</string>
     <string name="license_title">Giấy phép mã nguồn mở bên thứ ba</string>
 
     <!-- Logs -->

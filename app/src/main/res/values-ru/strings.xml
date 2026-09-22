@@ -255,7 +255,7 @@
     <string name="settings_access_logs">Логи доступа</string>
     <string name="settings_logcat">Лог Android (Logcat)</string>
     <string name="settings_about">О программе</string>
-    <string name="settings_about_project">О проекте</string>
+    <string name="settings_about_project">О проекте и обновлениях</string>
     <string name="settings_open_source_licenses">Лицензии ПО с открытым исходным кодом</string>
     <string name="settings_transparent_proxy_port">Порт прозрачного прокси</string>
     <string name="settings_tun2socks_socks5_port">Порт TUN2SOCKS SOCKS5</string>
@@ -295,8 +295,17 @@
     <string name="theme_color_cyan">Циановый</string>
     <string name="theme_color_coffee">Кофейный</string>
 
-    <string name="about_title">О программе</string>
+    <string name="about_title">О проекте и обновлениях</string>
     <string name="about_runtime">Среда выполнения</string>
+    <string name="about_update">Обновление</string>
+    <string name="about_check_update">Проверить обновления</string>
+    <string name="about_check_update_summary">Текущая версия {version}</string>
+    <string name="about_checking_update">Проверка обновлений</string>
+    <string name="about_already_latest">Уже последняя версия {version}</string>
+    <string name="about_update_title">Доступно обновление</string>
+    <string name="about_update_current">Текущая версия {version}</string>
+    <string name="about_update_latest">Последняя версия {version}</string>
+    <string name="about_check_update_failed">Не удалось проверить обновления</string>
     <string name="license_title">Сторонние лицензии</string>
 
     <string name="core_logs_title">Логи ядра</string>
