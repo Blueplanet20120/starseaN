@@ -343,6 +343,11 @@
     <string name="about_update_current">Phiên bản hiện tại {version}</string>
     <string name="about_update_latest">Phiên bản mới nhất {version}</string>
     <string name="about_check_update_failed">Kiểm tra cập nhật thất bại</string>
+    <string name="about_update_downloading">Đang tải {percent}%</string>
+    <string name="about_update_downloading_unknown">Đang tải xuống</string>
+    <string name="about_update_download_failed">Tải xuống thất bại</string>
+    <string name="about_update_install">Cài đặt</string>
+    <string name="about_update_allow_install">Hãy cho phép cài ứng dụng không rõ nguồn rồi cài đặt</string>
     <string name="license_title">Giấy phép mã nguồn mở bên thứ ba</string>
 
     <!-- Logs -->

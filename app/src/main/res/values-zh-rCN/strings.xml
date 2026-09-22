@@ -343,6 +343,11 @@
     <string name="about_update_current">当前版本 {version}</string>
     <string name="about_update_latest">最新版本 {version}</string>
     <string name="about_check_update_failed">检查更新失败</string>
+    <string name="about_update_downloading">正在下载 {percent}%</string>
+    <string name="about_update_downloading_unknown">正在下载</string>
+    <string name="about_update_download_failed">下载失败</string>
+    <string name="about_update_install">安装</string>
+    <string name="about_update_allow_install">请允许安装未知应用后再安装</string>
     <string name="license_title">第三方开源许可</string>
 
     <!-- Logs -->

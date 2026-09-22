@@ -343,6 +343,11 @@
     <string name="about_update_current">Current version {version}</string>
     <string name="about_update_latest">Latest version {version}</string>
     <string name="about_check_update_failed">Update check failed</string>
+    <string name="about_update_downloading">Downloading {percent}%</string>
+    <string name="about_update_downloading_unknown">Downloading</string>
+    <string name="about_update_download_failed">Download failed</string>
+    <string name="about_update_install">Install</string>
+    <string name="about_update_allow_install">Allow this app to install unknown apps, then install</string>
     <string name="license_title">Third Party Licenses</string>
 
     <!-- Logs -->

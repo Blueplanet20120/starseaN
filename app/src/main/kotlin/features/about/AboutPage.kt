@@ -5,6 +5,7 @@
 
 package features.about
 
+import android.content.pm.ApplicationInfo
 import app.LocalIsWideScreen
 import app.LocalNavigator
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import app.R
 import ui.components.BackNavigationIcon
@@ -31,12 +33,19 @@ import ui.layout.pageScrollModifiers
 import top.yukonga.miuix.kmp.interfaces.ExperimentalScrollBarApi
 
 @Composable
+private fun isDebuggableBuild(): Boolean {
+    val flags = LocalContext.current.applicationInfo.flags
+    return (flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+}
+
+@Composable
 fun AboutPage(
     padding: PaddingValues,
 ) {
     val isWideScreen = LocalIsWideScreen.current
     val navigator = LocalNavigator.current
     val topAppBarScrollBehavior = MiuixScrollBehavior()
+    val showUpdateCheck = !isDebuggableBuild()
 
     Scaffold(
         topBar = {
@@ -70,8 +79,10 @@ fun AboutPage(
                 item(key = "about_header") {
                     AboutHeader()
                 }
-                item(key = "about_update") {
-                    AboutUpdateSection()
+                if (showUpdateCheck) {
+                    item(key = "about_update") {
+                        AboutUpdateSection()
+                    }
                 }
                 item(key = "about_runtime") {
                     AboutRuntimeCard()

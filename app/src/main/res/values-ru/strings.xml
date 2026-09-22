@@ -306,6 +306,11 @@
     <string name="about_update_current">Текущая версия {version}</string>
     <string name="about_update_latest">Последняя версия {version}</string>
     <string name="about_check_update_failed">Не удалось проверить обновления</string>
+    <string name="about_update_downloading">Загрузка {percent}%</string>
+    <string name="about_update_downloading_unknown">Загрузка</string>
+    <string name="about_update_download_failed">Не удалось скачать</string>
+    <string name="about_update_install">Установить</string>
+    <string name="about_update_allow_install">Разрешите установку приложений, затем установите</string>
     <string name="license_title">Сторонние лицензии</string>
 
     <string name="core_logs_title">Логи ядра</string>
