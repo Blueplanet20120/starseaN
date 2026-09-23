@@ -82,7 +82,7 @@ fun SettingsPage(
                     title = stringResource(R.string.settings_title),
                     isWideScreen = isWideScreen,
                     scrollBehavior = topAppBarScrollBehavior,
-                    subtitle = "v${ProjectInfo.VERSION_NAME} (${ProjectInfo.VERSION_CODE})",
+                    subtitle = "v${ProjectInfo.VERSION_NAME} (${ProjectInfo.COMMIT_COUNT})",
                 )
             }
         },

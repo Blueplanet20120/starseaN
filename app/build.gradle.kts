@@ -19,6 +19,7 @@ val protobufVersion = versionCatalog.findVersion("protobuf").get().requiredVersi
 val grpcVersion = versionCatalog.findVersion("grpc").get().requiredVersion
 val releaseVersionName = appVersionName()
 val releaseVersionCode = appVersionCode()
+val releaseCommitCount = appCommitCount()
 val packagedAbis = nativeAndroidAbis()
 val liteVersion = resolveAndroidLibXrayLiteVersion(project)
 logger.lifecycle("[提示] AndroidLibXrayLite 依赖版本: $liteVersion。")
@@ -187,6 +188,7 @@ val generateProjectInfo = tasks.register<GenerateProjectInfoTask>("generateProje
     projectName.set(ProjectConfig.PROJECT_NAME)
     versionName.set(releaseVersionName)
     versionCode.set(releaseVersionCode)
+    commitCount.set(releaseCommitCount)
     xrayCoreVersion.set(liteVersion)
     androidLibXrayLiteVersion.set(liteVersion)
     hevSocks5TunnelVersion.set(ProjectConfig.HEV_SOCKS5_TUNNEL_VERSION)

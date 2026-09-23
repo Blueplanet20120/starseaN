@@ -63,7 +63,7 @@ internal fun AboutHeader(
             color = MiuixTheme.colorScheme.onBackground,
         )
         Text(
-            text = "v${ProjectInfo.VERSION_NAME} (${ProjectInfo.VERSION_CODE})",
+            text = "v${ProjectInfo.VERSION_NAME} (${ProjectInfo.COMMIT_COUNT})",
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         )
     }

@@ -5,6 +5,8 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.ValueSource
+import org.gradle.api.provider.ValueSourceParameters
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
@@ -142,6 +144,41 @@ fun Project.appVersionName(): String = loadAppVersionName(rootProject.projectDir
 
 fun Project.appVersionCode(): Int = versionCodeFromName(appVersionName())
 
+fun Project.appCommitCount(): Int {
+    val head = resolveGitHead(rootProject.projectDir)
+    return providers.of(GitCommitCountSource::class.java) {
+        parameters.repository.set(rootProject.layout.projectDirectory)
+        parameters.head.set(head)
+    }.get()
+}
+
+private fun resolveGitHead(root: File): String {
+    val gitDir = File(root, ".git")
+    val headFile = File(gitDir, "HEAD")
+    if (!headFile.isFile) return "unknown"
+    val text = headFile.readText().trim()
+    if (!text.startsWith("ref:")) return text
+    val ref = File(gitDir, text.removePrefix("ref:").trim())
+    return if (ref.isFile) ref.readText().trim() else text
+}
+
+abstract class GitCommitCountSource : ValueSource<Int, GitCommitCountSource.Params> {
+    interface Params : ValueSourceParameters {
+        val repository: DirectoryProperty
+        val head: Property<String>
+    }
+
+    override fun obtain(): Int {
+        val directory = parameters.repository.asFile.get()
+        val process = ProcessBuilder("git", "-C", directory.absolutePath, "rev-list", "--count", "HEAD")
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().readText().trim()
+        val finished = process.waitFor()
+        return output.toIntOrNull()?.takeIf { finished == 0 } ?: 0
+    }
+}
+
 fun versionCodeFromName(versionName: String): Int {
     val core = versionName
         .trim()
@@ -170,6 +207,9 @@ abstract class GenerateProjectInfoTask : DefaultTask() {
     abstract val versionCode: Property<Int>
 
     @get:Input
+    abstract val commitCount: Property<Int>
+
+    @get:Input
     abstract val xrayCoreVersion: Property<String>
 
     @get:Input
@@ -194,6 +234,7 @@ abstract class GenerateProjectInfoTask : DefaultTask() {
                 const val PROJECT_NAME = "${projectName.get()}"
                 const val VERSION_NAME = "${versionName.get()}"
                 const val VERSION_CODE = ${versionCode.get()}
+                const val COMMIT_COUNT = ${commitCount.get()}
                 const val XRAY_CORE_VERSION = "${xrayCoreVersion.get()}"
                 const val ANDROID_LIB_XRAY_LITE_VERSION = "${androidLibXrayLiteVersion.get()}"
                 const val HEV_SOCKS5_TUNNEL_VERSION = "${hevSocks5TunnelVersion.get()}"
