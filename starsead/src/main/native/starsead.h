@@ -34,7 +34,6 @@ struct starsead_resource_operation;
 #define STARSEAD_MAX_COMMAND_MARKER 256U
 #define STARSEAD_SYNC_DEBOUNCE_MILLIS 1500
 #define STARSEAD_STATE_VERSION 2U
-#define STARSEAD_STATE_LEAF "starsead.state"
 #define STARSEAD_LEGACY_ROUTE_LOCALNET_LEAF "starsead.state.route-localnet"
 #define STARSEAD_MAX_CHILD_ARGV 16U
 #define STARSEAD_MAX_PROCESS_ARGV 32U
@@ -672,6 +671,7 @@ enum starsead_process_output_mode {
 struct starsead_process_spec {
     char executable_path[STARSEAD_MAX_PATH];
     char working_directory[STARSEAD_MAX_PATH];
+    char output_path[STARSEAD_MAX_PATH];
     uint32_t uid;
     uint32_t gid;
     char argv[STARSEAD_MAX_PROCESS_ARGV][STARSEAD_MAX_CHILD_ARG];
@@ -749,6 +749,7 @@ int starsead_process_argument_add(
     struct starsead_process_spec *, const char *);
 int starsead_process_core_log_path(
     const struct starsead_process_spec *, char *, size_t);
+int starsead_log_sibling_path(const char *, const char *, char *, size_t);
 int starsead_helper_render_documents(
     const struct starsead_config *, int, int,
     struct starsead_helper_documents *, char *, size_t);
@@ -1751,6 +1752,7 @@ struct starsead_state_file_backend {
 
 struct starsead_state_store {
     int directory_fd;
+    char file_name[STARSEAD_MAX_PATH];
     bool directory_fd_owned;
     uint64_t directory_device;
     uint64_t directory_inode;
@@ -1784,9 +1786,9 @@ bool starsead_state_is_stopped(const struct starsead_state_document *);
 int starsead_state_serialize(
     const struct starsead_state_document *, char **, size_t *, char *, size_t);
 int starsead_state_store_init(
-    struct starsead_state_store *, int, uint64_t, uint64_t, char *, size_t);
+    struct starsead_state_store *, const char *, char *, size_t);
 int starsead_state_store_init_with_backend(
-    struct starsead_state_store *, int, uint64_t, uint64_t,
+    struct starsead_state_store *, int, uint64_t, uint64_t, const char *,
     const struct starsead_state_file_backend *, void *, char *, size_t);
 int starsead_state_store_save(
     struct starsead_state_store *, const struct starsead_state_document *, char *, size_t);

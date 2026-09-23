@@ -5,6 +5,8 @@
 
 package features.resources
 
+import features.resources.runtime.withScannedResourceFiles
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -203,11 +205,11 @@ fun ResourceManagementPage(
 
     fun validatedCustomResourceFileName(name: String, reservedNames: Set<String>): String? {
         val fileName = customResourceFileNameOrNull(name)
-        if (fileName == null) {
+        if (fileName == null || !isSupportedCustomResourceName(fileName)) {
             showResourceFileEditorError(customResourceFileNameInvalidMessage)
             return null
         }
-        if (fileName in reservedNames) {
+        if (reservedNames.any { it.equals(fileName, ignoreCase = true) }) {
             showResourceFileEditorError(customResourceFileNameDuplicateMessage)
             return null
         }
@@ -308,8 +310,14 @@ fun ResourceManagementPage(
         }
     }
 
-    LaunchedEffect(appState.customResourceFiles, updateQueueState.completionRevision) {
-        status = resourceFileUseCase.status(appState.customResourceFiles)
+    LaunchedEffect(appState.customResourceFiles, updateQueueState.completionRevision, resourceActionRunning) {
+        if (resourceActionRunning) return@LaunchedEffect
+        val registered = appState.customResourceFiles
+        status = resourceFileUseCase.status(registered)
+        val scanned = status.customResourceFiles.map { it.file }
+        updateAppState { current ->
+            if (current.customResourceFiles == registered) current.withScannedResourceFiles(scanned) else current
+        }
         xrayCoreVersion = resourceFileUseCase.refreshInstalledXrayCoreVersion()
     }
     LaunchedEffect(resourceFileUpdateCoordinator, updatedMessage, updatedOneMessage) {
