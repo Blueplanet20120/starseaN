@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +29,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import app.LocalAppChromeState
+import app.LocalAppServices
 import app.R
 import app.ProjectInfo
 import app.modes.ColorModeThemeDark
@@ -114,6 +120,14 @@ private data class AboutIconStyle(
 internal fun AboutRuntimeCard(
     modifier: Modifier = Modifier,
 ) {
+    val resourceFileUseCase = LocalAppServices.current.resourceFileUseCase
+    var xrayLiteVersion by remember {
+        mutableStateOf(resourceFileUseCase.installedXrayCoreVersion())
+    }
+    LaunchedEffect(resourceFileUseCase) {
+        xrayLiteVersion = resourceFileUseCase.refreshInstalledXrayCoreVersion()
+    }
+
     SmallTitle(text = stringResource(R.string.about_runtime))
     Card(
         modifier = modifier
@@ -123,7 +137,7 @@ internal fun AboutRuntimeCard(
     ) {
         BasicComponent(
             title = "AndroidLibXrayLite",
-            summary = ProjectInfo.ANDROID_LIB_XRAY_LITE_VERSION,
+            summary = xrayLiteVersion,
         )
         BasicComponent(
             title = "hev-socks5-tunnel",
