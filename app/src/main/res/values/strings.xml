@@ -89,6 +89,8 @@
     <string name="settings_enable_all_proxy_group_summary">Show the "All" group when multiple groups are enabled</string>
     <string name="settings_deletion_confirmation">Deletion confirmation</string>
     <string name="settings_deletion_confirmation_summary">Require confirmation before deleting servers, routes, groups, or resources</string>
+    <string name="settings_hide_launcher_icon">Hide launcher icon</string>
+    <string name="settings_hide_launcher_icon_summary">Dial *#*#····#*#* to open</string>
     <string name="settings_app_lock">Secure login</string>
     <string name="settings_app_lock_summary">Require the screen lock, PIN, or biometrics to open the app</string>
     <string name="settings_app_lock_timeout">Require unlock after hiding the app</string>

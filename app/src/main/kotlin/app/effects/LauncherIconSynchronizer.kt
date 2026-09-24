@@ -27,12 +27,12 @@ internal fun LauncherIconSynchronizer(
     val appContext = context.applicationContext
     LaunchedEffect(appContext, stateStore) {
         stateStore.state
-            .map { state -> state.usesMonetLauncherIcon }
+            .map { state -> state.usesMonetLauncherIcon to state.hideLauncherIcon }
             .distinctUntilChanged()
-            .collect { useMonetIcon ->
+            .collect { (useMonetIcon, hideLauncherIcon) ->
                 runCatching {
                     withContext(Dispatchers.IO) {
-                        appContext.setLauncherIcon(useMonetIcon)
+                        appContext.setLauncherIcon(useMonetIcon, hideLauncherIcon)
                     }
                 }.onFailure { error ->
                     AndroidAppLogger.warn(
@@ -48,22 +48,30 @@ internal fun LauncherIconSynchronizer(
 private val AppState.usesMonetLauncherIcon: Boolean
     get() = colorMode in ColorModeThemeSystem..ColorModeThemeDark
 
-private fun Context.setLauncherIcon(useMonetIcon: Boolean) {
+private fun Context.setLauncherIcon(useMonetIcon: Boolean, hidden: Boolean) {
     val packageManager = packageManager
     val launcherPackageName = MainActivity::class.java.name.substringBeforeLast('.')
     val defaultLauncher = ComponentName(packageName, "$launcherPackageName.DefaultLauncherActivity")
     val monetLauncher = ComponentName(packageName, "$launcherPackageName.MonetLauncherActivity")
+    if (hidden) {
+        packageManager.setLauncherEnabled(defaultLauncher, false)
+        packageManager.setLauncherEnabled(monetLauncher, false)
+        return
+    }
     val enabledLauncher = if (useMonetIcon) monetLauncher else defaultLauncher
     val disabledLauncher = if (useMonetIcon) defaultLauncher else monetLauncher
+    packageManager.setLauncherEnabled(enabledLauncher, true)
+    packageManager.setLauncherEnabled(disabledLauncher, false)
+}
 
-    packageManager.setComponentEnabledSetting(
-        enabledLauncher,
-        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-        PackageManager.DONT_KILL_APP,
-    )
-    packageManager.setComponentEnabledSetting(
-        disabledLauncher,
-        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+private fun PackageManager.setLauncherEnabled(component: ComponentName, enabled: Boolean) {
+    setComponentEnabledSetting(
+        component,
+        if (enabled) {
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        } else {
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        },
         PackageManager.DONT_KILL_APP,
     )
 }

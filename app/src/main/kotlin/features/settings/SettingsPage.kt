@@ -232,6 +232,7 @@ private fun SettingsContent(
                 SettingsSubscriptionsSection(
                     enableAllProxyGroup = appState.enableAllProxyGroup,
                     enableDeletionConfirmation = appState.enableDeletionConfirmation,
+                    hideLauncherIcon = appState.hideLauncherIcon,
                     enableAppLock = appState.enableAppLock,
                     appLockTimeout = appState.appLockTimeout,
                     appLockTimeoutOptions = appLockTimeoutOptions,
@@ -242,6 +243,9 @@ private fun SettingsContent(
                     },
                     onEnableDeletionConfirmationChange = { enabled ->
                         updateAppState { state -> state.copy(enableDeletionConfirmation = enabled) }
+                    },
+                    onHideLauncherIconChange = { enabled ->
+                        updateAppState { state -> state.copy(hideLauncherIcon = enabled) }
                     },
                     onEnableAppLockChange = { enabled ->
                         if (enabled != appState.enableAppLock) {

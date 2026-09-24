@@ -70,6 +70,7 @@ internal fun SettingsThemeSection(
 internal fun SettingsSubscriptionsSection(
     enableAllProxyGroup: Boolean,
     enableDeletionConfirmation: Boolean,
+    hideLauncherIcon: Boolean,
     enableAppLock: Boolean,
     appLockTimeout: Int,
     appLockTimeoutOptions: List<String>,
@@ -77,6 +78,7 @@ internal fun SettingsSubscriptionsSection(
     onOpenResourceManagement: () -> Unit,
     onEnableAllProxyGroupChange: (Boolean) -> Unit,
     onEnableDeletionConfirmationChange: (Boolean) -> Unit,
+    onHideLauncherIconChange: (Boolean) -> Unit,
     onEnableAppLockChange: (Boolean) -> Unit,
     onAppLockTimeoutChange: (Int) -> Unit,
 ) {
@@ -103,6 +105,12 @@ internal fun SettingsSubscriptionsSection(
             summary = stringResource(R.string.settings_deletion_confirmation_summary),
             checked = enableDeletionConfirmation,
             onCheckedChange = onEnableDeletionConfirmationChange,
+        )
+        SwitchPreference(
+            title = stringResource(R.string.settings_hide_launcher_icon),
+            summary = stringResource(R.string.settings_hide_launcher_icon_summary),
+            checked = hideLauncherIcon,
+            onCheckedChange = onHideLauncherIconChange,
         )
         SwitchPreference(
             title = stringResource(R.string.settings_app_lock),

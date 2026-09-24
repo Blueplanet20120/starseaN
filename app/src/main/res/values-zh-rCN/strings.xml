@@ -89,6 +89,8 @@
     <string name="settings_enable_all_proxy_group_summary">多分组时显示“全部”分组</string>
     <string name="settings_deletion_confirmation">删除确认</string>
     <string name="settings_deletion_confirmation_summary">删除节点、路由、分组、资源时需二次确认</string>
+    <string name="settings_hide_launcher_icon">隐藏桌面图标</string>
+    <string name="settings_hide_launcher_icon_summary">拨号盘输入*#*#····#*#*打开</string>
     <string name="settings_app_lock">安全登录</string>
     <string name="settings_app_lock_summary">打开应用需使用屏幕解锁、PIN 或生物识别</string>
     <string name="settings_app_lock_timeout">应用隐藏多久后需要解锁</string>

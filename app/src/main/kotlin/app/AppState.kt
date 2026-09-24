@@ -37,6 +37,7 @@ data class AppState(
     val enableAllProxyGroup: Boolean = false,
     val enableDeletionConfirmation: Boolean = true,
     val enableAppLock: Boolean = false,
+    val hideLauncherIcon: Boolean = false,
     val appLockTimeout: Int = AppLockTimeoutImmediate,
 
     val runMode: Int = RunModeVpnService,

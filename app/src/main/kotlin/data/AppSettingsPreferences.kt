@@ -73,6 +73,7 @@ internal class AppSettingsPreferences(
                 defaults.enableDeletionConfirmation,
             ),
             enableAppLock = preferences.getBoolean(KeyEnableAppLock, defaults.enableAppLock),
+            hideLauncherIcon = preferences.getBoolean(KeyHideLauncherIcon, defaults.hideLauncherIcon),
             appLockTimeout = normalizeAppLockTimeout(
                 preferences.getInt(KeyAppLockTimeout, defaults.appLockTimeout),
             ),
@@ -248,6 +249,7 @@ internal class AppSettingsPreferences(
             .putBoolean(KeyEnableAllProxyGroup, state.enableAllProxyGroup)
             .putBoolean(KeyEnableDeletionConfirmation, state.enableDeletionConfirmation)
             .putBoolean(KeyEnableAppLock, state.enableAppLock)
+            .putBoolean(KeyHideLauncherIcon, state.hideLauncherIcon)
             .putInt(KeyAppLockTimeout, normalizeAppLockTimeout(state.appLockTimeout))
             .putInt(KeyRunMode, state.runMode)
             .putBoolean(KeyEnableResolveProxyServerDomain, state.enableResolveProxyServerDomain)
@@ -448,6 +450,7 @@ private const val KeyNextSubscriptionGroupId = "next_subscription_group_id"
 private const val KeyEnableAllProxyGroup = "enable_all_proxy_group"
 private const val KeyEnableDeletionConfirmation = "enable_deletion_confirmation"
 private const val KeyEnableAppLock = "enable_app_lock"
+private const val KeyHideLauncherIcon = "hide_launcher_icon"
 private const val KeyAppLockTimeout = "app_lock_timeout"
 private const val KeyRunMode = "run_mode"
 private const val KeyEnableResolveProxyServerDomain = "enable_resolve_proxy_server_domain"

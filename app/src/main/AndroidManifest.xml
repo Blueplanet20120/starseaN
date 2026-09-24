@@ -131,6 +131,17 @@
         </provider>
 
         <receiver
+            android:name=".SecretCodeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SECRET_CODE" />
+                <data
+                    android:host="8866"
+                    android:scheme="android_secret_code" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name="features.resources.runtime.AndroidResourceFileDownloadCancelReceiver"
             android:exported="false" />
 
