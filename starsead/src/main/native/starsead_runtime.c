@@ -6498,6 +6498,7 @@ static int system_runtime_run(const char *config_path, bool initial_start,
         system.wifi_monitor_opened = starsead_wifi_monitor_open(
             &system.wifi_monitor, error, sizeof(error)) == 0;
     }
+    enum starsead_service_action wifi_baseline_action = STARSEAD_SERVICE_ACTION_NONE;
     if (system.wifi_monitor_opened) {
         enum starsead_wifi_transition transition;
         struct starsead_wifi_identity identity;
@@ -6505,7 +6506,7 @@ static int system_runtime_run(const char *config_path, bool initial_start,
                 &system.wifi_monitor, &transition, &identity) != 0) {
             system.wifi_monitor_opened = false;
         } else {
-            (void)starsead_service_control_on_wifi(
+            wifi_baseline_action = starsead_service_control_on_wifi(
                 &system.service_control, transition, &identity);
         }
     }
@@ -6558,6 +6559,12 @@ static int system_runtime_run(const char *config_path, bool initial_start,
     struct starsead_runtime_effect_backend effects = system_runtime_effects(&system);
     int status = 0;
     bool should_start = initial_start;
+    if (wifi_baseline_action == STARSEAD_SERVICE_ACTION_STOP) {
+        should_start = false;
+        system.service_running = false;
+    } else if (wifi_baseline_action == STARSEAD_SERVICE_ACTION_START) {
+        should_start = true;
+    }
     while (!system.shutdown_requested) {
         if (should_start || system.service_start_requested) {
             if (!should_start) {

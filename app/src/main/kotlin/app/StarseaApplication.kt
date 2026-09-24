@@ -10,6 +10,7 @@ import features.resources.ResourceFileUpdateCoordinator
 import features.resources.ResourceFileUpdateRequest
 import features.resources.runtime.AndroidResourceFileDownloadCancellation
 import android.app.Application
+import app.effects.syncLauncherIcon
 import system.AndroidAppIconFetcher
 import features.logs.AndroidAccessLogRepository
 import features.logs.AndroidStarseadLogRepository
@@ -84,6 +85,14 @@ class StarseaApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        appScope.launch(Dispatchers.IO) {
+            stateStore.state
+                .map { state -> state.colorMode to state.hideLauncherIcon }
+                .distinctUntilChanged()
+                .collect {
+                    runCatching { syncLauncherIcon(applicationContext, stateStore.state.value) }
+                }
+        }
         appScope.launch {
             val scheduler = ResourceAutoUpdateScheduler(applicationContext)
             stateStore.state

@@ -19,6 +19,8 @@
 #define WIFI_NETLINK_BUFFER_SIZE 65536U
 #define WIFI_MAX_STATION_INTERFACES 16U
 #define WIFI_DEBOUNCE_MILLISECONDS 350U
+#define WIFI_STARTUP_PROBE_INTERVAL_MILLISECONDS 1000U
+#define WIFI_STARTUP_PROBE_WINDOW_MILLISECONDS 45000U
 #define WIFI_NLA_ALIGNTO 4U
 #define WIFI_NLA_ALIGN(length) (((length) + WIFI_NLA_ALIGNTO - 1U) & ~(WIFI_NLA_ALIGNTO - 1U))
 #define WIFI_NLA_HEADER_LENGTH WIFI_NLA_ALIGN(sizeof(struct nlattr))
@@ -405,6 +407,19 @@ int starsead_wifi_monitor_open(
     monitor->family_id = family_id;
     monitor->sequence = sequence;
     monitor->opened = true;
+    if (!monitor->baseline_connected || !monitor->baseline_identity.has_ssid) {
+        uint64_t now = 0U;
+        if (wifi_monotonic_milliseconds(&now) == 0 &&
+            now <= UINT64_MAX - WIFI_STARTUP_PROBE_WINDOW_MILLISECONDS &&
+            now <= UINT64_MAX - WIFI_STARTUP_PROBE_INTERVAL_MILLISECONDS) {
+            monitor->startup_probe = true;
+            monitor->startup_probe_until_milliseconds =
+                now + WIFI_STARTUP_PROBE_WINDOW_MILLISECONDS;
+            monitor->debounce_deadline_milliseconds =
+                now + WIFI_STARTUP_PROBE_INTERVAL_MILLISECONDS;
+            monitor->debounce_armed = true;
+        }
+    }
     return 0;
 }
 
@@ -518,16 +533,12 @@ int starsead_wifi_monitor_take_reconcile(struct starsead_wifi_monitor *monitor,
     monitor->debounce_armed = false;
     monitor->integrity_lost = false;
     if (lost) {
-        monitor->baseline_connected = connected;
-        monitor->baseline_identity = current;
         *transition = connected
             ? STARSEAD_WIFI_TRANSITION_BASELINE_CONNECTED
             : STARSEAD_WIFI_TRANSITION_BASELINE_DISCONNECTED;
         *identity = current;
         *has_transition = true;
-        return 0;
-    }
-    if (!monitor->baseline_connected && connected) {
+    } else if (!monitor->baseline_connected && connected) {
         *transition = STARSEAD_WIFI_TRANSITION_CONNECTED;
         *identity = current;
         *has_transition = true;
@@ -543,6 +554,20 @@ int starsead_wifi_monitor_take_reconcile(struct starsead_wifi_monitor *monitor,
     }
     monitor->baseline_connected = connected;
     monitor->baseline_identity = current;
+    if (monitor->startup_probe) {
+        if ((connected && current.has_ssid) ||
+            now >= monitor->startup_probe_until_milliseconds ||
+            now > UINT64_MAX - WIFI_STARTUP_PROBE_INTERVAL_MILLISECONDS) {
+            monitor->startup_probe = false;
+        } else {
+            uint64_t next = now + WIFI_STARTUP_PROBE_INTERVAL_MILLISECONDS;
+            if (!monitor->debounce_armed ||
+                next < monitor->debounce_deadline_milliseconds) {
+                monitor->debounce_deadline_milliseconds = next;
+                monitor->debounce_armed = true;
+            }
+        }
+    }
     return 0;
 }
 

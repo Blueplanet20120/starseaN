@@ -230,9 +230,11 @@ struct starsead_wifi_monitor {
     uint32_t sequence;
     struct starsead_wifi_identity baseline_identity;
     uint64_t debounce_deadline_milliseconds;
+    uint64_t startup_probe_until_milliseconds;
     bool baseline_connected;
     bool debounce_armed;
     bool integrity_lost;
+    bool startup_probe;
     bool opened;
 };
 

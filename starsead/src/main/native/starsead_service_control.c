@@ -138,11 +138,27 @@ enum starsead_service_action starsead_service_control_on_wifi(
         transition == STARSEAD_WIFI_TRANSITION_ROAMED;
     if (transition == STARSEAD_WIFI_TRANSITION_BASELINE_CONNECTED ||
         transition == STARSEAD_WIFI_TRANSITION_BASELINE_DISCONNECTED) {
-        starsead_service_control_baseline(
+        bool connected = transition == STARSEAD_WIFI_TRANSITION_BASELINE_CONNECTED;
+        starsead_service_control_baseline(runtime, connected, identity);
+        if (runtime->config == NULL || !runtime->config->enabled ||
+            !runtime->config->wifi.enabled) {
+            return STARSEAD_SERVICE_ACTION_NONE;
+        }
+        if (connected) {
+            if (!starsead_wifi_identity_valid(identity)) {
+                return STARSEAD_SERVICE_ACTION_NONE;
+            }
+            return starsead_service_control_rules(
+                runtime,
+                &runtime->config->wifi.connect_start,
+                &runtime->config->wifi.connect_stop,
+                identity);
+        }
+        return starsead_service_control_rules(
             runtime,
-            transition == STARSEAD_WIFI_TRANSITION_BASELINE_CONNECTED,
+            &runtime->config->wifi.disconnect_start,
+            &runtime->config->wifi.disconnect_stop,
             identity);
-        return STARSEAD_SERVICE_ACTION_NONE;
     }
     if (!runtime->wifi_baseline_established) {
         starsead_service_control_baseline(runtime, connected_transition, identity);
