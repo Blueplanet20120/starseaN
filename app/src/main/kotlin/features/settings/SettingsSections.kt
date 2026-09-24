@@ -14,15 +14,39 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import app.HideLauncherSecretCodeMaxLength
+import app.HideLauncherSecretCodeMinLength
 import app.R
+import app.sanitizeHideLauncherSecretCodeInput
 import androidx.compose.ui.res.stringResource
+import features.settings.sheets.SettingsTextField
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.window.WindowDialog
 
 @Composable
 internal fun SettingsThemeSection(
@@ -71,6 +95,7 @@ internal fun SettingsSubscriptionsSection(
     enableAllProxyGroup: Boolean,
     enableDeletionConfirmation: Boolean,
     hideLauncherIcon: Boolean,
+    hideLauncherSecretCode: String,
     enableAppLock: Boolean,
     appLockTimeout: Int,
     appLockTimeoutOptions: List<String>,
@@ -79,6 +104,7 @@ internal fun SettingsSubscriptionsSection(
     onEnableAllProxyGroupChange: (Boolean) -> Unit,
     onEnableDeletionConfirmationChange: (Boolean) -> Unit,
     onHideLauncherIconChange: (Boolean) -> Unit,
+    onHideLauncherSecretCodeChange: (String) -> Unit,
     onEnableAppLockChange: (Boolean) -> Unit,
     onAppLockTimeoutChange: (Int) -> Unit,
 ) {
@@ -112,6 +138,16 @@ internal fun SettingsSubscriptionsSection(
             checked = hideLauncherIcon,
             onCheckedChange = onHideLauncherIconChange,
         )
+        AnimatedVisibility(
+            visible = hideLauncherIcon,
+            enter = fadeIn() + expandVertically(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            HideLauncherSecretCodePreference(
+                secretCode = hideLauncherSecretCode,
+                onSecretCodeChange = onHideLauncherSecretCodeChange,
+            )
+        }
         SwitchPreference(
             title = stringResource(R.string.settings_app_lock),
             summary = stringResource(R.string.settings_app_lock_summary),
@@ -131,6 +167,87 @@ internal fun SettingsSubscriptionsSection(
             )
         }
     }
+}
+
+@Composable
+private fun HideLauncherSecretCodePreference(
+    secretCode: String,
+    onSecretCodeChange: (String) -> Unit,
+) {
+    var showEditor by remember { mutableStateOf(false) }
+    var draft by remember { mutableStateOf(secretCode) }
+    var showError by remember { mutableStateOf(false) }
+    var editorSession by remember { mutableIntStateOf(0) }
+    ArrowPreference(
+        title = stringResource(R.string.settings_hide_launcher_secret_code),
+        summary = stringResource(R.string.settings_hide_launcher_secret_code_value, secretCode),
+        onClick = {
+            draft = secretCode
+            showError = false
+            editorSession += 1
+            showEditor = true
+        },
+    )
+    WindowDialog(
+        show = showEditor,
+        title = stringResource(R.string.settings_hide_launcher_secret_code),
+        onDismissRequest = { showEditor = false },
+        content = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                key(editorSession) {
+                SettingsTextField(
+                    value = draft,
+                    onValueChange = { value ->
+                        draft = value
+                        showError = false
+                    },
+                    label = stringResource(R.string.settings_hide_launcher_secret_code),
+                    errorText = if (showError) {
+                        stringResource(R.string.settings_hide_launcher_secret_code_error)
+                    } else {
+                        null
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done,
+                    ),
+                    sanitizeInput = ::sanitizeHideLauncherSecretCodeInput,
+                )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    TextButton(
+                        text = stringResource(R.string.common_cancel),
+                        onClick = { showEditor = false },
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(20.dp))
+                    TextButton(
+                        text = stringResource(R.string.common_save),
+                        onClick = {
+                            val valid = draft.length in
+                                HideLauncherSecretCodeMinLength..HideLauncherSecretCodeMaxLength
+                            if (!valid) {
+                                showError = true
+                                return@TextButton
+                            }
+                            onSecretCodeChange(draft)
+                            showEditor = false
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        },
+    )
 }
 
 @Composable

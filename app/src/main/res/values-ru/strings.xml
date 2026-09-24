@@ -613,6 +613,9 @@
     <string name="settings_deletion_confirmation_summary">Запрашивать подтверждение перед удалением серверов, правил, групп или ресурсов</string>
     <string name="settings_hide_launcher_icon">Скрыть значок на рабочем столе</string>
     <string name="settings_hide_launcher_icon_summary">Наберите *#*#····#*#*, чтобы открыть</string>
+    <string name="settings_hide_launcher_secret_code">Код набора</string>
+    <string name="settings_hide_launcher_secret_code_value">*#*#%1$s#*#*</string>
+    <string name="settings_hide_launcher_secret_code_error">Введите от 3 до 6 цифр</string>
     <string name="settings_app_lock">Безопасный вход</string>
     <string name="settings_app_lock_summary">Для открытия приложения нужна блокировка экрана, PIN или биометрия</string>
     <string name="settings_app_lock_timeout">Запрашивать разблокировку после скрытия приложения</string>

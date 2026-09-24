@@ -13,6 +13,7 @@ import app.ProxyServerState
 import app.SubscriptionGroupState
 import app.modes.RunModeVpnService
 import app.modes.normalizeAppLockTimeout
+import app.normalizeHideLauncherSecretCode
 import data.PersistedProxyServer
 import data.decodeProxyServer
 import data.toPersistedProxyServer
@@ -60,6 +61,7 @@ private fun AppState.toBackupSettings(): AppBackupSettings {
         enableDeletionConfirmation = enableDeletionConfirmation,
         enableAppLock = enableAppLock,
         hideLauncherIcon = hideLauncherIcon,
+        hideLauncherSecretCode = hideLauncherSecretCode,
         appLockTimeout = appLockTimeout,
         enableResolveProxyServerDomain = enableResolveProxyServerDomain,
         enableVpnLocalDns = enableVpnLocalDns,
@@ -253,6 +255,7 @@ private fun AppBackupData.toAppState(): AppState {
         enableDeletionConfirmation = settings.enableDeletionConfirmation,
         enableAppLock = settings.enableAppLock,
         hideLauncherIcon = settings.hideLauncherIcon,
+        hideLauncherSecretCode = normalizeHideLauncherSecretCode(settings.hideLauncherSecretCode),
         appLockTimeout = normalizeAppLockTimeout(settings.appLockTimeout),
         runMode = RunModeVpnService,
         enableResolveProxyServerDomain = settings.enableResolveProxyServerDomain,

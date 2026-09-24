@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import app.AppState
+import app.normalizeHideLauncherSecretCode
 import app.CustomResourceFileState
 import app.ServiceControlSchedule
 import app.ServiceControlSettings
@@ -74,6 +75,9 @@ internal class AppSettingsPreferences(
             ),
             enableAppLock = preferences.getBoolean(KeyEnableAppLock, defaults.enableAppLock),
             hideLauncherIcon = preferences.getBoolean(KeyHideLauncherIcon, defaults.hideLauncherIcon),
+            hideLauncherSecretCode = normalizeHideLauncherSecretCode(
+                preferences.getString(KeyHideLauncherSecretCode, defaults.hideLauncherSecretCode),
+            ),
             appLockTimeout = normalizeAppLockTimeout(
                 preferences.getInt(KeyAppLockTimeout, defaults.appLockTimeout),
             ),
@@ -250,6 +254,7 @@ internal class AppSettingsPreferences(
             .putBoolean(KeyEnableDeletionConfirmation, state.enableDeletionConfirmation)
             .putBoolean(KeyEnableAppLock, state.enableAppLock)
             .putBoolean(KeyHideLauncherIcon, state.hideLauncherIcon)
+            .putString(KeyHideLauncherSecretCode, normalizeHideLauncherSecretCode(state.hideLauncherSecretCode))
             .putInt(KeyAppLockTimeout, normalizeAppLockTimeout(state.appLockTimeout))
             .putInt(KeyRunMode, state.runMode)
             .putBoolean(KeyEnableResolveProxyServerDomain, state.enableResolveProxyServerDomain)
@@ -451,6 +456,7 @@ private const val KeyEnableAllProxyGroup = "enable_all_proxy_group"
 private const val KeyEnableDeletionConfirmation = "enable_deletion_confirmation"
 private const val KeyEnableAppLock = "enable_app_lock"
 private const val KeyHideLauncherIcon = "hide_launcher_icon"
+private const val KeyHideLauncherSecretCode = "hide_launcher_secret_code"
 private const val KeyAppLockTimeout = "app_lock_timeout"
 private const val KeyRunMode = "run_mode"
 private const val KeyEnableResolveProxyServerDomain = "enable_resolve_proxy_server_domain"

@@ -91,6 +91,9 @@
     <string name="settings_deletion_confirmation_summary">删除节点、路由、分组、资源时需二次确认</string>
     <string name="settings_hide_launcher_icon">隐藏桌面图标</string>
     <string name="settings_hide_launcher_icon_summary">拨号盘输入*#*#····#*#*打开</string>
+    <string name="settings_hide_launcher_secret_code">拨号暗码</string>
+    <string name="settings_hide_launcher_secret_code_value">*#*#%1$s#*#*</string>
+    <string name="settings_hide_launcher_secret_code_error">请输入 3 到 6 位数字</string>
     <string name="settings_app_lock">安全登录</string>
     <string name="settings_app_lock_summary">打开应用需使用屏幕解锁、PIN 或生物识别</string>
     <string name="settings_app_lock_timeout">应用隐藏多久后需要解锁</string>

@@ -91,6 +91,9 @@
     <string name="settings_deletion_confirmation_summary">Yêu cầu xác nhận lần hai khi xóa nút, tuyến đường, nhóm, tài nguyên</string>
     <string name="settings_hide_launcher_icon">Ẩn biểu tượng màn hình</string>
     <string name="settings_hide_launcher_icon_summary">Quay *#*#····#*#* để mở</string>
+    <string name="settings_hide_launcher_secret_code">Mã quay số</string>
+    <string name="settings_hide_launcher_secret_code_value">*#*#%1$s#*#*</string>
+    <string name="settings_hide_launcher_secret_code_error">Nhập từ 3 đến 6 chữ số</string>
     <string name="settings_app_lock">Đăng nhập bảo mật</string>
     <string name="settings_app_lock_summary">Cần khóa màn hình, PIN hoặc sinh trắc học để mở ứng dụng</string>
     <string name="settings_app_lock_timeout">Yêu cầu mở khóa sau khi ẩn ứng dụng</string>

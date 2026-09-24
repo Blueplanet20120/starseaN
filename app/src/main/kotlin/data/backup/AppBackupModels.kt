@@ -41,6 +41,7 @@ internal data class AppBackupSettings(
     val enableDeletionConfirmation: Boolean = BackupDefaults.enableDeletionConfirmation,
     val enableAppLock: Boolean = BackupDefaults.enableAppLock,
     val hideLauncherIcon: Boolean = BackupDefaults.hideLauncherIcon,
+    val hideLauncherSecretCode: String = BackupDefaults.hideLauncherSecretCode,
     val appLockTimeout: Int = BackupDefaults.appLockTimeout,
     val enableResolveProxyServerDomain: Boolean = BackupDefaults.enableResolveProxyServerDomain,
     val enableVpnLocalDns: Boolean = BackupDefaults.enableVpnLocalDns,

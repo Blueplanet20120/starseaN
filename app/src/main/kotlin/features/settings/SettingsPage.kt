@@ -233,6 +233,7 @@ private fun SettingsContent(
                     enableAllProxyGroup = appState.enableAllProxyGroup,
                     enableDeletionConfirmation = appState.enableDeletionConfirmation,
                     hideLauncherIcon = appState.hideLauncherIcon,
+                    hideLauncherSecretCode = appState.hideLauncherSecretCode,
                     enableAppLock = appState.enableAppLock,
                     appLockTimeout = appState.appLockTimeout,
                     appLockTimeoutOptions = appLockTimeoutOptions,
@@ -246,6 +247,9 @@ private fun SettingsContent(
                     },
                     onHideLauncherIconChange = { enabled ->
                         updateAppState { state -> state.copy(hideLauncherIcon = enabled) }
+                    },
+                    onHideLauncherSecretCodeChange = { code ->
+                        updateAppState { state -> state.copy(hideLauncherSecretCode = code) }
                     },
                     onEnableAppLockChange = { enabled ->
                         if (enabled != appState.enableAppLock) {

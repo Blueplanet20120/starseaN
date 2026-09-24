@@ -38,6 +38,7 @@ data class AppState(
     val enableDeletionConfirmation: Boolean = true,
     val enableAppLock: Boolean = false,
     val hideLauncherIcon: Boolean = false,
+    val hideLauncherSecretCode: String = DefaultHideLauncherSecretCode,
     val appLockTimeout: Int = AppLockTimeoutImmediate,
 
     val runMode: Int = RunModeVpnService,
