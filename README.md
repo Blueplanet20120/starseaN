@@ -18,3 +18,7 @@ On Windows:
 ## License
 
 [GPL-3.0](LICENSE)
+
+## 鸣谢
+
+[Asterisk4Magisk/AsteriskNG](https://github.com/Asterisk4Magisk/AsteriskNG)
