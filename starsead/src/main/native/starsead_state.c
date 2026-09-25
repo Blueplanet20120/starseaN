@@ -25,7 +25,7 @@
 
 static const char *const phase_names[] = {
     "validating", "acquiring", "starting", "applying-rules",
-    "running", "stopping", "stopped", "failed",
+    "running", "stopping", "stopped", "failed", "paused",
 };
 
 static const char *const owner_names[] = {"starsean", "asteriskbox", "asteriskmeta"};
@@ -150,6 +150,11 @@ static bool document_valid(const struct starsead_state_document *document) {
          (!starsead_mode_core_managed(document->mode) && !document->rules.active) ||
          (document->matcher.configured && !document->matcher.active))) return false;
     if (document->phase == STARSEAD_PHASE_FAILED && !document->failure.present) return false;
+    if (document->phase == STARSEAD_PHASE_PAUSED &&
+        (starsead_mode_core_managed(document->mode) || !document->children.core_present ||
+         document->failure.present || document->rules.active ||
+         document->children.helper_present != (document->mode == STARSEAD_MODE_TUN2SOCKS) ||
+         (document->matcher.configured && !document->matcher.active))) return false;
     if (!document->rules.active &&
         (document->rules.generation != 0U || document->rules.categories != 0U)) return false;
     if (document->rules.active &&

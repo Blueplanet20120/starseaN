@@ -56,7 +56,7 @@ internal fun StarseadSnapshot.ordinaryStartDisposition(
     if (phase == StarseadPhase.Running && mode == expectedMode) {
         return RootOrdinaryStartDisposition.Reuse
     }
-    if (phase == StarseadPhase.Stopped) {
+    if (phase == StarseadPhase.Stopped || phase == StarseadPhase.Paused) {
         return RootOrdinaryStartDisposition.Relaunch
     }
     rejectBound(owner)
@@ -98,6 +98,7 @@ internal fun StarseadSnapshot.toStableProxyEngineStatus(
 ): ProxyEngineStatus? = when (phase) {
     StarseadPhase.Running,
     StarseadPhase.Stopped,
+    StarseadPhase.Paused,
     StarseadPhase.Failed,
     -> toProxyEngineStatus(runMode, expectedMode)
     else -> null

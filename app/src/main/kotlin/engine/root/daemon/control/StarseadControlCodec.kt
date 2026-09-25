@@ -156,6 +156,12 @@ private fun StarseadSnapshot.validate() {
         require(!network.ipv4Ready && !network.ipv6Ready)
     }
     require(phase != StarseadPhase.Failed || error != null)
+    if (phase == StarseadPhase.Paused) {
+        require(mode == StarseadMode.Tproxy || mode == StarseadMode.Tun2Socks || mode == StarseadMode.Bpf2Socks)
+        require(corePid != null && error == null && !rules.active)
+        require((helperPid != null) == (mode == StarseadMode.Tun2Socks))
+        require(!matcherConfigured || matcherActive)
+    }
 }
 
 private fun requireOwnerCore(

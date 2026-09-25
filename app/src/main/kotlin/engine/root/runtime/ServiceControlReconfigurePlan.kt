@@ -28,7 +28,7 @@ internal fun serviceControlReconfigurePlan(
             shutdownRequired = true,
             launchMode = RootPublicationLaunchMode.Service,
         )
-        StarseadPhase.Stopped -> ServiceControlReconfigurePlan(
+        StarseadPhase.Stopped, StarseadPhase.Paused -> ServiceControlReconfigurePlan(
             shutdownRequired = true,
             launchMode = if (enabled) {
                 RootPublicationLaunchMode.Monitor

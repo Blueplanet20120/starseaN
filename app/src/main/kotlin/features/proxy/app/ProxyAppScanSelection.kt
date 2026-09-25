@@ -20,8 +20,20 @@ internal fun applyPresetProxyAppSelection(
     val fallbackUserIds = userIds.ifEmpty { listOf(0) }
     val keys = LinkedHashSet<String>()
     for (packageName in presetPackageNames) {
-        val pkg = packageName.trim()
+        val entry = packageName.trim()
+        if (entry.isEmpty() || entry.startsWith("mode=")) continue
+        val separatorIndex = entry.indexOf(':')
+        val explicitUserId = if (separatorIndex > 0) {
+            entry.substring(0, separatorIndex).toIntOrNull()
+        } else {
+            null
+        }
+        val pkg = if (explicitUserId != null) entry.substring(separatorIndex + 1).trim() else entry
         if (pkg.isEmpty()) continue
+        if (explicitUserId != null) {
+            keys.add("$explicitUserId:$pkg")
+            continue
+        }
         val installed = installedByPackage[pkg]
         if (!installed.isNullOrEmpty()) {
             installed.forEach { app ->

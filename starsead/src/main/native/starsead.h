@@ -839,6 +839,8 @@ int starsead_lifecycle_start(
     void *,
     const struct starsead_lifecycle_options *);
 int starsead_lifecycle_stop(struct starsead_lifecycle *);
+int starsead_lifecycle_pause(struct starsead_lifecycle *, bool pause_helper);
+int starsead_lifecycle_resume(struct starsead_lifecycle *);
 int starsead_lifecycle_request_stop(
     struct starsead_lifecycle *,
     enum starsead_lifecycle_reason);
@@ -853,6 +855,7 @@ enum starsead_phase {
     STARSEAD_PHASE_STOPPING,
     STARSEAD_PHASE_STOPPED,
     STARSEAD_PHASE_FAILED,
+    STARSEAD_PHASE_PAUSED,
     STARSEAD_PHASE_COUNT,
 };
 
@@ -1604,6 +1607,8 @@ enum starsead_runtime_delta_flag {
     STARSEAD_DELTA_RECONCILE_DUE = UINT32_C(1) << 3,
     STARSEAD_DELTA_RULES_CHANGED = UINT32_C(1) << 4,
     STARSEAD_DELTA_FATAL = UINT32_C(1) << 5,
+    STARSEAD_DELTA_SERVICE_PAUSE = UINT32_C(1) << 6,
+    STARSEAD_DELTA_SERVICE_RESUME = UINT32_C(1) << 7,
 };
 
 struct starsead_runtime_delta {
@@ -1827,6 +1832,7 @@ enum starsead_control_event_type {
     STARSEAD_CONTROL_EVENT_CORE_EXITED,
     STARSEAD_CONTROL_EVENT_HELPER_FAILED,
     STARSEAD_CONTROL_EVENT_FAILED,
+    STARSEAD_CONTROL_EVENT_PAUSED,
     STARSEAD_CONTROL_EVENT_TYPE_COUNT,
 };
 
