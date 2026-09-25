@@ -74,6 +74,8 @@ abstract class BuildStarseadTask : DefaultTask() {
                     "-std=c17",
                     "-fPIE",
                     "-pie",
+                    "-ldl",
+                    "-lz",
                     *sources.map(File::getAbsolutePath).toTypedArray(),
                     "-o",
                     output.absolutePath,

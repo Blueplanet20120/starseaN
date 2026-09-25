@@ -3,7 +3,10 @@
 
 package engine.root.daemon.config
 
+import android.os.Build
+import app.ServiceControlKeyguard
 import app.ServiceControlSettings
+import app.supportsKeyguardControl
 import features.settings.servicecontrol.normalizeServiceControlSettings
 
 internal enum class StarseadOwner(val wireValue: String) {
@@ -58,6 +61,7 @@ internal data class StarseadServiceControlConfig(
     val enabled: Boolean,
     val schedule: StarseadScheduleControl,
     val wifi: StarseadWifiControl,
+    val keyguard: ServiceControlKeyguard = ServiceControlKeyguard(),
 )
 
 internal data class StarseadScheduleControl(
@@ -84,6 +88,7 @@ internal fun ServiceControlSettings.toStarseadServiceControlConfig(): StarseadSe
     val value = normalizeServiceControlSettings(this)
     return StarseadServiceControlConfig(
         enabled = value.enabled,
+        keyguard = value.keyguard.copy(enabled = value.keyguard.enabled && supportsKeyguardControl(Build.VERSION.SDK_INT)),
         schedule = StarseadScheduleControl(
             enabled = value.schedule.enabled,
             startCron = value.schedule.startCron,

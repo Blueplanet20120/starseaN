@@ -10,6 +10,7 @@ import androidx.core.content.edit
 import app.AppState
 import app.normalizeHideLauncherSecretCode
 import app.CustomResourceFileState
+import app.ServiceControlKeyguard
 import app.ServiceControlSchedule
 import app.ServiceControlSettings
 import app.ServiceControlWifi
@@ -329,6 +330,13 @@ internal class AppSettingsPreferences(
     ): ServiceControlSettings = normalizeServiceControlSettings(
         ServiceControlSettings(
             enabled = getBoolean(KeyServiceControlEnabled, defaults.enabled),
+            keyguard = ServiceControlKeyguard(
+                enabled = getBoolean(KeyServiceControlKeyguardEnabled, defaults.keyguard.enabled),
+                lockStart = getBoolean(KeyServiceControlKeyguardLockStart, defaults.keyguard.lockStart),
+                lockStop = getBoolean(KeyServiceControlKeyguardLockStop, defaults.keyguard.lockStop),
+                unlockStart = getBoolean(KeyServiceControlKeyguardUnlockStart, defaults.keyguard.unlockStart),
+                unlockStop = getBoolean(KeyServiceControlKeyguardUnlockStop, defaults.keyguard.unlockStop),
+            ),
             schedule = ServiceControlSchedule(
                 enabled = getBoolean(KeyServiceControlScheduleEnabled, defaults.schedule.enabled),
                 startCron = getString(KeyServiceControlScheduleStartCron, defaults.schedule.startCron)
@@ -381,6 +389,11 @@ internal class AppSettingsPreferences(
         value: ServiceControlSettings,
     ): SharedPreferences.Editor =
         putBoolean(KeyServiceControlEnabled, value.enabled)
+            .putBoolean(KeyServiceControlKeyguardEnabled, value.keyguard.enabled)
+            .putBoolean(KeyServiceControlKeyguardLockStart, value.keyguard.lockStart)
+            .putBoolean(KeyServiceControlKeyguardLockStop, value.keyguard.lockStop)
+            .putBoolean(KeyServiceControlKeyguardUnlockStart, value.keyguard.unlockStart)
+            .putBoolean(KeyServiceControlKeyguardUnlockStop, value.keyguard.unlockStop)
             .putBoolean(KeyServiceControlScheduleEnabled, value.schedule.enabled)
             .putString(KeyServiceControlScheduleStartCron, value.schedule.startCron)
             .putString(KeyServiceControlScheduleStopCron, value.schedule.stopCron)
@@ -540,5 +553,11 @@ private const val KeyExternalInterfaces = "external_interfaces"
 private const val KeyIgnoredInterfaces = "ignored_interfaces"
 private const val KeyPrivateAddressCidrs = "private_address_cidrs"
 private const val KeyProxyAppListMode = "proxy_app_list_mode"
+
+private const val KeyServiceControlKeyguardEnabled = "service_control_keyguard_enabled"
+private const val KeyServiceControlKeyguardLockStart = "service_control_keyguard_lock_start"
+private const val KeyServiceControlKeyguardLockStop = "service_control_keyguard_lock_stop"
+private const val KeyServiceControlKeyguardUnlockStart = "service_control_keyguard_unlock_start"
+private const val KeyServiceControlKeyguardUnlockStop = "service_control_keyguard_unlock_stop"
 
 private val SubscriptionHwidLock = Any()

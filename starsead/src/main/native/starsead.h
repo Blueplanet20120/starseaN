@@ -13,7 +13,7 @@
 
 struct starsead_resource_operation;
 
-#define STARSEAD_CONFIG_VERSION 3U
+#define STARSEAD_CONFIG_VERSION 4U
 #define STARSEAD_MAX_JSON_SIZE (8U * 1024U * 1024U)
 #define STARSEAD_JSON_MAX_TOKENS 262144U
 #define STARSEAD_JSON_MAX_DEPTH 64U
@@ -194,15 +194,22 @@ struct starsead_wifi_control_config {
     struct starsead_wifi_rule_config disconnect_stop;
 };
 
+struct starsead_keyguard_control_config {
+    bool enabled, lock_start, lock_stop, unlock_start, unlock_stop;
+};
+
 struct starsead_service_control_config {
     bool enabled;
     struct starsead_schedule_control_config schedule;
     struct starsead_wifi_control_config wifi;
+    struct starsead_keyguard_control_config keyguard;
 };
 
 struct starsead_service_control_runtime {
     const struct starsead_service_control_config *config;
     struct starsead_wifi_identity previous_wifi;
+    bool keyguard_baseline_established;
+    bool keyguard_locked;
     bool wifi_baseline_established;
     bool wifi_connected;
     bool desired_running;
@@ -214,6 +221,8 @@ void starsead_service_control_init(
     const struct starsead_service_control_config *, bool, time_t);
 void starsead_service_control_set_service_running(
     struct starsead_service_control_runtime *, bool);
+enum starsead_service_action starsead_service_control_on_keyguard(
+    struct starsead_service_control_runtime *, bool locked, bool baseline);
 bool starsead_wifi_rule_matches(
     const struct starsead_wifi_rule_config *,
     const struct starsead_wifi_identity *);
@@ -1571,6 +1580,7 @@ enum starsead_poll_source_kind {
     STARSEAD_POLL_TC_NETLINK,
     STARSEAD_POLL_SERVICE_TIMER,
     STARSEAD_POLL_WIFI,
+    STARSEAD_POLL_KEYGUARD,
     STARSEAD_POLL_SOURCE_KIND_COUNT,
 };
 

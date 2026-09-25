@@ -1,4 +1,5 @@
 #include "starsead.h"
+#include "starsead_keyguard.h"
 #include "starsead_compat.h"
 
 #include <errno.h>
@@ -181,7 +182,8 @@ static unsigned runtime_dispatch_priority(enum starsead_poll_source_kind kind) {
         case STARSEAD_POLL_NETWORK:
         case STARSEAD_POLL_TC_NETLINK:
         case STARSEAD_POLL_SERVICE_TIMER:
-        case STARSEAD_POLL_WIFI: return 4U;
+        case STARSEAD_POLL_WIFI:
+        case STARSEAD_POLL_KEYGUARD: return 4U;
         default: return UINT_MAX;
     }
 }
@@ -1071,6 +1073,7 @@ struct starsead_system_supervisor {
     bool service_timer_fd_owned;
     struct starsead_wifi_monitor wifi_monitor;
     bool wifi_monitor_opened;
+    struct starsead_keyguard_monitor *keyguard_monitor;
     struct starsead_service_control_runtime service_control;
     bool service_running;
     bool shutdown_requested;
@@ -1079,6 +1082,8 @@ struct starsead_system_supervisor {
     bool service_resume_requested;
     struct starsead_effect_journal volatile_effects;
     bool stop_requested;
+    bool automatic_stop_pending;
+    bool manual_stop_pending;
     bool stopping_children;
     struct starsead_process_spec core_spec;
     struct starsead_child_process core_process;
@@ -1234,21 +1239,43 @@ static void system_runtime_min_deadline(
 
 static void system_service_apply_action(
     struct starsead_system_supervisor *system, enum starsead_service_action action) {
+    if ((system->shutdown_requested || system->manual_stop_pending) &&
+        (action == STARSEAD_SERVICE_ACTION_START || action == STARSEAD_SERVICE_ACTION_STOP)) return;
     if (system->runtime != NULL && system->runtime->supervising &&
+        !system->runtime->lifecycle.stopped &&
+        !atomic_load_explicit(&system->runtime->lifecycle.stop_was_requested, memory_order_acquire) &&
         !starsead_mode_core_managed(system->loaded_config.config.mode) &&
         (action == STARSEAD_SERVICE_ACTION_START || action == STARSEAD_SERVICE_ACTION_STOP)) {
         system->service_pause_requested = action == STARSEAD_SERVICE_ACTION_STOP;
         system->service_resume_requested = action == STARSEAD_SERVICE_ACTION_START;
         return;
     }
-    if (action == STARSEAD_SERVICE_ACTION_START && !system->service_running) {
-        system->service_start_requested = true;
-    } else if (action == STARSEAD_SERVICE_ACTION_STOP && system->service_running) {
-        system->stop_requested = true;
+    if (action == STARSEAD_SERVICE_ACTION_START) {
+        bool stopping = system->runtime && atomic_load_explicit(
+            &system->runtime->lifecycle.stop_was_requested, memory_order_acquire);
+        if (!system->shutdown_requested && (!system->service_running ||
+                (stopping && system->automatic_stop_pending))) {
+            system->service_start_requested = true;
+        } else if (!system->shutdown_requested && !stopping) {
+            system->stop_requested = false;
+            system->automatic_stop_pending = false;
+        }
+    } else if (action == STARSEAD_SERVICE_ACTION_STOP) {
+        system->service_start_requested = false;
+        if (system->service_running) {
+            system->stop_requested = true;
+            system->automatic_stop_pending = true;
+        }
     } else if (action == STARSEAD_SERVICE_ACTION_SHUTDOWN) {
         system->shutdown_requested = true;
         if (system->service_running) system->stop_requested = true;
     }
+}
+
+static void system_service_keyguard_changed(void *context, bool locked, bool baseline) {
+    struct starsead_system_supervisor *system = context;
+    system_service_apply_action(system,
+        starsead_service_control_on_keyguard(&system->service_control, locked, baseline));
 }
 
 static void system_service_take_actions(struct starsead_system_supervisor *system,
@@ -1345,6 +1372,9 @@ static int system_runtime_prepare(
     if (system->wifi_monitor_opened &&
         system_runtime_add_source(builder, starsead_wifi_monitor_fd(&system->wifi_monitor), POLLIN,
             STARSEAD_POLL_WIFI, 0U, 1U) != 0) return -1;
+    if (system->keyguard_monitor &&
+        system_runtime_add_source(builder, starsead_keyguard_fd(system->keyguard_monitor), POLLIN,
+            STARSEAD_POLL_KEYGUARD, 0U, 1U) != 0) return -1;
     uint64_t wifi_deadline = 0U;
     if (system->wifi_monitor_opened &&
         starsead_wifi_monitor_next_deadline(&system->wifi_monitor, &wifi_deadline)) {
@@ -1669,6 +1699,12 @@ static int system_runtime_dispatch(void *opaque, const struct starsead_poll_sour
             system_runtime_fatal(delta, STARSEAD_COMPONENT_RUNTIME,
                 "service schedule dispatch failed");
         }
+    } else if (source->kind == STARSEAD_POLL_KEYGUARD) {
+        if ((ready & (POLLERR | POLLHUP | POLLNVAL)) ||
+            starsead_keyguard_dispatch(system->keyguard_monitor) != 0) {
+            system_runtime_fatal(delta, STARSEAD_COMPONENT_RUNTIME,
+                "lock screen event source lost; restart service control to reconnect");
+        }
     } else if (source->kind == STARSEAD_POLL_WIFI) {
         if (system_service_wifi_dispatch(system) != 0) {
             system_runtime_fatal(delta, STARSEAD_COMPONENT_NETWORK,
@@ -1744,12 +1780,16 @@ static int system_runtime_request_stop(void *opaque) {
     struct starsead_system_supervisor *system = opaque;
     if (!system->runtime->supervising) return 1;
     system->stop_requested = true;
+    system->automatic_stop_pending = false;
+    system->manual_stop_pending = true;
+    system->service_start_requested = false;
     return 0;
 }
 
 static int system_runtime_request_shutdown(void *opaque) {
     struct starsead_system_supervisor *system = opaque;
     system->shutdown_requested = true;
+    system->service_start_requested = false;
     if (system->runtime->supervising) {
         system->stop_requested = true;
     }
@@ -1784,6 +1824,10 @@ static int system_effect_event(void *opaque, enum starsead_control_event_type ty
     if (has_details != (details != NULL) || system_runtime_clock(system, &now) != 0) return -1;
     if (type == STARSEAD_CONTROL_EVENT_RUNNING || type == STARSEAD_CONTROL_EVENT_PAUSED) {
         system->service_running = type == STARSEAD_CONTROL_EVENT_RUNNING;
+    } else if (type == STARSEAD_CONTROL_EVENT_STOPPED) {
+        // Once STOPPED is visible, a new automatic edge may start a new cycle.
+        system->service_running = false;
+        system->manual_stop_pending = false;
     }
     return starsead_control_server_publish_event(
         system->control, type, snapshot, details,
@@ -6400,6 +6444,8 @@ static void system_runtime_cleanup(struct starsead_system_supervisor *system) {
     }
     system->service_timer_fd = -1;
     system->service_timer_fd_owned = false;
+    starsead_keyguard_close(system->keyguard_monitor);
+    system->keyguard_monitor = NULL;
     if (system->wifi_monitor_opened) starsead_wifi_monitor_close(&system->wifi_monitor);
     system->wifi_monitor_opened = false;
     if (system->runtime != NULL) starsead_runtime_destroy(system->runtime);
@@ -6573,6 +6619,17 @@ static int system_runtime_run(const char *config_path, bool initial_start,
                 &system.service_control, transition, &identity);
         }
     }
+    if (service->enabled && service->keyguard.enabled &&
+        starsead_keyguard_open(&system.keyguard_monitor, system_service_keyguard_changed,
+            &system, error, sizeof(error)) != 0) {
+        (void)close(listener);
+        *has_early_result = true;
+        (void)system_start_result(early_result, STARSEAD_CONTROL_RESULT_START_FAILED,
+            error, NULL);
+        system_runtime_cleanup(&system);
+        (void)sigprocmask(SIG_SETMASK, &previous, NULL);
+        return 1;
+    }
     if ((service->enabled && service->schedule.enabled && !system.service_timer_fd_owned) ||
         (service->enabled && service->wifi.enabled && !system.wifi_monitor_opened) ||
         system_service_timer_arm(&system) != 0) {
@@ -6647,7 +6704,9 @@ static int system_runtime_run(const char *config_path, bool initial_start,
                 system.runtime, &system.loaded_config.config,
                 &system.state, &system.live, &effects);
             system.service_running = false;
-            starsead_service_control_set_service_running(&system.service_control, false);
+            system.manual_stop_pending = false;
+            starsead_service_control_set_service_running(
+                &system.service_control, system.service_start_requested);
             system_runtime_finish_control_stop(&system);
             if (cycle_status != 0) {
                 if (cycle_failure_requires_shutdown(

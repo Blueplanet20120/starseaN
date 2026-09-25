@@ -93,6 +93,22 @@ static enum starsead_service_action starsead_service_control_apply(
     return action;
 }
 
+enum starsead_service_action starsead_service_control_on_keyguard(
+    struct starsead_service_control_runtime *runtime, bool locked, bool baseline) {
+    if (runtime == NULL) return STARSEAD_SERVICE_ACTION_NONE;
+    bool changed = runtime->keyguard_baseline_established && runtime->keyguard_locked != locked;
+    runtime->keyguard_baseline_established = true;
+    runtime->keyguard_locked = locked;
+    if (baseline || !changed || !runtime->config || !runtime->config->enabled ||
+        !runtime->config->keyguard.enabled) return STARSEAD_SERVICE_ACTION_NONE;
+    const struct starsead_keyguard_control_config *rule = &runtime->config->keyguard;
+    if (locked ? rule->lock_stop : rule->unlock_stop)
+        return starsead_service_control_apply(runtime, STARSEAD_SERVICE_ACTION_STOP);
+    if (locked ? rule->lock_start : rule->unlock_start)
+        return starsead_service_control_apply(runtime, STARSEAD_SERVICE_ACTION_START);
+    return STARSEAD_SERVICE_ACTION_NONE;
+}
+
 static enum starsead_service_action starsead_service_control_rules(
     struct starsead_service_control_runtime *runtime,
     const struct starsead_wifi_rule_config *start,
