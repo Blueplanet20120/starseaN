@@ -565,7 +565,9 @@ private fun restartSelectedProxyService(
                         localProxyPort = result.appState?.localProxyPort ?: state.localProxyPort,
                     )
                 }
-                tipNotifier.show(messages.serviceRestarted)
+                tipNotifier.show(
+                    if (result.heldByServiceControl) messages.serviceHeldByRule else messages.serviceRestarted,
+                )
             }
 
             ProxyServiceResult.MissingServer -> {

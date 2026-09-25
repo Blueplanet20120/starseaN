@@ -405,6 +405,7 @@
     <string name="proxy_server_list_no_subscription_updates">Нет доступных подписок для обновления</string>
     <string name="proxy_server_list_service_started">Служба прокси запущена</string>
     <string name="proxy_server_list_service_stopped">Служба прокси остановлена</string>
+    <string name="proxy_server_list_service_held_by_rule">Приложение запущено и сейчас выключено по действующему правилу</string>
     <string name="proxy_server_list_select_first">Сначала выберите прокси-сервер</string>
     <string name="proxy_server_list_latency_result">{name} пинг: {latency}</string>
     <string name="proxy_server_list_latency_failed">Тайм-аут</string>

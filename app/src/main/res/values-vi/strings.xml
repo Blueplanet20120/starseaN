@@ -451,6 +451,7 @@
     <string name="proxy_server_list_no_subscription_updates">Không có đăng ký nào để cập nhật</string>
     <string name="proxy_server_list_service_started">Dịch vụ proxy đã khởi động</string>
     <string name="proxy_server_list_service_stopped">Dịch vụ proxy đã dừng</string>
+    <string name="proxy_server_list_service_held_by_rule">Ứng dụng đang chạy và tạm tắt theo quy tắc hiện tại</string>
     <string name="proxy_server_list_select_first">Vui lòng chọn một nút proxy trước</string>
     <string name="proxy_server_list_latency_result">{name} độ trễ {latency}</string>
     <string name="proxy_server_list_latency_failed">Thất bại</string>

@@ -21,6 +21,7 @@ import engine.root.runtime.RootFailureReport
 import engine.root.runtime.RootFailureWatcher
 import engine.root.runtime.RootRuntimeBusyException
 import engine.root.runtime.RootRuntimeConflictException
+import engine.root.daemon.control.StarseadPhase
 import engine.root.runtime.RootSupervisorController
 import engine.root.runtime.toStableProxyEngineStatus
 import kotlinx.coroutines.flow.Flow
@@ -86,6 +87,12 @@ internal class RootModeEngine(
                 controller.restart(config.root, config.starseadConfig)
             } else {
                 controller.start(config.root, config.starseadConfig)
+            }
+            if (snapshot.phase == StarseadPhase.Stopped &&
+                config.starseadConfig.serviceControl.enabled
+            ) {
+                return controller.proxyStatus(snapshot, runMode, definition.daemonMode)
+                    .copy(heldByServiceControl = true)
             }
             controller.requireRunning(snapshot, definition.daemonMode)
             LocalProxyRuntime.update(config.localProxyOptions)

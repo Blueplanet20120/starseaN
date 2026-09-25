@@ -27,6 +27,7 @@ import engine.root.publication.prepareRootPublicationDirectories
 import engine.root.publication.rootRuntimeLayout
 import features.logs.AndroidAppLogger
 import features.logs.clearServiceLogRepositories
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.NonCancellable
@@ -207,16 +208,22 @@ internal class RootSupervisorController(
             }
             stage = "await_ready"
             runCatching { AndroidAppLogger.info(LogTag, "root_start stage=launch result=sent") }
+            val acceptHeldStop = launchMode == RootPublicationLaunchMode.Service &&
+                config.serviceControl.enabled
             val snapshot = withTimeoutOrNull(StartTimeoutMilliseconds.milliseconds) {
                 when (launchMode) {
-                    RootPublicationLaunchMode.Service -> client.awaitRunning(runtimeLayout.starseadPath)
+                    RootPublicationLaunchMode.Service -> if (acceptHeldStop) {
+                        awaitRunningOrServiceControlHold(runtimeLayout.starseadPath)
+                    } else {
+                        client.awaitRunning(runtimeLayout.starseadPath)
+                    }
                     RootPublicationLaunchMode.Monitor -> client.awaitStopped(runtimeLayout.starseadPath)
                     RootPublicationLaunchMode.None -> error("A non-launch publication has no runtime snapshot")
                 }
             } ?: throw IllegalStateException("starsead did not reach the requested phase before timeout")
             if (snapshot.owner != StarseadOwner.StarseaN) throw RootRuntimeConflictException(snapshot)
             require(snapshot.mode == config.mode) { "Unexpected ROOT mode ${snapshot.mode.wireValue}" }
-            if (launchMode == RootPublicationLaunchMode.Service) {
+            if (snapshot.phase == StarseadPhase.Running) {
                 observeRunningFailure(snapshot, explicitRootAction = true)
             } else {
                 // A resident supervisor waiting for a trigger has no running core to monitor.
@@ -318,6 +325,31 @@ internal class RootSupervisorController(
         requirePublicationSuccess(result)
     }
 
+    private suspend fun awaitRunningOrServiceControlHold(executablePath: String): StarseadSnapshot {
+        var delayMilliseconds = 50L
+        var stoppedSinceNanoseconds: Long? = null
+        while (true) {
+            val snapshot = client.status(executablePath).boundSnapshot()
+            if (snapshot != null && snapshot.owner == StarseadOwner.StarseaN) {
+                when (snapshot.phase) {
+                    StarseadPhase.Running -> return snapshot
+                    StarseadPhase.Failed -> error(snapshot.error?.message ?: "starsead entered failed phase")
+                    StarseadPhase.Stopped -> {
+                        val since = stoppedSinceNanoseconds ?: System.nanoTime().also {
+                            stoppedSinceNanoseconds = it
+                        }
+                        if (System.nanoTime() - since >= ServiceControlHoldSettleNanoseconds) {
+                            return snapshot
+                        }
+                    }
+                    else -> stoppedSinceNanoseconds = null
+                }
+            }
+            delay(delayMilliseconds.milliseconds)
+            delayMilliseconds = (delayMilliseconds * 2L).coerceAtMost(250L)
+        }
+    }
+
     private fun launchFailure(result: ShellExecResult): IllegalStateException {
         runCatching { AndroidAppLogger.warn(LogTag, "root_launcher exit=${result.errno} stderr=${sanitizeLauncherStderr(result.stderr).take(512)}") }
         val controlResponse = result.controlResponseOrNull()
@@ -346,6 +378,8 @@ internal class RootSupervisorController(
 }
 
 private const val LogTag = "RootSupervisorController"
+private const val StartTimeoutMilliseconds = 15_000L
+private const val ServiceControlHoldSettleNanoseconds = 750_000_000L
 
 internal fun sanitizeLauncherStderr(stderr: String): String {
     val retained = mutableListOf<String>()
@@ -374,5 +408,3 @@ internal fun sanitizeLauncherStderr(stderr: String): String {
         .trim()
     return retained.joinToString("\n").trim().ifBlank { stderrWithoutCleanupWarnings }
 }
-
-private const val StartTimeoutMilliseconds = 15_000L

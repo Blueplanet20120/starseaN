@@ -22,6 +22,7 @@ data class ProxyEngineStatus(
     val runMode: Int? = null,
     val appState: AppState? = null,
     val rootSnapshot: RootRuntimeSnapshot? = null,
+    val heldByServiceControl: Boolean = false,
 ) {
     companion object {
         fun fromRootSnapshot(

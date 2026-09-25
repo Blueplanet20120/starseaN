@@ -381,9 +381,7 @@ fun ProxyServerListPage(
                                         localProxyPort = result.appState?.localProxyPort ?: state.localProxyPort,
                                     )
                                 }
-                                tipNotifier.show(
-                                    if (result.proxyRunning) messages.serviceStarted else messages.serviceStopped,
-                                )
+                                tipNotifier.show(messages.outcome(result))
                             }
 
                             ProxyServiceResult.MissingServer -> {

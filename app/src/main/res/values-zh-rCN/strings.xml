@@ -451,6 +451,7 @@
     <string name="proxy_server_list_no_subscription_updates">没有可更新的订阅</string>
     <string name="proxy_server_list_service_started">代理服务已启动</string>
     <string name="proxy_server_list_service_stopped">代理服务已停止</string>
+    <string name="proxy_server_list_service_held_by_rule">应用已运行，根据规则目前暂时关闭</string>
     <string name="proxy_server_list_select_first">请先选择一个代理节点</string>
     <string name="proxy_server_list_latency_result">{name} 延迟 {latency}</string>
     <string name="proxy_server_list_latency_failed">失败</string>

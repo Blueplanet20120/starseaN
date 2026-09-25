@@ -451,6 +451,7 @@
     <string name="proxy_server_list_no_subscription_updates">No subscriptions to update</string>
     <string name="proxy_server_list_service_started">Proxy service started</string>
     <string name="proxy_server_list_service_stopped">Proxy service stopped</string>
+    <string name="proxy_server_list_service_held_by_rule">The app is running and is currently off under the active rule</string>
     <string name="proxy_server_list_select_first">Select a proxy server first</string>
     <string name="proxy_server_list_latency_result">{name} latency {latency}</string>
     <string name="proxy_server_list_latency_failed">Failed</string>

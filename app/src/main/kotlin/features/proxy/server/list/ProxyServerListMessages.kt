@@ -6,6 +6,7 @@ package features.proxy.server.list
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import app.R
+import features.proxy.server.usecase.ProxyServiceResult
 
 internal data class ProxyServerListMessages(
     val savedTemplate: String,
@@ -21,6 +22,7 @@ internal data class ProxyServerListMessages(
     val noSubscriptionUpdates: String,
     val serviceStarted: String,
     val serviceStopped: String,
+    val serviceHeldByRule: String,
     val selectServerFirst: String,
     val latencyResultTemplate: String,
     val latencyFailed: String,
@@ -53,6 +55,7 @@ internal fun proxyServerListMessages(): ProxyServerListMessages {
         noSubscriptionUpdates = stringResource(R.string.proxy_server_list_no_subscription_updates),
         serviceStarted = stringResource(R.string.proxy_server_list_service_started),
         serviceStopped = stringResource(R.string.proxy_server_list_service_stopped),
+        serviceHeldByRule = stringResource(R.string.proxy_server_list_service_held_by_rule),
         selectServerFirst = stringResource(R.string.proxy_server_list_select_first),
         latencyResultTemplate = stringResource(R.string.proxy_server_list_latency_result),
         latencyFailed = stringResource(R.string.proxy_server_list_latency_failed),
@@ -67,4 +70,12 @@ internal fun proxyServerListMessages(): ProxyServerListMessages {
         allServersDeletedTemplate = stringResource(R.string.proxy_server_list_all_deleted),
         noServersToDelete = stringResource(R.string.proxy_server_list_no_servers_to_delete),
     )
+}
+
+internal fun ProxyServerListMessages.outcome(result: ProxyServiceResult.Success): String {
+    return when {
+        result.proxyRunning -> serviceStarted
+        result.heldByServiceControl -> serviceHeldByRule
+        else -> serviceStopped
+    }
 }

@@ -58,7 +58,13 @@ internal class ProxyServiceUseCase(
         return runCatching {
             proxyEngine.restart(ProxyEngineStartRequest(state, server))
         }.fold(
-            onSuccess = { status -> ProxyServiceResult.Success(proxyRunning = status.running, appState = status.appState) },
+            onSuccess = { status ->
+                ProxyServiceResult.Success(
+                    proxyRunning = status.running,
+                    appState = status.appState,
+                    heldByServiceControl = status.heldByServiceControl,
+                )
+            },
             onFailure = { error -> error.toProxyServiceFailure(RootRequestedAction.RestartSameOwner) },
         )
     }
@@ -71,7 +77,13 @@ internal class ProxyServiceUseCase(
         return runCatching {
             proxyEngine.start(ProxyEngineStartRequest(state, server))
         }.fold(
-            onSuccess = { status -> ProxyServiceResult.Success(proxyRunning = status.running, appState = status.appState) },
+            onSuccess = { status ->
+                ProxyServiceResult.Success(
+                    proxyRunning = status.running,
+                    appState = status.appState,
+                    heldByServiceControl = status.heldByServiceControl,
+                )
+            },
             onFailure = { error -> error.toProxyServiceFailure(RootRequestedAction.OrdinaryStart) },
         )
     }
@@ -143,6 +155,7 @@ internal sealed interface ProxyServiceResult {
     data class Success(
         val proxyRunning: Boolean,
         val appState: AppState? = null,
+        val heldByServiceControl: Boolean = false,
     ) : ProxyServiceResult
 
     data object MissingServer : ProxyServiceResult
