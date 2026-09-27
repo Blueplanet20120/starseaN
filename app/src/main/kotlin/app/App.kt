@@ -28,7 +28,6 @@ import features.proxy.server.usecase.ProxyServerImportFileUseCase
 import features.proxy.server.usecase.ProxyServiceUseCase
 import features.resources.ResourceFileUseCase
 import features.settings.locale.ProvideAppLanguage
-import features.settings.locale.RecreateActivityOnAppLanguageChange
 import features.settings.usecase.SwitchRunModeUseCase
 import features.settings.usecase.ApplyServiceControlUseCase
 import features.settings.usecase.RootBootScriptUseCase
@@ -186,7 +185,6 @@ fun App(
         { transform -> stateStore.update(transform) }
     }
     val keyColor = keyColorFor(chromeState.seedIndex)
-    RecreateActivityOnAppLanguageChange(languageMode = chromeState.languageMode)
     ProxyStatusSynchronizer(
         stateStore = stateStore,
         proxyEngine = proxyEngine,
