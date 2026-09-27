@@ -476,6 +476,7 @@
     <string name="proxy_editor_custom_title">Custom</string>
     <string name="proxy_editor_properties">Properties</string>
     <string name="proxy_editor_remarks">Remarks</string>
+    <string name="proxy_editor_remote_dns_optional">Remote DNS (optional, comma-separated IPv4/IPv6, or local for device DNS; default Cloudflare)</string>
     <string name="proxy_editor_server">Server address</string>
     <string name="proxy_editor_port">Server port</string>
     <string name="proxy_editor_username_optional">Username (optional)</string>
@@ -546,6 +547,7 @@
     <string name="proxy_validation_reality_short_id_invalid">Reality ShortId must be even-length hex with at most 16 characters</string>
     <string name="proxy_validation_reality_mldsa65_verify_invalid">Reality Mldsa65Verify must be URL-safe base64 for a 1952-byte public key</string>
     <string name="proxy_validation_wireguard_key_invalid">WireGuard key must be a valid base64 key</string>
+    <string name="proxy_validation_wireguard_remote_dns_invalid">Remote DNS must contain comma-separated IPv4/IPv6 addresses or only local</string>
     <string name="proxy_validation_wireguard_reserved_count_invalid">Reserved must contain three comma-separated numbers</string>
     <string name="proxy_validation_wireguard_reserved_value_invalid">Each reserved value must be {min}–{max}</string>
     <string name="proxy_validation_local_address_cidr_required">Local address must use CIDR format</string>
