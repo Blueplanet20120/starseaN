@@ -55,7 +55,7 @@ internal class ProxyAppListPageState {
     var userTabs by mutableStateOf(emptyList<ProxyAppListUserSpaceTabUi>())
     var searchValue by mutableStateOf("")
     var debouncedSearchValue by mutableStateOf("")
-    var showSystemApps by mutableStateOf(false)
+    var showSystemApps by mutableStateOf(true)
     var scanProgress by mutableStateOf<ScanProgressState?>(null)
 
     fun requestRefresh() {
