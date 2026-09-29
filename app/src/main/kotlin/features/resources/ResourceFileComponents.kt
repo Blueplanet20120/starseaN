@@ -382,13 +382,15 @@ private fun ResourceFileCardSurface(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        Text(
-                            text = status.updatedAtText(),
-                            style = MiuixTheme.textStyles.body2,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (!status.isBundledCore) {
+                            Text(
+                                text = status.updatedAtText(),
+                                style = MiuixTheme.textStyles.body2,
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.width(12.dp))

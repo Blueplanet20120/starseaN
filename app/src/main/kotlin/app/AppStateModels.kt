@@ -83,6 +83,7 @@ data class ResourceFileStatus(
     val sizeBytes: Long = 0,
     val updatedAtMillis: Long = 0,
     val kernelVersion: String = "",
+    val isBundledCore: Boolean = false,
 )
 
 @Stable
