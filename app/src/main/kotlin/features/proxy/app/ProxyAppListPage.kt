@@ -54,6 +54,7 @@ import app.LocalUpdateAppState
 import app.PresetProxyAppPackageNames
 import app.R
 import app.collectAppState
+import app.requiresGlobalProxyAppMode
 import app.modes.RunModeVpnService
 import features.proxy.app.model.ProxyAppListItem
 import features.proxy.app.model.ProxyAppListUserSpaceTabUi
@@ -139,6 +140,8 @@ fun ProxyAppListPage(
 
     val proxyAppListModes = proxyAppListModeLabels()
     val modeIndex = appState.proxyAppListMode.coerceIn(proxyAppListModes.indices)
+    val requiresGlobalProxyAppMode = appState.requiresGlobalProxyAppMode
+    val fakeDnsGlobalModeMessage = stringResource(R.string.proxy_app_list_fake_dns_requires_global)
     val isVpnServiceMode = appState.runMode == RunModeVpnService
     val selectedAppKeys = remember(appState.proxyAppListSelectedApps) {
         appState.proxyAppListSelectedApps.toSet()
@@ -197,6 +200,7 @@ fun ProxyAppListPage(
             ProxyAppListTopBar(
                 modes = proxyAppListModes,
                 modeIndex = modeIndex,
+                requiresGlobalProxyAppMode = requiresGlobalProxyAppMode,
                 isWideScreen = isWideScreen,
                 scrollBehavior = topAppBarScrollBehavior,
                 searchValue = pageState.searchValue,
@@ -204,7 +208,11 @@ fun ProxyAppListPage(
                 userTabs = pageState.userTabs,
                 selectedUserId = selectedUserId,
                 onModeChanged = { index ->
-                    updateAppState { state -> state.copy(proxyAppListMode = index) }
+                    if (requiresGlobalProxyAppMode && index != ProxyAppListModeGlobal) {
+                        scope.launch { tipNotifier.show(fakeDnsGlobalModeMessage) }
+                    } else {
+                        updateAppState { state -> state.copy(proxyAppListMode = index) }
+                    }
                 },
                 onSearchValueChange = { value -> pageState.searchValue = value },
                 onMoreAction = { action ->
@@ -224,11 +232,20 @@ fun ProxyAppListPage(
                             )
                             updateAppState { state ->
                                 state.copy(
-                                    proxyAppListMode = ProxyAppListModeWhitelist,
+                                    proxyAppListMode = if (state.requiresGlobalProxyAppMode) {
+                                        ProxyAppListModeGlobal
+                                    } else {
+                                        ProxyAppListModeWhitelist
+                                    },
                                     proxyAppListSelectedApps = nextSelection,
                                 )
                             }
-                            scope.launch { tipNotifier.show(presetAppliedMessage) }
+                            scope.launch {
+                                tipNotifier.show(
+                                    if (requiresGlobalProxyAppMode) fakeDnsGlobalModeMessage
+                                    else presetAppliedMessage,
+                                )
+                            }
                         }
 
                         ProxyAppListMoreAction.ImportClipboard -> {
@@ -419,6 +436,7 @@ fun ProxyAppListPage(
         onModeSelected = { importMode ->
             val imported = pendingAppListImport ?: return@ImportModeDialog
             var importedCount = 0
+            var importedModeRestricted = false
             updateAppState { state ->
                 val result = applyProxyAppListClipboardImport(
                     currentMode = state.proxyAppListMode,
@@ -431,6 +449,7 @@ fun ProxyAppListPage(
                     ClipboardImportMode.Merge ->
                         (result.selectedApps.size - state.proxyAppListSelectedApps.size).coerceAtLeast(0)
                 }
+                importedModeRestricted = state.requiresGlobalProxyAppMode && result.mode != ProxyAppListModeGlobal
                 state.copy(
                     proxyAppListMode = result.mode,
                     proxyAppListSelectedApps = result.selectedApps,
@@ -438,7 +457,10 @@ fun ProxyAppListPage(
             }
             pendingAppListImport = null
             scope.launch {
-                tipNotifier.show(importedTemplate.formatTemplate("count" to importedCount))
+                tipNotifier.show(
+                    if (importedModeRestricted) fakeDnsGlobalModeMessage
+                    else importedTemplate.formatTemplate("count" to importedCount),
+                )
             }
         },
     )
@@ -456,6 +478,7 @@ fun ProxyAppListPage(
 private fun ProxyAppListTopBar(
     modes: List<String>,
     modeIndex: Int,
+    requiresGlobalProxyAppMode: Boolean,
     isWideScreen: Boolean,
     scrollBehavior: ScrollBehavior,
     searchValue: String,
@@ -476,6 +499,7 @@ private fun ProxyAppListTopBar(
             ProxyAppListModeMenu(
                 modes = modes,
                 selectedIndex = modeIndex,
+                requiresGlobalProxyAppMode = requiresGlobalProxyAppMode,
                 onSelectedIndexChange = onModeChanged,
             )
             ProxyAppListMoreActionsMenu(
