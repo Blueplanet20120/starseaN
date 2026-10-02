@@ -26,6 +26,7 @@ import engine.root.publication.RootCoreRemovalCommand
 import system.AndroidRootShellGateway
 import system.RootShellGateway
 import system.ShellExecOptions
+import utils.shellQuote
 
 internal class AndroidResourceFileRepository(
     context: Context,
@@ -468,7 +469,7 @@ internal class AndroidResourceFileRepository(
         }
     }
 
-    private fun presentedStatus(
+    private suspend fun presentedStatus(
         customResourceFiles: List<CustomResourceFileState> = emptyList(),
     ): ResourceFilesStatus {
         val status = store.currentStatus(customResourceFiles)
@@ -480,19 +481,46 @@ internal class AndroidResourceFileRepository(
         )
     }
 
-    private fun resolveXrayKernelVersion(): String {
+    private suspend fun resolveXrayKernelVersion(): String {
         val gojni = store.effectiveXrayGoJniFile()
         val launcher = store.effectiveXrayCoreFile()
+        val downloaded = gojni.isFile && gojni.parentFile == store.dataDir
         val fingerprint = listOf(gojni, launcher).joinToString("|") { file ->
-            "${file.absolutePath}:${file.takeIf { it.isFile }?.lastModified() ?: 0}:${file.takeIf { it.isFile }?.length() ?: 0}:kernel-display-v3-checkversionx"
+            "${file.absolutePath}:${file.takeIf { it.isFile }?.lastModified() ?: 0}:${file.takeIf { it.isFile }?.length() ?: 0}:kernel-display-v4-effective-library"
         }
         versionStore.kernelVersion(fingerprint)?.let { return it }
-        val probed = AndroidLibXrayLiteRuntime.packagedXrayCoreVersion()
+        val probed = if (downloaded) {
+            probeDownloadedXrayKernel(launcher, gojni)
+        } else {
+            AndroidLibXrayLiteRuntime.packagedXrayCoreVersion()
+        }
         if (probed != null) {
             versionStore.setKernelVersion(probed, fingerprint)
-            AndroidResourceFileLogger.info("Xray kernel from Libv2ray.checkVersionX=$probed")
+            AndroidResourceFileLogger.info(
+                "Xray kernel from ${if (downloaded) gojni.absolutePath else "packaged Libv2ray"}=$probed",
+            )
         }
         return probed.orEmpty()
+    }
+
+    private suspend fun probeDownloadedXrayKernel(launcher: File, library: File): String? {
+        if (!launcher.isFile || !library.isFile) return null
+        val launcherPath = launcher.absolutePath.shellQuote()
+        val libraryPath = library.absolutePath.shellQuote()
+        val result = rootShell.exec(
+            "chmod 755 $launcherPath $libraryPath >/dev/null 2>&1; ANDROID_XRAY_LIBRARY=$libraryPath $launcherPath version",
+            ShellExecOptions(logFailure = false),
+        )
+        val output = listOf(result.stdout, result.stderr)
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+        return parseXrayVersionOutput(output).also { version ->
+            if (version == null) {
+                AndroidResourceFileLogger.warn(
+                    "Xray kernel probe failed for ${library.absolutePath} size=${library.length()}",
+                )
+            }
+        }
     }
 
     private fun resolveXrayCoreUpdatedAt(fileUpdatedAtMillis: Long): Long {
