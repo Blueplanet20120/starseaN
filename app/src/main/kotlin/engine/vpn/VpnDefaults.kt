@@ -11,10 +11,13 @@ object VpnDefaults {
     const val MTU_MAX = 65_535
     const val IPV4_DNS = "8.8.8.8"
     val PROXY_DNS_SERVERS = listOf(
-        "https://1.1.1.1/dns-query",
-        "https://8.8.8.8/dns-query",
+        "1.1.1.1",
+        "8.8.8.8",
     )
-    val DIRECT_DNS_SERVERS = listOf("quic+local://223.5.5.5")
+    val DIRECT_DNS_SERVERS = listOf(
+        "quic+local://223.5.5.5",
+        "quic+local://119.29.29.29",
+    )
     const val IPV4_CIDR = "172.19.0.1/30"
     const val IPV6_CIDR = "fdfe:dcba:9876::1/126"
 }
