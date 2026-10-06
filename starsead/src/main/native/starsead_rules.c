@@ -87,6 +87,30 @@ static int transaction_add_hook(struct starsead_traffic_hook_group *group,
     return target == NULL ? 0 : STARSEAD_CONFIG_INVALID;
 }
 
+static int transaction_add_ipv6_leak(
+    struct starsead_rule_transaction_plan *plan) {
+    struct starsead_private_chain_group *group = transaction_add_private_group(plan,
+        STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER, STARSEAD_CHAIN_IPV6_LEAK);
+    if (group == NULL ||
+        transaction_copy_text(group->names[0], STARSEAD_MAX_CHAIN_NAME,
+            "STARSEA_V6_LEAK_OUT") != 0 ||
+        transaction_copy_text(group->names[1], STARSEAD_MAX_CHAIN_NAME,
+            "STARSEA_V6_LEAK_FWD") != 0) {
+        return STARSEAD_CONFIG_INVALID;
+    }
+    group->name_count = 2U;
+    struct starsead_traffic_hook_group *hooks = transaction_add_hook_group(plan,
+        STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER,
+        STARSEAD_CHAIN_IPV6_LEAK, STARSEAD_RULE_IPV6_LEAK_ENTRY);
+    if (transaction_add_hook(hooks, STARSEAD_BUILTIN_OUTPUT, true,
+            STARSEAD_HOOK_JUMP, false, "STARSEA_V6_LEAK_OUT") != 0 ||
+        transaction_add_hook(hooks, STARSEAD_BUILTIN_FORWARD, true,
+            STARSEAD_HOOK_JUMP, false, "STARSEA_V6_LEAK_FWD") != 0) {
+        return STARSEAD_CONFIG_INVALID;
+    }
+    return 0;
+}
+
 static int transaction_add_fake_dns(
     struct starsead_rule_transaction_plan *plan) {
     const struct starsead_owned_resource_catalog *catalog =
@@ -158,6 +182,9 @@ int starsead_rule_transaction_plan_build(
         }
     }
     if (config->enable_fake_dns && transaction_add_fake_dns(plan) != 0) {
+        return STARSEAD_CONFIG_INVALID;
+    }
+    if (config->disable_system_ipv6 && transaction_add_ipv6_leak(plan) != 0) {
         return STARSEAD_CONFIG_INVALID;
     }
     plan->hooks_are_last = true;

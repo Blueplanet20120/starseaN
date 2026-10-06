@@ -3219,6 +3219,113 @@ static int system_populate_tun_output(
     return system_append_policy_output(system, family, chain);
 }
 
+static int system_filter_append(struct starsead_system_supervisor *system,
+    const char *chain, const char *const *arguments, size_t count) {
+    return system_xtables_zero(system, STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER,
+        "-A", chain, arguments, count);
+}
+
+static bool system_ipv6_protected_uid(uint32_t uid) {
+    return uid == 0U || uid == 1000U || uid == 1001U || uid == 1073U;
+}
+
+static bool system_uid_listed(const uint32_t *uids, size_t count, uint32_t uid) {
+    for (size_t index = 0U; index < count; ++index) {
+        if (uids[index] == uid) return true;
+    }
+    return false;
+}
+
+static int system_append_ipv6_uid_verdict(struct starsead_system_supervisor *system,
+    const char *chain, uint32_t uid, bool reject) {
+    char uid_text[16U];
+    if (snprintf(uid_text, sizeof(uid_text), "%" PRIu32, uid) <= 0) return -1;
+    if (reject) {
+        const char *arguments[] = {
+            "-m", "owner", "--uid-owner", uid_text, "-j", "REJECT",
+            "--reject-with", "icmp6-adm-prohibited",
+        };
+        return system_filter_append(system, chain, arguments,
+            sizeof(arguments) / sizeof(arguments[0]));
+    }
+    const char *arguments[] = {"-m", "owner", "--uid-owner", uid_text, "-j", "RETURN"};
+    return system_filter_append(system, chain, arguments,
+        sizeof(arguments) / sizeof(arguments[0]));
+}
+
+static int system_populate_ipv6_leak_output(struct starsead_system_supervisor *system,
+    const char *chain) {
+    const struct starsead_config *config = &system->loaded_config.config;
+    const char *loopback[] = {"-o", "lo", "-j", "RETURN"};
+    const char *core_gid[] = {"-m", "owner", "--gid-owner", "3005", "-j", "RETURN"};
+    if (system_filter_append(system, chain, loopback, 4U) != 0 ||
+        system_filter_append(system, chain, core_gid, 6U) != 0) return -1;
+    static const uint32_t protected_uids[] = {0U, 1000U, 1001U, 1073U};
+    for (size_t index = 0U; index < sizeof(protected_uids) / sizeof(protected_uids[0]); ++index) {
+        if (system_append_ipv6_uid_verdict(system, chain, protected_uids[index], false) != 0) {
+            return -1;
+        }
+    }
+    for (size_t index = 0U; index < config->bypass_uid_count; ++index) {
+        uint32_t uid = config->bypass_uids[index];
+        if (system_ipv6_protected_uid(uid)) continue;
+        if (system_append_ipv6_uid_verdict(system, chain, uid, false) != 0) return -1;
+    }
+    if (config->app_policy_mode == STARSEAD_APP_POLICY_WHITELIST) {
+        for (size_t index = 0U; index < config->uid_count; ++index) {
+            uint32_t uid = config->uids[index];
+            if (system_ipv6_protected_uid(uid) ||
+                system_uid_listed(config->bypass_uids, config->bypass_uid_count, uid)) continue;
+            if (system_append_ipv6_uid_verdict(system, chain, uid, true) != 0) return -1;
+        }
+        return 0;
+    }
+    if (config->app_policy_mode == STARSEAD_APP_POLICY_BLACKLIST) {
+        for (size_t index = 0U; index < config->uid_count; ++index) {
+            uint32_t uid = config->uids[index];
+            if (system_ipv6_protected_uid(uid) ||
+                system_uid_listed(config->bypass_uids, config->bypass_uid_count, uid)) continue;
+            if (system_append_ipv6_uid_verdict(system, chain, uid, false) != 0) return -1;
+        }
+    }
+    const char *reject_rest[] = {"-j", "REJECT", "--reject-with", "icmp6-adm-prohibited"};
+    return system_filter_append(system, chain, reject_rest, 4U);
+}
+
+static bool system_hotspot_selector_listed(
+    const struct starsead_config *config, const char *selector) {
+    for (size_t index = 0U; index < config->hotspot_interface_prefix_count; ++index) {
+        if (strcmp(config->hotspot_interface_prefixes[index], selector) == 0) return true;
+    }
+    return false;
+}
+
+static int system_append_ipv6_forward_reject(struct starsead_system_supervisor *system,
+    const char *chain, const char *selector) {
+    const char *arguments[] = {
+        "-i", selector, "-j", "REJECT", "--reject-with", "icmp6-adm-prohibited",
+    };
+    return system_filter_append(system, chain, arguments,
+        sizeof(arguments) / sizeof(arguments[0]));
+}
+
+static int system_populate_ipv6_leak_forward(struct starsead_system_supervisor *system,
+    const char *chain) {
+    const struct starsead_config *config = &system->loaded_config.config;
+    static const char *const builtin_selectors[] = {"wlan+", "rndis+", "ap+", "softap+"};
+    for (size_t index = 0U; index < config->hotspot_interface_prefix_count; ++index) {
+        if (system_append_ipv6_forward_reject(
+                system, chain, config->hotspot_interface_prefixes[index]) != 0) return -1;
+    }
+    for (size_t index = 0U; index < sizeof(builtin_selectors) / sizeof(builtin_selectors[0]); ++index) {
+        if (system_hotspot_selector_listed(config, builtin_selectors[index])) continue;
+        if (system_append_ipv6_forward_reject(system, chain, builtin_selectors[index]) != 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
 static int system_populate_private_chain(
     struct starsead_system_supervisor *system,
     const struct starsead_private_chain_group *group, const char *chain) {
@@ -3265,6 +3372,15 @@ static int system_populate_private_chain(
                 "-A", chain, dns_only ? dns_input : input, dns_only ? 10U : 4U) == 0 &&
                 system_xtables_zero(system, family, STARSEAD_IP_TABLE_FILTER,
                     "-A", chain, dns_only ? dns_output : output, dns_only ? 10U : 4U) == 0 ? 0 : -1;
+        }
+        return -1;
+    }
+    if (group->chain_id == STARSEAD_CHAIN_IPV6_LEAK) {
+        if (strstr(chain, "FWD") != NULL) {
+            return system_populate_ipv6_leak_forward(system, chain);
+        }
+        if (strstr(chain, "OUT") != NULL) {
+            return system_populate_ipv6_leak_output(system, chain);
         }
         return -1;
     }
@@ -4853,31 +4969,25 @@ static int system_network_effect_dispatch(void *opaque,
         system, &request->effect.resource.sysctl, error, error_size);
 }
 
-static int system_apply_ipv6_guard(
+static int system_restore_interface_ipv6(
     struct starsead_system_supervisor *system, const char *name, uint32_t index) {
-    struct starsead_resource_operation record;
-    memset(&record, 0, sizeof(record));
-    record.kind = STARSEAD_RESOURCE_OPERATION_SYSCTL;
-    record.resource.sysctl.sysctl_id = STARSEAD_SYSCTL_DISABLE_IPV6;
-    (void)snprintf(record.resource.sysctl.interface_name,
-        sizeof(record.resource.sysctl.interface_name), "%s", name);
-    record.resource.sysctl.interface_index = index;
-    record.resource.sysctl.original_value = 0U;
-    record.resource.sysctl.desired_value = 1U;
+    struct starsead_sysctl_resource resource;
+    memset(&resource, 0, sizeof(resource));
+    resource.sysctl_id = STARSEAD_SYSCTL_DISABLE_IPV6;
+    (void)snprintf(resource.interface_name, sizeof(resource.interface_name), "%s", name);
+    resource.interface_index = index;
+    resource.desired_value = 0U;
     uint8_t current = 0U;
-    int read_result = system_sysctl_read(&record.resource.sysctl, &current);
-    if (read_result == 1 || (read_result == 0 && current == 1U)) return 0;
-    if (read_result != 0 || current != 0U) return -1;
-    char error[128U];
-    return system_effect_apply_sysctl(
-        system, &record.resource.sysctl, error, sizeof(error));
+    int read_result = system_sysctl_read(&resource, &current);
+    if (read_result == 1 || (read_result == 0 && current == 0U)) return 0;
+    if (read_result != 0 || current != 1U) return -1;
+    return system_sysctl_write(&resource, 0U);
 }
 
 static int system_apply_initial_ipv6_guard(struct starsead_system_supervisor *system) {
     if (!system->loaded_config.config.disable_system_ipv6) return 0;
     DIR *directory = opendir("/proc/sys/net/ipv6/conf");
-    if (directory == NULL) return -1;
-    int result = 0;
+    if (directory == NULL) return errno == ENOENT ? 0 : -1;
     struct dirent *entry;
     while ((entry = readdir(directory)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 ||
@@ -4885,13 +4995,19 @@ static int system_apply_initial_ipv6_guard(struct starsead_system_supervisor *sy
             strcmp(entry->d_name, "lo") == 0 ||
             starsead_interface_matches_selector(entry->d_name, "ipsec+")) continue;
         unsigned index = if_nametoindex(entry->d_name);
-        if (index == 0U || system_apply_ipv6_guard(system, entry->d_name, index) != 0) {
-            result = -1;
-            break;
+        if (index == 0U) continue;
+        if (system_restore_interface_ipv6(system, entry->d_name, index) != 0) {
+            char message[160U];
+            int written = snprintf(message, sizeof(message),
+                "failed to restore disable_ipv6=0 on %s; continuing", entry->d_name);
+            if (written > 0 && (size_t)written < sizeof(message)) {
+                (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_WARNING,
+                    STARSEAD_COMPONENT_RUNTIME, STARSEAD_LOG_EVENT_CAPABILITY_ADJUSTED, message);
+            }
         }
     }
-    if (closedir(directory) != 0) result = -1;
-    return result;
+    int close_result = closedir(directory);
+    return close_result == 0 ? 0 : -1;
 }
 
 static int system_effect_start_matcher(void *opaque) {

@@ -46,8 +46,7 @@ static bool backend_valid(const struct starsead_network_backend *backend) {
 
 static uint32_t required_groups(const struct starsead_config *config) {
     if (starsead_mode_core_managed(config->mode)) {
-        uint32_t groups = config->disable_system_ipv6 ?
-            STARSEAD_NETWORK_GROUP_IPV6_ADDRESS | STARSEAD_NETWORK_GROUP_LINK : 0U;
+        uint32_t groups = 0U;
         if (config->hotspot_interface_prefix_count != 0U) {
             groups |= STARSEAD_NETWORK_GROUP_LINK;
             if (config->enable_ipv6) groups |= STARSEAD_NETWORK_GROUP_IPV6_ADDRESS;
@@ -55,12 +54,11 @@ static uint32_t required_groups(const struct starsead_config *config) {
         return groups;
     }
     uint32_t groups = STARSEAD_NETWORK_GROUP_IPV4_ADDRESS;
-    if (config->enable_ipv6 || config->disable_system_ipv6) {
+    if (config->enable_ipv6) {
         groups |= STARSEAD_NETWORK_GROUP_IPV6_ADDRESS;
     }
-    if (config->disable_system_ipv6 ||
-        (config->hotspot_interface_prefix_count != 0U &&
-         (config->enable_ipv6 || config->mode == STARSEAD_MODE_BPF2SOCKS))) {
+    if (config->hotspot_interface_prefix_count != 0U &&
+        (config->enable_ipv6 || config->mode == STARSEAD_MODE_BPF2SOCKS)) {
         groups |= STARSEAD_NETWORK_GROUP_LINK;
     }
     return groups;
@@ -207,72 +205,6 @@ static bool tracked_interface(const struct starsead_config *config, const char *
     return true;
 }
 
-static bool security_interface(const char *name) {
-    return strcmp(name, "all") != 0 && strcmp(name, "default") != 0 &&
-        strcmp(name, "lo") != 0 &&
-        !starsead_interface_matches_selector(name, "ipsec+");
-}
-
-static bool immediate_request_same(
-    const struct starsead_network_effect_request *left,
-    const struct starsead_network_effect_request *right) {
-    return left->effect.kind == STARSEAD_EFFECT_SYSCTL &&
-        right->effect.kind == STARSEAD_EFFECT_SYSCTL &&
-        left->effect.resource.sysctl.sysctl_id ==
-            right->effect.resource.sysctl.sysctl_id &&
-        left->effect.resource.sysctl.interface_index ==
-            right->effect.resource.sysctl.interface_index &&
-        strcmp(left->effect.resource.sysctl.interface_name,
-            right->effect.resource.sysctl.interface_name) == 0;
-}
-
-static int queue_immediate_request(void *opaque,
-    const struct starsead_network_effect_request *request,
-    char *error, size_t error_size) {
-    struct starsead_network_runtime *runtime = opaque;
-    if (runtime == NULL || request == NULL ||
-        request->effect.kind != STARSEAD_EFFECT_SYSCTL ||
-        request->effect.resource.sysctl.sysctl_id !=
-            STARSEAD_SYSCTL_DISABLE_IPV6) {
-        network_error(error, error_size, "invalid immediate network request");
-        return STARSEAD_CONFIG_INVALID;
-    }
-    for (size_t index = 0U; index < runtime->immediate_request_count; ++index) {
-        if (immediate_request_same(&runtime->immediate_requests[index], request)) return 0;
-    }
-    if (runtime->immediate_request_count >= STARSEAD_MAX_NETWORK_IMMEDIATE_REQUESTS) {
-        network_error(error, error_size, "immediate network request capacity exceeded");
-        return STARSEAD_CONFIG_INVALID;
-    }
-    runtime->immediate_requests[runtime->immediate_request_count++] = *request;
-    return 0;
-}
-
-static int enforce_ipv6_security(
-    struct starsead_network_runtime *runtime, const char *interface_name,
-    uint32_t interface_index) {
-    if (!runtime->config->disable_system_ipv6) return 0;
-    if (runtime->backend->ipv6_disabled == NULL) {
-        return STARSEAD_CONFIG_IO;
-    }
-    uint8_t current = 0U;
-    bool exists = false;
-    if (runtime->backend->ipv6_disabled(runtime->backend->context, interface_name,
-        interface_index, &current, &exists) != 0) return STARSEAD_CONFIG_IO;
-    if (!exists || current == 1U) return 0;
-    if (current != 0U) return STARSEAD_CONFIG_IO;
-    struct starsead_network_effect_request request;
-    memset(&request, 0, sizeof(request));
-    request.effect.kind = STARSEAD_EFFECT_SYSCTL;
-    request.effect.resource.sysctl.sysctl_id = STARSEAD_SYSCTL_DISABLE_IPV6;
-    (void)snprintf(request.effect.resource.sysctl.interface_name,
-        sizeof(request.effect.resource.sysctl.interface_name),
-        "%s", interface_name);
-    request.effect.resource.sysctl.interface_index = interface_index;
-    request.effect.resource.sysctl.desired_value = 1U;
-    return queue_immediate_request(runtime, &request, NULL, 0U);
-}
-
 static int attribute_payload(
     const unsigned char *attributes,
     size_t attributes_length,
@@ -332,15 +264,8 @@ static int record_address_message(
     }
     size_t expected_length = family == STARSEAD_ADDRESS_IPV4 ? 4U : 16U;
     if (address == NULL || address_length != expected_length) return -1;
-    if (message_type == STARSEAD_RTM_NEWADDR && family == STARSEAD_ADDRESS_IPV6 &&
-        runtime->config->disable_system_ipv6 && security_interface(interface_name)) {
-        int security = enforce_ipv6_security(runtime, interface_name, interface_index);
-        if (security != 0) return STARSEAD_CONFIG_IO;
-    }
     bool relevant = tracked_interface(runtime->config, interface_name) ||
-        hotspot_interface(runtime->config, interface_name) ||
-        (runtime->config->disable_system_ipv6 && family == STARSEAD_ADDRESS_IPV6 &&
-         security_interface(interface_name));
+        hotspot_interface(runtime->config, interface_name);
     if (!relevant) return 0;
     struct starsead_network_event event;
     memset(&event, 0, sizeof(event));
@@ -382,14 +307,7 @@ static int record_link_message(
         return -1;
     }
     if (!interface_name_valid(interface_name)) return -1;
-    if (message_type == STARSEAD_RTM_NEWLINK && runtime->config->disable_system_ipv6 &&
-        security_interface(interface_name)) {
-        int security = enforce_ipv6_security(
-            runtime, interface_name, (uint32_t)signed_index);
-        if (security != 0) return STARSEAD_CONFIG_IO;
-    }
-    if (!runtime->config->disable_system_ipv6 &&
-        !hotspot_interface(runtime->config, interface_name)) return 0;
+    if (!hotspot_interface(runtime->config, interface_name)) return 0;
     struct starsead_network_event event;
     memset(&event, 0, sizeof(event));
     event.action = message_type == STARSEAD_RTM_DELLINK ?

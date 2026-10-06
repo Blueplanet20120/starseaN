@@ -55,6 +55,10 @@ static const struct starsead_owned_chain owned_chains[] = {
         "ASTERISK_TUN6_OUTPUT"},
     {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER,
         "ASTERISK_TUN6_FORWARD"},
+    {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER,
+        "STARSEA_V6_LEAK_OUT"},
+    {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER,
+        "STARSEA_V6_LEAK_FWD"},
 };
 
 static const struct starsead_owned_hook owned_hooks[] = {
@@ -90,6 +94,10 @@ static const struct starsead_owned_hook owned_hooks[] = {
         "FORWARD", true, "REJECT"},
     {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER,
         "OUTPUT", true, "REJECT"},
+    {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER,
+        "OUTPUT", false, "STARSEA_V6_LEAK_OUT"},
+    {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER,
+        "FORWARD", false, "STARSEA_V6_LEAK_FWD"},
 };
 
 static const struct starsead_owned_policy_rule owned_policy_rules[] = {
