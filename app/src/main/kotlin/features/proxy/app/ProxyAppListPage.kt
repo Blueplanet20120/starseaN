@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.AppState
 import app.LocalAppServices
 import app.LocalAppStateStore
 import app.LocalIsWideScreen
@@ -64,6 +65,7 @@ import features.proxy.app.usecase.ProxyAppListClipboardData
 import features.proxy.app.usecase.applyProxyAppListClipboardImport
 import features.proxy.app.usecase.decodeProxyAppListFromClipboard
 import features.proxy.app.usecase.encodeProxyAppListForClipboard
+import features.proxy.server.usecase.restartProxyIfConnectionChanged
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import system.ANDROID_APP_ICON_SIZE_DP
@@ -100,6 +102,7 @@ fun ProxyAppListPage(
     val appState by LocalAppStateStore.current.collectAppState()
     val selfPackageName = LocalContext.current.applicationContext.packageName
     val packageManager: PackageManager = LocalContext.current.applicationContext.packageManager
+    val stateStore = LocalAppStateStore.current
     val updateAppState = LocalUpdateAppState.current
     val isWideScreen = LocalIsWideScreen.current
     val services = LocalAppServices.current
@@ -142,6 +145,25 @@ fun ProxyAppListPage(
     val modeIndex = appState.proxyAppListMode.coerceIn(proxyAppListModes.indices)
     val requiresGlobalProxyAppMode = appState.requiresGlobalProxyAppMode
     val fakeDnsGlobalModeMessage = stringResource(R.string.proxy_app_list_fake_dns_requires_global)
+    val restartedMessage = stringResource(R.string.proxy_server_list_service_restarted)
+    val heldMessage = stringResource(R.string.proxy_server_list_service_held_by_rule)
+    val missingServerMessage = stringResource(R.string.proxy_server_list_select_first)
+    val stoppedMessage = stringResource(R.string.proxy_server_list_service_stopped)
+    fun applyProxyListChange(transform: (AppState) -> AppState) {
+        val before = stateStore.state.value
+        updateAppState(transform)
+        scope.restartProxyIfConnectionChanged(
+            before = before,
+            after = stateStore.state.value,
+            proxyServiceUseCase = services.proxyServiceUseCase,
+            updateAppState = updateAppState,
+            tipNotifier = tipNotifier,
+            restartedMessage = restartedMessage,
+            heldMessage = heldMessage,
+            missingServerMessage = missingServerMessage,
+            failedMessage = stoppedMessage,
+        )
+    }
     val isVpnServiceMode = appState.runMode == RunModeVpnService
     val selectedAppKeys = remember(appState.proxyAppListSelectedApps) {
         appState.proxyAppListSelectedApps.toSet()
@@ -211,7 +233,7 @@ fun ProxyAppListPage(
                     if (requiresGlobalProxyAppMode && index != ProxyAppListModeGlobal) {
                         scope.launch { tipNotifier.show(fakeDnsGlobalModeMessage) }
                     } else {
-                        updateAppState { state -> state.copy(proxyAppListMode = index) }
+                        applyProxyListChange { state -> state.copy(proxyAppListMode = index) }
                     }
                 },
                 onSearchValueChange = { value -> pageState.searchValue = value },
@@ -230,7 +252,7 @@ fun ProxyAppListPage(
                                 presetPackageNames = PresetProxyAppPackageNames,
                                 keyGroups = appSelectionKeyGroups,
                             )
-                            updateAppState { state ->
+                            applyProxyListChange { state ->
                                 state.copy(
                                     proxyAppListMode = if (state.requiresGlobalProxyAppMode) {
                                         ProxyAppListModeGlobal
@@ -288,7 +310,7 @@ fun ProxyAppListPage(
                         ProxyAppListMoreAction.InvertSelection -> {
                             val snapshot = pageState.appPackages
                             if (snapshot.isNotEmpty()) {
-                                updateAppState { state ->
+                                applyProxyListChange { state ->
                                     state.copy(proxyAppListSelectedApps = invertSelectionForScan(
                                         matched = expandSelectionToSharedUids(state.proxyAppListSelectedApps, appSelectionKeyGroups),
                                         allKeys = snapshot.map { "${it.userId ?: 0}:${it.packageName}" },
@@ -299,7 +321,7 @@ fun ProxyAppListPage(
                         }
 
                         ProxyAppListMoreAction.ClearSelection -> {
-                            updateAppState { state ->
+                            applyProxyListChange { state ->
                                 state.copy(proxyAppListSelectedApps = emptyList())
                             }
                             scope.launch { tipNotifier.show(clearDoneMessage) }
@@ -356,8 +378,8 @@ fun ProxyAppListPage(
                                             val allKeys = snapshot.map { entry ->
                                                 "${entry.userId ?: 0}:${entry.packageName}"
                                             }
-                                            updateAppState { state ->
-                                                if (state.proxyAppListMode != snapshotMode) return@updateAppState state
+                                            applyProxyListChange { state ->
+                                                if (state.proxyAppListMode != snapshotMode) return@applyProxyListChange state
                                                 val nextSelection = when (snapshotMode) {
                                                     ProxyAppListModeBlacklist -> mergeSelectedAppsForScan(
                                                         current = state.proxyAppListSelectedApps,
@@ -437,7 +459,7 @@ fun ProxyAppListPage(
             val imported = pendingAppListImport ?: return@ImportModeDialog
             var importedCount = 0
             var importedModeRestricted = false
-            updateAppState { state ->
+            applyProxyListChange { state ->
                 val result = applyProxyAppListClipboardImport(
                     currentMode = state.proxyAppListMode,
                     currentSelectedApps = state.proxyAppListSelectedApps,

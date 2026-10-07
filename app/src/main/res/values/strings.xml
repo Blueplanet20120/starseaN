@@ -41,6 +41,7 @@
 <!-- Common -->
     <string name="common_cancel">Cancel</string>
     <string name="common_save">Save</string>
+    <string name="settings_save_and_apply">Save and apply</string>
     <string name="common_add">Add</string>
     <string name="common_share">Share</string>
     <string name="common_edit">Edit</string>

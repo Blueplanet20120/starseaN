@@ -11,9 +11,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import app.AppState
 import app.LocalAppServices
+import app.LocalAppStateStore
 import app.R
 import androidx.compose.ui.res.stringResource
 import features.logs.AndroidAppLogger
+import features.proxy.server.usecase.restartProxyIfConnectionChanged
 import features.settings.sheets.DnsSettingsBottomSheet
 import features.settings.sheets.ExternalInterfacesBottomSheet
 import features.settings.sheets.FragmentSettingsBottomSheet
@@ -41,10 +43,31 @@ internal fun SettingsBottomSheetsHost(
     updateAppState: ((AppState) -> AppState) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val applyServiceControl = LocalAppServices.current.applyServiceControlUseCase
+    val stateStore = LocalAppStateStore.current
+    val services = LocalAppServices.current
+    val applyServiceControl = services.applyServiceControlUseCase
     val serviceControlFailedMessage = stringResource(R.string.settings_service_control_save_failed)
+    val restartedMessage = stringResource(R.string.proxy_server_list_service_restarted)
+    val heldMessage = stringResource(R.string.proxy_server_list_service_held_by_rule)
+    val missingServerMessage = stringResource(R.string.proxy_server_list_select_first)
+    val stoppedMessage = stringResource(R.string.proxy_server_list_service_stopped)
     var serviceControlSaving by remember { mutableStateOf(false) }
     var serviceControlError by remember { mutableStateOf<String?>(null) }
+    fun saveAndApply(transform: (AppState) -> AppState) {
+        val before = stateStore.state.value
+        updateAppState(transform)
+        scope.restartProxyIfConnectionChanged(
+            before = before,
+            after = stateStore.state.value,
+            proxyServiceUseCase = services.proxyServiceUseCase,
+            updateAppState = updateAppState,
+            tipNotifier = services.tipNotifier,
+            restartedMessage = restartedMessage,
+            heldMessage = heldMessage,
+            missingServerMessage = missingServerMessage,
+            failedMessage = stoppedMessage,
+        )
+    }
     LocalProxySettingsBottomSheet(
         show = sheetState.showLocalProxySettings,
         showInboundProxyPort = appState.runMode == RunModeTproxy ||
@@ -100,7 +123,7 @@ internal fun SettingsBottomSheetsHost(
         },
         onDismissRequest = { sheetState.showLocalProxySettings = false },
         onSave = { inboundProxyPort, bpf2SocksBridgePort, port, enableDynamicPort, listenAllInterfaces, username, password ->
-            updateAppState { state ->
+            saveAndApply { state ->
                 val lockInboundProxyPort = (state.runMode == RunModeTproxy ||
                     state.runMode == RunModeTun2Socks ||
                     state.runMode == RunModeBpf2Socks) &&
@@ -146,7 +169,7 @@ internal fun SettingsBottomSheetsHost(
         onIpv6CidrChange = { sheetState.tunSettingsDraft = sheetState.tunSettingsDraft.copy(ipv6Cidr = it) },
         onDismissRequest = { sheetState.showTunSettings = false },
         onSave = { mtu, vpnDns, ipv4Cidr, ipv6Cidr ->
-            updateAppState { state ->
+            saveAndApply { state ->
                 state.copy(
                     tunMtu = mtu,
                     tunVpnDns = if (state.runMode == RunModeVpnService) vpnDns else state.tunVpnDns,
@@ -192,7 +215,7 @@ internal fun SettingsBottomSheetsHost(
         onDnsHostsChange = { sheetState.dnsSettingsDraft = sheetState.dnsSettingsDraft.copy(dnsHosts = it) },
         onDismissRequest = { sheetState.showDnsSettings = false },
         onSave = { enableVpnLocalDns, enableFakeDns, enableResolveProxyServerDomain, proxyDns, directDns, directDnsDomains, enableDirectDnsForProxyServerDomains, dnsHosts ->
-            updateAppState { state ->
+            saveAndApply { state ->
                 state.copy(
                     enableVpnLocalDns = enableVpnLocalDns,
                     enableFakeDns = enableFakeDns,
@@ -225,7 +248,7 @@ internal fun SettingsBottomSheetsHost(
         },
         onDismissRequest = { sheetState.showMuxSettings = false },
         onSave = { enabled, concurrency, xudpConcurrency, xudpProxyUdp443 ->
-            updateAppState { state ->
+            saveAndApply { state ->
                 state.copy(
                     enableMux = enabled,
                     muxConcurrency = concurrency,
@@ -258,7 +281,7 @@ internal fun SettingsBottomSheetsHost(
         },
         onDismissRequest = { sheetState.showFragmentSettings = false },
         onSave = { enabled, packets, length, interval ->
-            updateAppState { state ->
+            saveAndApply { state ->
                 state.copy(
                     enableFragment = enabled,
                     fragmentPackets = packets,
@@ -275,7 +298,7 @@ internal fun SettingsBottomSheetsHost(
         onSelectedInterfacesChange = { sheetState.externalInterfacesDraft = it.sanitizeExternalInterfaces() },
         onDismissRequest = { sheetState.showExternalInterfaces = false },
         onSave = { interfaces ->
-            updateAppState { state -> state.copy(externalInterfaces = interfaces.sanitizeExternalInterfaces()) }
+            saveAndApply { state -> state.copy(externalInterfaces = interfaces.sanitizeExternalInterfaces()) }
             sheetState.showExternalInterfaces = false
         },
     )
@@ -327,7 +350,7 @@ internal fun SettingsBottomSheetsHost(
         },
         onDismissRequest = { sheetState.closeIgnoredInterfaces() },
         onSave = { interfaces ->
-            updateAppState { state ->
+            saveAndApply { state ->
                 state.copy(ignoredInterfaces = interfaces.sanitizeIgnoredInterfaceSelectors())
             }
             sheetState.closeIgnoredInterfaces()
@@ -339,7 +362,7 @@ internal fun SettingsBottomSheetsHost(
         onSelectedCidrsChange = { sheetState.privateAddressCidrsDraft = it.sanitizePrivateAddressCidrs() },
         onDismissRequest = { sheetState.showPrivateAddresses = false },
         onSave = { cidrs ->
-            updateAppState { state -> state.copy(privateAddressCidrs = cidrs.sanitizePrivateAddressCidrs()) }
+            saveAndApply { state -> state.copy(privateAddressCidrs = cidrs.sanitizePrivateAddressCidrs()) }
             sheetState.showPrivateAddresses = false
         },
     )

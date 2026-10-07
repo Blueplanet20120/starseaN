@@ -79,7 +79,7 @@ internal fun ServiceControlBottomSheet(
                 text = if (saving) {
                     stringResource(R.string.settings_service_control_saving)
                 } else {
-                    stringResource(R.string.common_save)
+                    stringResource(R.string.settings_save_and_apply)
                 },
                 enabled = canSave,
                 onClick = { if (canSave) onSave(draft) },

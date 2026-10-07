@@ -79,7 +79,7 @@ internal fun TunSettingsBottomSheet(
         },
         endAction = {
             TextButton(
-                text = stringResource(R.string.common_save),
+                text = stringResource(R.string.settings_save_and_apply),
                 onClick = {
                     if (canSave) {
                         onSave(

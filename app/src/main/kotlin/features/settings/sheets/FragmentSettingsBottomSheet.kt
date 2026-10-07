@@ -93,7 +93,7 @@ internal fun FragmentSettingsBottomSheet(
         },
         endAction = {
             TextButton(
-                text = stringResource(R.string.common_save),
+                text = stringResource(R.string.settings_save_and_apply),
                 onClick = saveSettings,
             )
         },

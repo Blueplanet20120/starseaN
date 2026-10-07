@@ -36,7 +36,7 @@ internal fun IgnoredInterfacesBottomSheet(
         },
         endAction = {
             TextButton(
-                text = stringResource(R.string.common_save),
+                text = stringResource(R.string.settings_save_and_apply),
                 onClick = { onSave(selectedInterfaces.sanitizeIgnoredInterfaceSelectors()) },
                 enabled = !editorPending,
             )

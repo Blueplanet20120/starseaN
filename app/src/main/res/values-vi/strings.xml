@@ -41,6 +41,7 @@
 <!-- Common -->
     <string name="common_cancel">Hủy</string>
     <string name="common_save">Lưu</string>
+    <string name="settings_save_and_apply">Lưu và áp dụng</string>
     <string name="common_add">Thêm</string>
     <string name="common_share">Chia sẻ</string>
     <string name="common_edit">Sửa</string>

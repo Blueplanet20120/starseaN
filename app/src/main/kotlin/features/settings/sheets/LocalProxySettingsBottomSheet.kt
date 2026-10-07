@@ -63,7 +63,7 @@ internal fun LocalProxySettingsBottomSheet(
         },
         endAction = {
             TextButton(
-                text = stringResource(R.string.common_save),
+                text = stringResource(R.string.settings_save_and_apply),
                 onClick = {
                     if (portError == null && inboundProxyPortError == null && bridgePortError == null) {
                         onSave(
