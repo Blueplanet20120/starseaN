@@ -126,6 +126,8 @@ private fun AppState.toBackupSettings(): AppBackupSettings {
         serviceControl = serviceControl.toBackup(),
         privateAddressCidrs = privateAddressCidrs,
         proxyAppListMode = proxyAppListMode,
+        proxyAppListModeBeforeFakeDns = proxyAppListModeBeforeFakeDns,
+        proxyAppListFakeDnsModeRepaired = proxyAppListFakeDnsModeRepaired,
     )
 }
 
@@ -351,6 +353,8 @@ private fun AppBackupData.toAppState(): AppState {
         serviceControl = normalizeServiceControlSettings(settings.serviceControl.toState()),
         privateAddressCidrs = settings.privateAddressCidrs,
         proxyAppListMode = settings.proxyAppListMode,
+        proxyAppListModeBeforeFakeDns = settings.proxyAppListModeBeforeFakeDns,
+        proxyAppListFakeDnsModeRepaired = settings.proxyAppListFakeDnsModeRepaired,
         proxyAppListSelectedApps = proxyAppListSelectedApps,
     )
 }

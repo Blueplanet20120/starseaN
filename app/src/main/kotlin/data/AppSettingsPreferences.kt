@@ -239,6 +239,14 @@ internal class AppSettingsPreferences(
             ignoredInterfaces = preferences.getStringList(KeyIgnoredInterfaces, defaults.ignoredInterfaces),
             privateAddressCidrs = preferences.getStringList(KeyPrivateAddressCidrs, defaults.privateAddressCidrs),
             proxyAppListMode = preferences.getInt(KeyProxyAppListMode, defaults.proxyAppListMode),
+            proxyAppListModeBeforeFakeDns = preferences.getInt(
+                KeyProxyAppListModeBeforeFakeDns,
+                defaults.proxyAppListModeBeforeFakeDns,
+            ),
+            proxyAppListFakeDnsModeRepaired = preferences.getBoolean(
+                KeyProxyAppListFakeDnsModeRepaired,
+                defaults.proxyAppListFakeDnsModeRepaired,
+            ),
         )
     }
 
@@ -323,6 +331,8 @@ internal class AppSettingsPreferences(
             .putStringList(KeyIgnoredInterfaces, state.ignoredInterfaces)
             .putStringList(KeyPrivateAddressCidrs, state.privateAddressCidrs)
             .putInt(KeyProxyAppListMode, state.proxyAppListMode)
+            .putInt(KeyProxyAppListModeBeforeFakeDns, state.proxyAppListModeBeforeFakeDns)
+            .putBoolean(KeyProxyAppListFakeDnsModeRepaired, state.proxyAppListFakeDnsModeRepaired)
     }
 
     private fun SharedPreferences.getServiceControl(
@@ -553,6 +563,8 @@ private const val KeyExternalInterfaces = "external_interfaces"
 private const val KeyIgnoredInterfaces = "ignored_interfaces"
 private const val KeyPrivateAddressCidrs = "private_address_cidrs"
 private const val KeyProxyAppListMode = "proxy_app_list_mode"
+private const val KeyProxyAppListModeBeforeFakeDns = "proxy_app_list_mode_before_fake_dns"
+private const val KeyProxyAppListFakeDnsModeRepaired = "proxy_app_list_fake_dns_mode_repaired"
 
 private const val KeyServiceControlKeyguardEnabled = "service_control_keyguard_enabled"
 private const val KeyServiceControlKeyguardLockStart = "service_control_keyguard_lock_start"

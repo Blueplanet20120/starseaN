@@ -104,6 +104,8 @@ internal data class AppBackupSettings(
     val serviceControl: AppBackupServiceControl = AppBackupServiceControl(),
     val privateAddressCidrs: List<String> = BackupDefaults.privateAddressCidrs,
     val proxyAppListMode: Int = BackupDefaults.proxyAppListMode,
+    val proxyAppListModeBeforeFakeDns: Int = BackupDefaults.proxyAppListModeBeforeFakeDns,
+    val proxyAppListFakeDnsModeRepaired: Boolean = BackupDefaults.proxyAppListFakeDnsModeRepaired,
 )
 
 @Serializable
