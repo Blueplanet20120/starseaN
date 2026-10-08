@@ -26,7 +26,11 @@ logger.lifecycle("[提示] AndroidLibXrayLite 依赖版本: $liteVersion。")
 
 android {
     namespace = "app"
-    compileSdk = ProjectConfig.TARGET_SDK
+    compileSdk {
+        version = release(ProjectConfig.TARGET_SDK) {
+            minorApiLevel = ProjectConfig.TARGET_SDK_MINOR
+        }
+    }
 
     defaultConfig {
         applicationId = ProjectConfig.PACKAGE_NAME
