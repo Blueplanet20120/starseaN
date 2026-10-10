@@ -90,6 +90,8 @@
     <string name="settings_enable_all_proxy_group_summary">Show the "All" group when multiple groups are enabled</string>
     <string name="settings_deletion_confirmation">Deletion confirmation</string>
     <string name="settings_deletion_confirmation_summary">Require confirmation before deleting servers, routes, groups, or resources</string>
+    <string name="settings_hide_recent_tasks">Hide from recent tasks</string>
+    <string name="settings_hide_recent_tasks_summary">Hide the app from the recent tasks list</string>
     <string name="settings_hide_launcher_icon">Hide launcher icon</string>
     <string name="settings_hide_launcher_icon_summary">Dial *#*#····#*#* to open</string>
     <string name="settings_hide_launcher_secret_code">Dial code</string>
@@ -375,7 +377,7 @@
     <string name="proxy_app_list_mode_blacklist">Blacklist mode</string>
     <string name="proxy_app_list_mode_whitelist">Whitelist mode</string>
     <string name="proxy_app_list_mode_global">All-app mode</string>
-    <string name="proxy_app_list_fake_dns_requires_global">FakeDNS in ROOT mode requires all-app mode</string>
+    <string name="proxy_app_list_fake_dns_requires_global">The current run mode only supports all-app mode when using FakeDNS</string>
     <string name="proxy_app_list_mode">App proxy mode</string>
     <string name="proxy_app_list_more_actions">More actions</string>
     <string name="proxy_app_list_show_system_apps">Show system apps</string>

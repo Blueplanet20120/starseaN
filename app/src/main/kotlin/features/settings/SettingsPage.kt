@@ -230,6 +230,10 @@ private fun SettingsContent(
             }
             item(key = "settings_general") {
                 SettingsSubscriptionsSection(
+                    hideRecentTasks = appState.hideRecentTasks,
+                    onHideRecentTasksChange = { hidden ->
+                        updateAppState { state -> state.copy(hideRecentTasks = hidden) }
+                    },
                     enableAllProxyGroup = appState.enableAllProxyGroup,
                     enableDeletionConfirmation = appState.enableDeletionConfirmation,
                     hideLauncherIcon = appState.hideLauncherIcon,

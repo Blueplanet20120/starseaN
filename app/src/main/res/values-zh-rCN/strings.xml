@@ -90,6 +90,8 @@
     <string name="settings_enable_all_proxy_group_summary">多分组时显示“全部”分组</string>
     <string name="settings_deletion_confirmation">删除确认</string>
     <string name="settings_deletion_confirmation_summary">删除节点、路由、分组、资源时需二次确认</string>
+    <string name="settings_hide_recent_tasks">隐藏最近任务</string>
+    <string name="settings_hide_recent_tasks_summary">开启后应用不在最近任务列表中显示</string>
     <string name="settings_hide_launcher_icon">隐藏桌面图标</string>
     <string name="settings_hide_launcher_icon_summary">拨号盘输入*#*#····#*#*打开</string>
     <string name="settings_hide_launcher_secret_code">拨号暗码</string>
@@ -375,7 +377,7 @@
     <string name="proxy_app_list_mode_blacklist">黑名单模式</string>
     <string name="proxy_app_list_mode_whitelist">白名单模式</string>
     <string name="proxy_app_list_mode_global">全应用模式</string>
-    <string name="proxy_app_list_fake_dns_requires_global">ROOT 模式开启 FakeDNS 时仅支持全应用模式</string>
+    <string name="proxy_app_list_fake_dns_requires_global">当前运行模式使用 FakeDNS 时仅支持全应用模式</string>
     <string name="proxy_app_list_mode">代理模式</string>
     <string name="proxy_app_list_more_actions">更多操作</string>
     <string name="proxy_app_list_show_system_apps">显示系统应用</string>
