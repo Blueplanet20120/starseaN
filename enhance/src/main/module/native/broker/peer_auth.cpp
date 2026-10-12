@@ -29,7 +29,7 @@ bool ae_authorize_control_owner(int connection) {
         return false;
     sockaddr_un address{};
     address.sun_family = AF_UNIX;
-    constexpr char name[] = "asteriskd.control";
+    constexpr char name[] = "starsead.control";
     std::memcpy(address.sun_path + 1, name, sizeof(name) - 1);
     int result = connect(control,
                          reinterpret_cast<sockaddr *>(&address),
