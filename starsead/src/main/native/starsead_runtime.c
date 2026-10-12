@@ -6494,10 +6494,53 @@ static int system_dns_startup_failed(struct starsead_system_supervisor *s, const
     return -1;
 }
 
+static bool system_dns_companion_not_ready(const struct starsead_dns_client *dns) {
+    const char *reason = dns->snapshot.reason;
+    return strstr(reason, "companion unavailable") != NULL ||
+        strstr(reason, "companion command expired") != NULL;
+}
+
+static bool system_dns_wait_aborted(void *opaque) {
+    struct starsead_system_supervisor *s = opaque;
+    return s->stop_requested || s->manual_stop_pending || s->shutdown_requested;
+}
+
 static int system_dns_prepare(struct starsead_system_supervisor *s) {
     if (!s->loaded_config.config.dns_enhancement) return 0;
-    if (system_dns_begin_generation(s) != 0) return system_dns_startup_failed(s, "connect");
-    if (system_dns_wait(s) != 0) return system_dns_startup_failed(s, "capabilities");
+    /* The Zygisk companion binds its DNS socket only after sys.boot_completed.
+     * service.d starts this process at the same edge, so the first connect
+     * often fails. Keep the control server pumping and retry until the module
+     * is ready. A rejected handshake still fails immediately. */
+    const uint64_t ready_deadline = starsead_dns_monotime() + 60000U;
+    bool logged_wait = false;
+    for (;;) {
+        int began = system_dns_begin_generation(s);
+        int waited = began == 0 ? system_dns_wait(s) : -1;
+        if (began == 0 && waited == 0) break;
+        uint64_t now = starsead_dns_monotime();
+        if (!system_dns_companion_not_ready(&s->dns) || now >= ready_deadline ||
+            system_dns_wait_aborted(s)) {
+            return system_dns_startup_failed(s, began != 0 ? "connect" : "capabilities");
+        }
+        if (!logged_wait) {
+            (void)starsead_log_line(&s->logger, STARSEAD_LOG_LEVEL_INFO,
+                STARSEAD_COMPONENT_NETWORK, STARSEAD_LOG_EVENT_DIAGNOSTIC,
+                "DNS enhancement companion is not ready; waiting for the module");
+            logged_wait = true;
+        }
+        int64_t clock = 0;
+        if (system_runtime_clock(s, &clock) != 0) {
+            return system_dns_startup_failed(s, "connect");
+        }
+        struct starsead_deadline pause = {
+            .armed = true,
+            .monotonic_milliseconds = clock + 1000,
+        };
+        (void)system_pump_condition(s, &pause, system_dns_wait_aborted);
+        if (system_dns_wait_aborted(s)) {
+            return system_dns_startup_failed(s, "connect");
+        }
+    }
     if (!(s->dns.result & system_dns_mode_bit(s))) {
         starsead_dns_close(&s->dns); s->dns.snapshot.phase = DNS_UNSUPPORTED;
         snprintf(s->dns.snapshot.reason, sizeof(s->dns.snapshot.reason),
