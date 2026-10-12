@@ -131,6 +131,7 @@ dependencies {
     implementation(libs.dexlib2)
     //noinspection UseTomlInstead
     implementation("com.github.2dust:libv2ray:${liteVersion}@aar")
+    implementation(dependencies.project(":enhance"))
     implementation(dependencies.project(":starsead"))
     implementation(dependencies.project(":bpfmatcher"))
     implementation(dependencies.project(":bpf2socks"))

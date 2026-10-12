@@ -18,6 +18,11 @@ internal object StarseadConfigValidator {
         require(network.appPolicy.bypassUids == network.appPolicy.bypassUids.distinct().sorted())
         require((network.appPolicy.directCidrPathV4 == null) == (network.appPolicy.directCidrPathV6 == null))
         validateServiceControl(serviceControl)
+        dnsEnhancement?.let { enhancement ->
+            require(enhancement.required && enhancement.consumerVersion == 2 && enhancement.coreDnsGeneration > 0)
+            require(network.enableLocalDns)
+            require(mode == StarseadMode.Tproxy || mode == StarseadMode.Tun2Socks || mode == StarseadMode.Bpf2Socks)
+        }
         when (mode) {
             StarseadMode.Tproxy -> {
                 require(modeOptions.transparentPort != null && modeOptions.tunnelName == null)

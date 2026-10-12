@@ -58,7 +58,7 @@ static struct starsead_traffic_hook_group *add_hook_group(
 }
 
 static int add_jump(struct starsead_traffic_hook_group *group,
-    enum starsead_builtin_chain builtin, bool insert_at_head, bool udp53,
+    enum starsead_builtin_chain builtin, bool insert_at_head, enum starsead_dns_transport dns_protocol,
     const char *target) {
     if (group == NULL || group->hook_count >= STARSEAD_RULE_TRANSACTION_MAX_HOOKS) {
         return STARSEAD_CONFIG_INVALID;
@@ -67,7 +67,7 @@ static int add_jump(struct starsead_traffic_hook_group *group,
     memset(hook, 0, sizeof(*hook));
     hook->builtin_chain = builtin;
     hook->insert_at_head = insert_at_head;
-    hook->udp_destination_port_53 = udp53;
+    hook->dns_destination_protocol = dns_protocol;
     hook->verdict = STARSEAD_HOOK_JUMP;
     return copy_text(hook->jump_target, sizeof(hook->jump_target), target);
 }
@@ -96,11 +96,13 @@ static int add_family(
         STARSEAD_IP_TABLE_MANGLE);
     struct starsead_traffic_hook_group *filter_hooks = add_hook_group(plan, family,
         STARSEAD_IP_TABLE_FILTER);
-    if (add_jump(mangle_hooks, STARSEAD_BUILTIN_PREROUTING, true, dns_only, prerouting) != 0 ||
-        add_jump(mangle_hooks, STARSEAD_BUILTIN_OUTPUT, false, dns_only, output) != 0 ||
+    if (add_jump(mangle_hooks, STARSEAD_BUILTIN_PREROUTING, true, dns_only ? STARSEAD_DNS_UDP : STARSEAD_DNS_NONE, prerouting) != 0 ||
+        add_jump(mangle_hooks, STARSEAD_BUILTIN_OUTPUT, false, dns_only ? STARSEAD_DNS_UDP : STARSEAD_DNS_NONE, output) != 0 ||
         add_jump(filter_hooks, STARSEAD_BUILTIN_FORWARD, true, false, forward) != 0) {
         return STARSEAD_CONFIG_INVALID;
     }
+    if (dns_only && (add_jump(mangle_hooks, STARSEAD_BUILTIN_PREROUTING, true, STARSEAD_DNS_TCP, prerouting) != 0 ||
+        add_jump(mangle_hooks, STARSEAD_BUILTIN_OUTPUT, false, STARSEAD_DNS_TCP, output) != 0)) return STARSEAD_CONFIG_INVALID;
 
     if (plan->route_count + 2U > STARSEAD_RULE_TRANSACTION_MAX_ROUTES) {
         return STARSEAD_CONFIG_INVALID;

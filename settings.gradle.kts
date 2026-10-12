@@ -51,6 +51,7 @@ dependencyResolutionManagement {
 }
 
 include(":app")
+include(":enhance")
 include(":starsead")
 include(":bpfmatcher")
 include(":bpf2socks")

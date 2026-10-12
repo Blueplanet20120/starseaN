@@ -3,6 +3,7 @@
 
 package engine.root.daemon.control
 
+import engine.root.dns.RootDnsEnhancementState
 import engine.root.daemon.config.StarseadCoreType
 import engine.root.daemon.config.StarseadMode
 import engine.root.daemon.config.StarseadOwner
@@ -80,6 +81,7 @@ internal data class StarseadSnapshot(
     val matcherActive: Boolean,
     val rules: StarseadRulesSnapshot,
     val network: StarseadNetworkSnapshot,
+    val dnsEnhancement: RootDnsEnhancementState,
     val error: StarseadControlError?,
 )
 

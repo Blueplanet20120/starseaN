@@ -990,6 +990,30 @@ static bool supported(const struct starsead_config *config) {
     return false;
 }
 
+static int parse_dns_enhancement(const struct starsead_json_document *document,
+    size_t token, struct starsead_config *config) {
+    if (document->tokens[token].type == STARSEAD_JSON_NULL) return 0;
+    static const char *const names[] = {"required", "consumerVersion", "coreDnsGeneration"};
+    size_t values[3]; uint32_t consumer = 0;
+    if (object_fields(document, token, names, 3U, values) != 0 ||
+        parse_bool(document, values[0], &config->dns_enhancement) != 0 ||
+        !config->dns_enhancement || parse_u32(document, values[1], &consumer) != 0 ||
+        consumer != 2U || !config->enable_local_dns ||
+        (config->mode != STARSEAD_MODE_TPROXY && config->mode != STARSEAD_MODE_TUN2SOCKS &&
+         config->mode != STARSEAD_MODE_BPF2SOCKS)) return -1;
+    const struct starsead_json_token *number = &document->tokens[values[2]];
+    if (number->type != STARSEAD_JSON_NUMBER || number->start == number->end) return -1;
+    uint64_t generation = 0;
+    for (size_t i = number->start; i < number->end; ++i) {
+        char c = document->source[i];
+        if (c < '0' || c > '9' || generation > ((uint64_t)INT64_MAX - (unsigned)(c - '0')) / 10U) return -1;
+        generation = generation * 10U + (unsigned)(c - '0');
+    }
+    if (generation == 0) return -1;
+    config->core_dns_generation = generation;
+    return 0;
+}
+
 int starsead_config_parse(
     const char *json,
     size_t length,
@@ -1009,20 +1033,25 @@ int starsead_config_parse(
         "schemaVersion", "owner", "coreType", "coreExecutablePath", "coreConfigPath", "statePath",
         "logPath", "mode", "core", "network", "modeOptions", "matcher", "helper", "serviceControl",
     };
+    static const char *const root_names_v5[] = {
+        "schemaVersion", "owner", "coreType", "coreExecutablePath", "coreConfigPath", "statePath",
+        "logPath", "mode", "core", "network", "modeOptions", "matcher", "helper", "serviceControl", "dnsEnhancement",
+    };
     static const char *const owners[] = {"starsean", "asteriskbox", "asteriskmeta"};
     static const char *const cores[] = {"xray", "sing-box", "mihomo"};
     static const char *const modes[] = {"tproxy", "tun", "tun2socks", "bpf2socks", "ebpf"};
-    size_t values[14];
+    size_t values[15];
     size_t schema_token = TOKEN_NONE;
     uint32_t schema = 0U;
     int owner = 0, core = 0, mode = 0;
     if (document.tokens[0].type != STARSEAD_JSON_OBJECT ||
         find_field(&document, 0U, "schemaVersion", &schema_token) != 0 ||
         parse_u32(&document, schema_token, &schema) != 0 ||
-        (schema != 2U && schema != 3U && schema != STARSEAD_CONFIG_VERSION) ||
+        (schema != 2U && schema != 3U && schema != 4U && schema != STARSEAD_CONFIG_VERSION) ||
         (schema == 2U
             ? object_fields(&document, 0U, root_names_v2, 13U, values)
-            : object_fields(&document, 0U, root_names_v3, 14U, values)) != 0 ||
+            : schema == 5U ? object_fields(&document, 0U, root_names_v5, 15U, values)
+             : object_fields(&document, 0U, root_names_v3, 14U, values)) != 0 ||
         copy_string(&document, values[3], config->core_executable_path, sizeof(config->core_executable_path)) != 0 || !path_is_normal(config->core_executable_path) ||
         copy_string(&document, values[4], config->core_config_path, sizeof(config->core_config_path)) != 0 || !path_is_normal(config->core_config_path) ||
         copy_string(&document, values[5], config->state_path, sizeof(config->state_path)) != 0 || !path_is_normal(config->state_path) ||
@@ -1043,6 +1072,7 @@ int starsead_config_parse(
     if (result == 0 && schema >= 3U) {
         result = parse_service_control(&document, values[13], &config->service_control, schema);
     }
+    if (result == 0 && schema == 5U) result = parse_dns_enhancement(&document, values[14], config);
     if (result == STARSEAD_CONFIG_NO_MEMORY) goto no_memory;
     if (result != 0 || validate_cross_fields(config) != 0) goto invalid;
     if (!supported(config)) {

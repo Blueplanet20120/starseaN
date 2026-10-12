@@ -15,7 +15,11 @@ import androidx.compose.ui.unit.dp
 import app.effects.ProxyStatusSynchronizer
 import app.effects.LauncherIconSynchronizer
 import app.effects.ResourceFileSynchronizer
+import app.effects.EnhancementModuleUpgradeChecker
 import app.effects.RootBootScriptSynchronizer
+import features.enhancement.AndroidEnhancementModuleBackend
+import features.enhancement.EnhancementModuleCoordinator
+import features.enhancement.EnhancementModulePrompt
 import features.lock.AppLockHost
 import features.logs.AndroidAccessLogRepository
 import features.logs.AndroidStarseadLogRepository
@@ -130,6 +134,9 @@ fun App(
     val applyServiceControlUseCase = remember(proxyEngine) {
         ApplyServiceControlUseCase(proxyEngine)
     }
+    val enhancementModuleCoordinator = remember(appContext) {
+        EnhancementModuleCoordinator { AndroidEnhancementModuleBackend(appContext) }
+    }
     val tipNotifier = remember(appContext) { AndroidToastTipNotifier(appContext) }
     val services = remember(
         appScope,
@@ -148,6 +155,7 @@ fun App(
         proxyServiceUseCase,
         switchRunModeUseCase,
         applyServiceControlUseCase,
+        enhancementModuleCoordinator,
         rootBootScriptUseCase,
         rootEbpfProbeUseCase,
         tipNotifier,
@@ -170,6 +178,7 @@ fun App(
             proxyServiceUseCase = proxyServiceUseCase,
             switchRunModeUseCase = switchRunModeUseCase,
             applyServiceControlUseCase = applyServiceControlUseCase,
+            enhancementModuleCoordinator = enhancementModuleCoordinator,
             rootBootScriptUseCase = rootBootScriptUseCase,
             rootEbpfProbeUseCase = rootEbpfProbeUseCase,
             tipNotifier = tipNotifier,
@@ -202,6 +211,7 @@ fun App(
         stateStore = stateStore,
         rootBootScriptUseCase = rootBootScriptUseCase,
     )
+    EnhancementModuleUpgradeChecker(stateStore, enhancementModuleCoordinator)
 
     ProvideAppLanguage(
         languageMode = chromeState.languageMode,
@@ -220,6 +230,7 @@ fun App(
             ) {
                 AppLockHost {
                     AppContent(padding = padding)
+                    EnhancementModulePrompt()
                     features.resources.SharedCoreMigrationPrompt()
                 }
             }

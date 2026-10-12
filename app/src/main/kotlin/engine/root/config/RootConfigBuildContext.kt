@@ -106,6 +106,7 @@ private fun AppState.toRootStartConfig(
         enableIpv6 = enableIpv6,
         enableRootIpv6Disabler = enableRootIpv6Disabler,
         enableLocalDns = effectiveLocalDnsEnabled,
+        enableAppListEnhancement = enableAppListEnhancement,
         enableFakeDns = effectiveFakeDnsEnabled,
         enableBoot = enableRootBootScript,
         serviceControl = serviceControl,

@@ -6,7 +6,6 @@ package features.resources.runtime
 import features.resources.runtime.writeResourceAtomically as writeAtomically
 
 import android.content.Context
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import app.AppState
@@ -18,6 +17,7 @@ import app.ResourceFilesStatus
 import features.resources.ResourceFileSourceLoyalsoldierGithub
 import features.resources.isSupportedCustomResourceName
 import features.resources.isSupportedResourceName
+import system.getPackageInfoCompat
 import java.io.File
 import java.io.FileNotFoundException
 import java.util.zip.ZipInputStream
@@ -471,14 +471,7 @@ internal fun currentRuntimeAbi(): String {
 
 internal fun Context.packageUpdatedAtMillis(): Long {
     return runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packageManager
-                .getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
-                .lastUpdateTime
-        } else {
-            @Suppress("DEPRECATION")
-            packageManager.getPackageInfo(packageName, 0).lastUpdateTime
-        }
+        packageManager.getPackageInfoCompat(packageName).lastUpdateTime
     }.getOrDefault(0L)
 }
 

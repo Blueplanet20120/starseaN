@@ -3,6 +3,7 @@
 
 package engine.root.daemon
 
+import engine.root.dns.RootDnsEnhancementState
 import engine.root.daemon.control.StarseadControlCodec
 import engine.root.daemon.control.StarseadControlResponse
 import engine.root.daemon.control.StarseadEventType
@@ -29,6 +30,26 @@ internal class StarseadClient(
 
     suspend fun shutdown(executablePath: String): StarseadControlResponse =
         runControl(executablePath, "shutdown")
+
+    suspend fun suspendDns(executablePath: String, token: RootDnsEnhancementState): StarseadControlResponse =
+        runDnsControl(executablePath, "dns-suspend", token)
+
+    suspend fun resumeDns(executablePath: String, token: RootDnsEnhancementState): StarseadControlResponse =
+        runDnsControl(executablePath, "dns-resume", token)
+
+    suspend fun abortDns(executablePath: String, token: RootDnsEnhancementState): StarseadControlResponse =
+        runDnsControl(executablePath, "dns-abort", token)
+
+    private suspend fun runDnsControl(
+        executablePath: String,
+        method: String,
+        token: RootDnsEnhancementState,
+    ): StarseadControlResponse {
+        token.requireToken()
+        val arguments = "--instance-id ${token.instanceId} --cycle-id ${token.cycleId} --generation ${token.generation}"
+        val result = shell.exec("${executablePath.shellQuote()} $method $arguments", ShellExecOptions(logFailure = false))
+        return StarseadControlCodec.decodeShellResponse(method, result)
+    }
 
     fun observeStatus(executablePath: String): Flow<StarseadSnapshot> = channelFlow {
         var retryIndex = 0

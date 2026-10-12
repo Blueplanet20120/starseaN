@@ -5,6 +5,8 @@
 #define STARSEAD_H
 
 #include <stdbool.h>
+#include "starsead_dns.h"
+#include "starsead_marks.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -13,7 +15,7 @@
 
 struct starsead_resource_operation;
 
-#define STARSEAD_CONFIG_VERSION 4U
+#define STARSEAD_CONFIG_VERSION 5U
 #define STARSEAD_MAX_JSON_SIZE (8U * 1024U * 1024U)
 #define STARSEAD_JSON_MAX_TOKENS 262144U
 #define STARSEAD_JSON_MAX_DEPTH 64U
@@ -50,7 +52,7 @@ struct starsead_resource_operation;
 #define STARSEAD_LOG_MAX_BUFFERED_PER_CHILD 65536U
 #define STARSEAD_LOG_PARTIAL_TIMEOUT_MILLIS 2000U
 #define STARSEAD_LOG_REDACTION "[REDACTED]"
-#define STARSEAD_CONTROL_PROTOCOL_VERSION 1U
+#define STARSEAD_CONTROL_PROTOCOL_VERSION 2U
 #define STARSEAD_CONTROL_MAX_PAYLOAD 65536U
 #define STARSEAD_CONTROL_REQUEST_TIMEOUT_MILLIS 2000U
 #define STARSEAD_CONTROL_MAX_REQUEST_ID 64U
@@ -75,8 +77,7 @@ struct starsead_resource_operation;
     STARSEAD_ANONYMOUS_SEAL_SEAL)
 #define STARSEAD_IPTABLES_WAIT_SECONDS 100U
 #define STARSEAD_ROUTE_RULE_PRIORITY 14599U
-#define STARSEAD_PRIMARY_MARK UINT32_C(0x20000000)
-#define STARSEAD_MARK_MASK UINT32_C(0x60000000)
+#define STARSEAD_DNS_ROUTE_RULE_PRIORITY 12999U
 #define STARSEAD_TPROXY_TABLE 160U
 #define STARSEAD_TUN_TABLE 168U
 #define STARSEAD_RULE_PLAN_MAX_OPERATIONS 32U
@@ -388,6 +389,8 @@ struct starsead_config {
     bool enable_ipv6;
     bool disable_system_ipv6;
     bool enable_local_dns;
+    bool dns_enhancement;
+    uint64_t core_dns_generation;
     bool enable_fake_dns;
     bool has_fake_dns_ipv4_pool;
     char fake_dns_ipv4_pool[STARSEAD_MAX_CIDR];
@@ -1151,6 +1154,8 @@ enum starsead_ip_rule_id {
     STARSEAD_IP_RULE_TPROXY,
     STARSEAD_IP_RULE_TUNNEL,
     STARSEAD_IP_RULE_TOKEN,
+    STARSEAD_IP_RULE_DNS_TPROXY,
+    STARSEAD_IP_RULE_DNS_TUNNEL,
     STARSEAD_IP_RULE_COUNT,
 };
 
@@ -1179,11 +1184,17 @@ struct starsead_owned_chain {
     const char *name;
 };
 
+enum starsead_dns_transport {
+    STARSEAD_DNS_NONE = 0,
+    STARSEAD_DNS_TCP = 6,
+    STARSEAD_DNS_UDP = 17,
+};
+
 struct starsead_owned_hook {
     enum starsead_ip_family family;
     enum starsead_ip_table table;
     const char *builtin_chain;
-    bool udp_destination_port_53;
+    enum starsead_dns_transport dns_destination_protocol;
     const char *target;
 };
 
@@ -1454,7 +1465,7 @@ struct starsead_private_chain_group {
 struct starsead_traffic_hook {
     enum starsead_builtin_chain builtin_chain;
     bool insert_at_head;
-    bool udp_destination_port_53;
+    enum starsead_dns_transport dns_destination_protocol;
     enum starsead_hook_verdict verdict;
     char jump_target[STARSEAD_MAX_CHAIN_NAME];
 };
@@ -1483,6 +1494,7 @@ struct starsead_route_effect {
     uint32_t mark_mask;
     bool invert_from_all;
     bool local_route;
+    bool loopback_source;
     enum starsead_ip_rule_id ip_rule_id;
     enum starsead_route_id route_id;
     char destination[STARSEAD_MAX_CIDR];
@@ -1583,6 +1595,7 @@ enum starsead_poll_source_kind {
     STARSEAD_POLL_SERVICE_TIMER,
     STARSEAD_POLL_WIFI,
     STARSEAD_POLL_KEYGUARD,
+    STARSEAD_POLL_DNS,
     STARSEAD_POLL_SOURCE_KIND_COUNT,
 };
 
@@ -1818,6 +1831,9 @@ enum starsead_control_method {
     STARSEAD_CONTROL_METHOD_STOP,
     STARSEAD_CONTROL_METHOD_SHUTDOWN,
     STARSEAD_CONTROL_METHOD_WATCH,
+    STARSEAD_CONTROL_METHOD_DNS_SUSPEND,
+    STARSEAD_CONTROL_METHOD_DNS_RESUME,
+    STARSEAD_CONTROL_METHOD_DNS_ABORT,
     STARSEAD_CONTROL_METHOD_COUNT,
 };
 
@@ -1857,6 +1873,7 @@ enum starsead_control_decode_outcome {
 struct starsead_control_request {
     char request_id[STARSEAD_CONTROL_MAX_REQUEST_ID + 1U];
     enum starsead_control_method method;
+    uint64_t instance_id, cycle_id, generation;
 };
 
 struct starsead_control_error {
@@ -1883,6 +1900,7 @@ struct starsead_control_network {
 };
 
 struct starsead_control_snapshot {
+    struct starsead_dns_snapshot dns_enhancement;
     enum starsead_phase phase;
     enum starsead_owner owner;
     enum starsead_core_type core_type;
@@ -1902,6 +1920,7 @@ struct starsead_control_snapshot {
 };
 
 struct starsead_control_live_context {
+    const struct starsead_dns_snapshot *dns_enhancement;
     int supervisor_pid;
     bool ipv6_enabled;
 };
@@ -2050,11 +2069,15 @@ enum starsead_cli_command {
     STARSEAD_CLI_STOP,
     STARSEAD_CLI_SHUTDOWN,
     STARSEAD_CLI_WATCH,
+    STARSEAD_CLI_DNS_SUSPEND,
+    STARSEAD_CLI_DNS_RESUME,
+    STARSEAD_CLI_DNS_ABORT,
 };
 
 struct starsead_cli_invocation {
     enum starsead_cli_command command;
     bool watch_until_running;
+    uint64_t instance_id, cycle_id, generation;
     char path[STARSEAD_MAX_PATH];
 };
 
@@ -2111,7 +2134,12 @@ enum starsead_control_client_result starsead_control_client_run(
     enum starsead_control_method, const char *,
     starsead_control_line_sink, void *, struct starsead_control_response *);
 
+enum starsead_control_client_result starsead_control_request_run(
+    const struct starsead_control_request *, starsead_control_line_sink, void *, struct starsead_control_response *);
+
 struct starsead_cli_backend {
+    enum starsead_control_client_result (*control_request)(void *,
+        const struct starsead_control_request *, starsead_control_line_sink, void *, struct starsead_control_response *);
     uint32_t (*effective_uid)(void *);
     enum starsead_control_client_result (*control_client)(
         void *, enum starsead_control_method, const char *,
@@ -2139,6 +2167,7 @@ struct starsead_control_callbacks {
     int (*snapshot)(void *, struct starsead_control_snapshot *);
     int (*request_stop)(void *);
     int (*request_shutdown)(void *);
+    int (*request_dns)(void *, const struct starsead_control_request *, bool);
     void *context;
 };
 

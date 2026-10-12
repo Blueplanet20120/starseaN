@@ -63,7 +63,7 @@ static int add_jump(
     struct starsead_traffic_hook_group *group,
     enum starsead_builtin_chain builtin,
     bool insert_at_head,
-    bool udp53,
+    enum starsead_dns_transport dns_protocol,
     const char *target) {
     if (group == NULL || group->hook_count >= STARSEAD_RULE_TRANSACTION_MAX_HOOKS) {
         return STARSEAD_CONFIG_INVALID;
@@ -72,7 +72,7 @@ static int add_jump(
     memset(hook, 0, sizeof(*hook));
     hook->builtin_chain = builtin;
     hook->insert_at_head = insert_at_head;
-    hook->udp_destination_port_53 = udp53;
+    hook->dns_destination_protocol = dns_protocol;
     hook->verdict = STARSEAD_HOOK_JUMP;
     return copy_text(hook->jump_target, sizeof(hook->jump_target), target);
 }
@@ -91,7 +91,7 @@ static struct starsead_route_effect *add_route(
 
 static int add_normal_route(
     struct starsead_rule_transaction_plan *plan,
-    enum starsead_ip_family family) {
+    enum starsead_ip_family family, bool dns_enhancement) {
     struct starsead_route_effect *rule = add_route(plan, STARSEAD_ROUTE_EFFECT_IP_RULE, family);
     struct starsead_route_effect *route = add_route(plan, STARSEAD_ROUTE_EFFECT_ROUTE, family);
     if (rule == NULL || route == NULL) return STARSEAD_CONFIG_INVALID;
@@ -102,6 +102,7 @@ static int add_normal_route(
     rule->ip_rule_id = STARSEAD_IP_RULE_TPROXY;
     route->table = STARSEAD_TPROXY_TABLE;
     route->local_route = true;
+    route->loopback_source = dns_enhancement && family == STARSEAD_IP_FAMILY_IPV4;
     route->route_id = STARSEAD_ROUTE_TPROXY;
     if (copy_text(route->destination, sizeof(route->destination), "default") != 0 ||
         copy_text(route->interface_name, sizeof(route->interface_name), "lo") != 0) {
@@ -126,7 +127,7 @@ int starsead_tproxy_rule_transaction_plan_build(
         add_private_name(main4, "ASTERISK_TPROXY_OUTPUT") != 0 ||
         add_private_name(local4, "ASTERISK_LOCAL4_BEGIN") != 0 ||
         add_private_name(local4, "ASTERISK_LOCAL4_END") != 0 ||
-        add_normal_route(plan, STARSEAD_IP_FAMILY_IPV4) != 0) {
+        add_normal_route(plan, STARSEAD_IP_FAMILY_IPV4, config->dns_enhancement) != 0) {
         return STARSEAD_CONFIG_INVALID;
     }
     struct starsead_traffic_hook_group *hooks4 = add_hook_group(plan,
@@ -150,9 +151,13 @@ int starsead_tproxy_rule_transaction_plan_build(
     struct starsead_traffic_hook_group *hooks6 = add_hook_group(plan,
         STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_MANGLE,
         STARSEAD_CHAIN_TPROXY, STARSEAD_RULE_TPROXY_ENTRY);
-    if (add_jump(hooks6, STARSEAD_BUILTIN_PREROUTING, true, dns_only,
+    if (add_jump(hooks6, STARSEAD_BUILTIN_PREROUTING, true, dns_only ? STARSEAD_DNS_UDP : STARSEAD_DNS_NONE,
             "ASTERISK_TPROXY6_PREROUTING") != 0 ||
-        add_jump(hooks6, STARSEAD_BUILTIN_OUTPUT, false, dns_only,
+        add_jump(hooks6, STARSEAD_BUILTIN_OUTPUT, false, dns_only ? STARSEAD_DNS_UDP : STARSEAD_DNS_NONE,
             "ASTERISK_TPROXY6_OUTPUT") != 0) return STARSEAD_CONFIG_INVALID;
-    return add_normal_route(plan, STARSEAD_IP_FAMILY_IPV6);
+    if (dns_only && (add_jump(hooks6, STARSEAD_BUILTIN_PREROUTING, true, STARSEAD_DNS_TCP,
+            "ASTERISK_TPROXY6_PREROUTING") != 0 ||
+        add_jump(hooks6, STARSEAD_BUILTIN_OUTPUT, false, STARSEAD_DNS_TCP,
+            "ASTERISK_TPROXY6_OUTPUT") != 0)) return STARSEAD_CONFIG_INVALID;
+    return add_normal_route(plan, STARSEAD_IP_FAMILY_IPV6, config->dns_enhancement);
 }

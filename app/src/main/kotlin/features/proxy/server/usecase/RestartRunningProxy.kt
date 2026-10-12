@@ -52,6 +52,7 @@ internal fun AppState.proxyConnectionRevision(): List<Any?> {
         enableRootEbpfRules,
         enableRootEbpfDirectCidrBypass,
         enableRootIpv6Disabler,
+        enableAppListEnhancement,
         externalInterfaces,
         ignoredInterfaces,
         privateAddressCidrs,

@@ -8,9 +8,11 @@ import android.os.Build
 import android.system.Os
 import android.system.OsConstants
 import android.util.Base64
+import androidx.core.content.pm.PackageInfoCompat
 import engine.root.publication.RootRuntimeLayout
 import system.RootShellGateway
 import system.ShellExecOptions
+import system.getPackageInfoCompat
 import utils.shellQuote
 import java.io.File
 import java.text.SimpleDateFormat
@@ -82,13 +84,8 @@ internal data class RootFailureReport(
         }
 
         private fun appVersion(context: Context): String? = runCatching {
-            val info = context.packageManager.getPackageInfo(context.packageName, 0)
-            val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                info.longVersionCode
-            } else {
-                @Suppress("DEPRECATION")
-                info.versionCode.toLong()
-            }
+            val info = context.packageManager.getPackageInfoCompat(context.packageName)
+            val code = PackageInfoCompat.getLongVersionCode(info)
             "${info.versionName} ($code)"
         }.getOrNull()
 

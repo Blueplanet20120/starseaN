@@ -278,6 +278,7 @@ private fun AppBackupData.toAppState(): AppState {
         hideLauncherSecretCode = normalizeHideLauncherSecretCode(settings.hideLauncherSecretCode),
         appLockTimeout = normalizeAppLockTimeout(settings.appLockTimeout),
         runMode = RunModeVpnService,
+        enableAppListEnhancement = false,
         enableResolveProxyServerDomain = settings.enableResolveProxyServerDomain,
         enableVpnLocalDns = settings.enableVpnLocalDns,
         localProxyPort = settings.localProxyPort,

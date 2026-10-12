@@ -55,6 +55,7 @@ internal data class StarseadConfig(
     val matcher: StarseadMatcher?,
     val helper: StarseadHelper?,
     val serviceControl: StarseadServiceControlConfig,
+    val dnsEnhancement: StarseadDnsEnhancementConfig? = null,
 )
 
 internal data class StarseadServiceControlConfig(
@@ -179,3 +180,9 @@ internal data class StarseadBpf2SocksHelper(
     val maxUdpPendingBytes: Int = 64 * 1024 * 1024,
     val dnsTransactionTimeoutMilliseconds: Int = 60000,
 ) : StarseadHelper
+
+internal data class StarseadDnsEnhancementConfig(
+    val required: Boolean = true,
+    val consumerVersion: Int = 2,
+    val coreDnsGeneration: Long,
+)

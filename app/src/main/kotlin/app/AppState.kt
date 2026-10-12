@@ -14,6 +14,7 @@ import app.modes.ProxyServerListLayoutSingle
 import app.modes.ProxyServerListSortDefault
 import app.modes.RunModeVpnService
 import app.modes.isRootRunMode
+import app.modes.supportsAppListEnhancement
 import engine.root.RootModeEngine
 import engine.vpn.VpnDefaults
 import engine.xray.DefaultDirectDnsDomains
@@ -113,6 +114,7 @@ data class AppState(
 
     val transparentProxyPort: String = RootModeEngine.DefaultTproxyPort.toString(),
     val enableRootBootScript: Boolean = false,
+    val enableAppListEnhancement: Boolean = false,
     val enableRootEbpfRules: Boolean = false,
     val enableRootEbpfDirectCidrBypass: Boolean = false,
     val enableRootIpv6Disabler: Boolean = true,
@@ -141,7 +143,8 @@ val AppState.effectiveFakeDnsEnabled: Boolean
     get() = effectiveLocalDnsEnabled && enableFakeDns
 
 val AppState.requiresGlobalProxyAppMode: Boolean
-    get() = runMode.isRootRunMode() && effectiveFakeDnsEnabled
+    get() = runMode.isRootRunMode() && effectiveFakeDnsEnabled &&
+        !(enableAppListEnhancement && runMode.supportsAppListEnhancement())
 
 internal fun AppState.withCompatibleProxyAppListMode(): AppState {
     if (requiresGlobalProxyAppMode) {
