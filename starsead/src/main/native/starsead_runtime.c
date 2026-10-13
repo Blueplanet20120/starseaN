@@ -1169,6 +1169,7 @@ struct starsead_system_supervisor {
     struct starsead_rules_backend rules_backend;
     bool rules_initialized;
     bool rules_verified;
+    bool rules_reconciling;
     bool local_address_snapshot_active;
     struct starsead_address_set local_ipv4_snapshot;
     struct starsead_address_set local_ipv6_snapshot;
@@ -1188,6 +1189,7 @@ static const struct starsead_b2s_verified_pin *system_b2s_verified_pin(
 static int system_tc_netlink_dispatch(struct starsead_system_supervisor *, short);
 
 static int system_dns_tick(struct starsead_system_supervisor *, struct starsead_runtime_delta *);
+static bool system_dns_waiting_for_rules(struct starsead_system_supervisor *);
 static int system_dns_prepare(struct starsead_system_supervisor *);
 static int system_dns_exchange(struct starsead_system_supervisor *, uint16_t);
 static int system_dns_withdraw(struct starsead_system_supervisor *);
@@ -1387,9 +1389,26 @@ static int system_runtime_prepare(
         uint64_t dns_time = starsead_dns_monotime();
         uint64_t next = 0;
         if (system->dns.pending) next = system->dns.deadline;
-        else if (system->dns.fd >= 0 && system->dns.snapshot.phase == DNS_ACTIVE &&
+        else if (system->dns.fd >= 0 && starsead_dns_serving(system->dns.snapshot.phase) &&
             system->dns.network_changed && !system->dns.busy && !system->dns.rx_size) next = dns_time;
-        if (system->dns_hot_stage || system->cleanup_in_progress) next = dns_time + 20U;
+        if (system->dns_hot_stage) {
+            if (system->dns.pending) {
+                if (!next || next > system->dns_hot_deadline) next = system->dns_hot_deadline;
+            } else if (system_dns_waiting_for_rules(system)) {
+                // Reconcile pumps this reactor while waiting for subprocesses.
+                // Its completion makes the next prepare runnable; do not spin
+                // inside the nested pump or extend the operation's budget.
+                next = system->dns_hot_deadline;
+            } else if (system->dns_hot_stage == 14) {
+                // No periodic retry wakeups: only the socket event or this
+                // operation's absolute timeout can advance network waiting.
+                next = system->dns.network_changed ? dns_time : system->dns_hot_deadline;
+            } else if ((system->dns_hot_stage == 2 || system->dns_hot_stage == 3) &&
+                (system->dns.retained || system->dns.snapshot.phase == DNS_DRAINING)) {
+                next = dns_time + 20U; // Existing bounded resource-drain path.
+            } else next = dns_time; // Local state transition, not a periodic timer.
+        }
+        if (system->cleanup_in_progress) next = dns_time + 20U;
         if (next) system_runtime_min_deadline(deadline, (uint64_t)dns_now + (next > dns_time ? next - dns_time : 0U));
         if (system->dns.fd >= 0 && system_runtime_add_source(builder, system->dns.fd,
             POLLIN | (system->dns.pending && system->dns.tx_offset < system->dns.tx_size ? POLLOUT : 0),
@@ -3378,113 +3397,6 @@ static int system_populate_tun_output(
     return system_append_policy_output(system, family, chain);
 }
 
-static int system_filter_append(struct starsead_system_supervisor *system,
-    const char *chain, const char *const *arguments, size_t count) {
-    return system_xtables_zero(system, STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_FILTER,
-        "-A", chain, arguments, count);
-}
-
-static bool system_ipv6_protected_uid(uint32_t uid) {
-    return uid == 0U || uid == 1000U || uid == 1001U || uid == 1073U;
-}
-
-static bool system_uid_listed(const uint32_t *uids, size_t count, uint32_t uid) {
-    for (size_t index = 0U; index < count; ++index) {
-        if (uids[index] == uid) return true;
-    }
-    return false;
-}
-
-static int system_append_ipv6_uid_verdict(struct starsead_system_supervisor *system,
-    const char *chain, uint32_t uid, bool reject) {
-    char uid_text[16U];
-    if (snprintf(uid_text, sizeof(uid_text), "%" PRIu32, uid) <= 0) return -1;
-    if (reject) {
-        const char *arguments[] = {
-            "-m", "owner", "--uid-owner", uid_text, "-j", "REJECT",
-            "--reject-with", "icmp6-adm-prohibited",
-        };
-        return system_filter_append(system, chain, arguments,
-            sizeof(arguments) / sizeof(arguments[0]));
-    }
-    const char *arguments[] = {"-m", "owner", "--uid-owner", uid_text, "-j", "RETURN"};
-    return system_filter_append(system, chain, arguments,
-        sizeof(arguments) / sizeof(arguments[0]));
-}
-
-static int system_populate_ipv6_leak_output(struct starsead_system_supervisor *system,
-    const char *chain) {
-    const struct starsead_config *config = &system->loaded_config.config;
-    const char *loopback[] = {"-o", "lo", "-j", "RETURN"};
-    const char *core_gid[] = {"-m", "owner", "--gid-owner", "3005", "-j", "RETURN"};
-    if (system_filter_append(system, chain, loopback, 4U) != 0 ||
-        system_filter_append(system, chain, core_gid, 6U) != 0) return -1;
-    static const uint32_t protected_uids[] = {0U, 1000U, 1001U, 1073U};
-    for (size_t index = 0U; index < sizeof(protected_uids) / sizeof(protected_uids[0]); ++index) {
-        if (system_append_ipv6_uid_verdict(system, chain, protected_uids[index], false) != 0) {
-            return -1;
-        }
-    }
-    for (size_t index = 0U; index < config->bypass_uid_count; ++index) {
-        uint32_t uid = config->bypass_uids[index];
-        if (system_ipv6_protected_uid(uid)) continue;
-        if (system_append_ipv6_uid_verdict(system, chain, uid, false) != 0) return -1;
-    }
-    if (config->app_policy_mode == STARSEAD_APP_POLICY_WHITELIST) {
-        for (size_t index = 0U; index < config->uid_count; ++index) {
-            uint32_t uid = config->uids[index];
-            if (system_ipv6_protected_uid(uid) ||
-                system_uid_listed(config->bypass_uids, config->bypass_uid_count, uid)) continue;
-            if (system_append_ipv6_uid_verdict(system, chain, uid, true) != 0) return -1;
-        }
-        return 0;
-    }
-    if (config->app_policy_mode == STARSEAD_APP_POLICY_BLACKLIST) {
-        for (size_t index = 0U; index < config->uid_count; ++index) {
-            uint32_t uid = config->uids[index];
-            if (system_ipv6_protected_uid(uid) ||
-                system_uid_listed(config->bypass_uids, config->bypass_uid_count, uid)) continue;
-            if (system_append_ipv6_uid_verdict(system, chain, uid, false) != 0) return -1;
-        }
-    }
-    const char *reject_rest[] = {"-j", "REJECT", "--reject-with", "icmp6-adm-prohibited"};
-    return system_filter_append(system, chain, reject_rest, 4U);
-}
-
-static bool system_hotspot_selector_listed(
-    const struct starsead_config *config, const char *selector) {
-    for (size_t index = 0U; index < config->hotspot_interface_prefix_count; ++index) {
-        if (strcmp(config->hotspot_interface_prefixes[index], selector) == 0) return true;
-    }
-    return false;
-}
-
-static int system_append_ipv6_forward_reject(struct starsead_system_supervisor *system,
-    const char *chain, const char *selector) {
-    const char *arguments[] = {
-        "-i", selector, "-j", "REJECT", "--reject-with", "icmp6-adm-prohibited",
-    };
-    return system_filter_append(system, chain, arguments,
-        sizeof(arguments) / sizeof(arguments[0]));
-}
-
-static int system_populate_ipv6_leak_forward(struct starsead_system_supervisor *system,
-    const char *chain) {
-    const struct starsead_config *config = &system->loaded_config.config;
-    static const char *const builtin_selectors[] = {"wlan+", "rndis+", "ap+", "softap+"};
-    for (size_t index = 0U; index < config->hotspot_interface_prefix_count; ++index) {
-        if (system_append_ipv6_forward_reject(
-                system, chain, config->hotspot_interface_prefixes[index]) != 0) return -1;
-    }
-    for (size_t index = 0U; index < sizeof(builtin_selectors) / sizeof(builtin_selectors[0]); ++index) {
-        if (system_hotspot_selector_listed(config, builtin_selectors[index])) continue;
-        if (system_append_ipv6_forward_reject(system, chain, builtin_selectors[index]) != 0) {
-            return -1;
-        }
-    }
-    return 0;
-}
-
 static int system_populate_private_chain(
     struct starsead_system_supervisor *system,
     const struct starsead_private_chain_group *group, const char *chain) {
@@ -3539,15 +3451,6 @@ static int system_populate_private_chain(
                     STARSEAD_IP_TABLE_FILTER, "-A", chain, tcp_output, 10U) == 0 ? 0 : -1;
             }
             return -1;
-        }
-        return -1;
-    }
-    if (group->chain_id == STARSEAD_CHAIN_IPV6_LEAK) {
-        if (strstr(chain, "FWD") != NULL) {
-            return system_populate_ipv6_leak_forward(system, chain);
-        }
-        if (strstr(chain, "OUT") != NULL) {
-            return system_populate_ipv6_leak_output(system, chain);
         }
         return -1;
     }
@@ -5143,25 +5046,31 @@ static int system_network_effect_dispatch(void *opaque,
         system, &request->effect.resource.sysctl, error, error_size);
 }
 
-static int system_restore_interface_ipv6(
+static int system_apply_ipv6_guard(
     struct starsead_system_supervisor *system, const char *name, uint32_t index) {
-    struct starsead_sysctl_resource resource;
-    memset(&resource, 0, sizeof(resource));
-    resource.sysctl_id = STARSEAD_SYSCTL_DISABLE_IPV6;
-    (void)snprintf(resource.interface_name, sizeof(resource.interface_name), "%s", name);
-    resource.interface_index = index;
-    resource.desired_value = 0U;
+    struct starsead_resource_operation record;
+    memset(&record, 0, sizeof(record));
+    record.kind = STARSEAD_RESOURCE_OPERATION_SYSCTL;
+    record.resource.sysctl.sysctl_id = STARSEAD_SYSCTL_DISABLE_IPV6;
+    (void)snprintf(record.resource.sysctl.interface_name,
+        sizeof(record.resource.sysctl.interface_name), "%s", name);
+    record.resource.sysctl.interface_index = index;
+    record.resource.sysctl.original_value = 0U;
+    record.resource.sysctl.desired_value = 1U;
     uint8_t current = 0U;
-    int read_result = system_sysctl_read(&resource, &current);
-    if (read_result == 1 || (read_result == 0 && current == 0U)) return 0;
-    if (read_result != 0 || current != 1U) return -1;
-    return system_sysctl_write(&resource, 0U);
+    int read_result = system_sysctl_read(&record.resource.sysctl, &current);
+    if (read_result == 1 || (read_result == 0 && current == 1U)) return 0;
+    if (read_result != 0 || current != 0U) return -1;
+    char error[128U];
+    return system_effect_apply_sysctl(
+        system, &record.resource.sysctl, error, sizeof(error));
 }
 
 static int system_apply_initial_ipv6_guard(struct starsead_system_supervisor *system) {
     if (!system->loaded_config.config.disable_system_ipv6) return 0;
     DIR *directory = opendir("/proc/sys/net/ipv6/conf");
-    if (directory == NULL) return errno == ENOENT ? 0 : -1;
+    if (directory == NULL) return -1;
+    int result = 0;
     struct dirent *entry;
     while ((entry = readdir(directory)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 ||
@@ -5169,19 +5078,13 @@ static int system_apply_initial_ipv6_guard(struct starsead_system_supervisor *sy
             strcmp(entry->d_name, "lo") == 0 ||
             starsead_interface_matches_selector(entry->d_name, "ipsec+")) continue;
         unsigned index = if_nametoindex(entry->d_name);
-        if (index == 0U) continue;
-        if (system_restore_interface_ipv6(system, entry->d_name, index) != 0) {
-            char message[160U];
-            int written = snprintf(message, sizeof(message),
-                "failed to restore disable_ipv6=0 on %s; continuing", entry->d_name);
-            if (written > 0 && (size_t)written < sizeof(message)) {
-                (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_WARNING,
-                    STARSEAD_COMPONENT_RUNTIME, STARSEAD_LOG_EVENT_CAPABILITY_ADJUSTED, message);
-            }
+        if (index == 0U || system_apply_ipv6_guard(system, entry->d_name, index) != 0) {
+            result = -1;
+            break;
         }
     }
-    int close_result = closedir(directory);
-    return close_result == 0 ? 0 : -1;
+    if (closedir(directory) != 0) result = -1;
+    return result;
 }
 
 static int system_effect_start_matcher(void *opaque) {
@@ -6447,7 +6350,7 @@ static int system_dns_exchange(struct starsead_system_supervisor *s, uint16_t op
     // fresh snapshot, but must never report this response as activation.
     if (op == 3 && s->dns.topology_changed && s->dns.snapshot.phase == DNS_DRAINING)
         return 1;
-    if (op == 3 && s->dns.snapshot.phase != DNS_ACTIVE) {
+    if (op == 3 && !starsead_dns_serving(s->dns.snapshot.phase)) {
         starsead_dns_fail(&s->dns, "DNS topology changed before startup activation");
         return -1;
     }
@@ -6482,6 +6385,10 @@ static int system_dns_begin_generation(struct starsead_system_supervisor *s) {
 }
 
 static int system_dns_startup_failed(struct starsead_system_supervisor *s, const char *stage) {
+    if (s->dns.prepare_retry) {
+        starsead_dns_close(&s->dns);
+        s->dns.snapshot.phase = DNS_FAILED;
+    }
     char message[320U];
     int written = snprintf(message, sizeof(message),
         "DNS enhancement startup failed: stage=%s phase=%d op=%u result=%" PRIu32 " reason=%s",
@@ -6505,12 +6412,14 @@ static bool system_dns_wait_aborted(void *opaque) {
     return s->stop_requested || s->manual_stop_pending || s->shutdown_requested;
 }
 
-static int system_dns_prepare(struct starsead_system_supervisor *s) {
-    if (!s->loaded_config.config.dns_enhancement) return 0;
+static int system_dns_await_companion(struct starsead_system_supervisor *s) {
     /* The Zygisk companion binds its DNS socket only after sys.boot_completed.
      * service.d starts this process at the same edge, so the first connect
      * often fails. Keep the control server pumping and retry until the module
-     * is ready. A rejected handshake still fails immediately. */
+     * is ready. A rejected handshake still fails immediately. The 8s prepare
+     * budget starts after this wait and bounds CACHE_ERROR retries only. */
+    const uint64_t saved_deadline = s->dns_startup_deadline;
+    s->dns_startup_deadline = 0;
     const uint64_t ready_deadline = starsead_dns_monotime() + 60000U;
     bool logged_wait = false;
     for (;;) {
@@ -6520,6 +6429,7 @@ static int system_dns_prepare(struct starsead_system_supervisor *s) {
         uint64_t now = starsead_dns_monotime();
         if (!system_dns_companion_not_ready(&s->dns) || now >= ready_deadline ||
             system_dns_wait_aborted(s)) {
+            s->dns_startup_deadline = saved_deadline;
             return system_dns_startup_failed(s, began != 0 ? "connect" : "capabilities");
         }
         if (!logged_wait) {
@@ -6530,6 +6440,7 @@ static int system_dns_prepare(struct starsead_system_supervisor *s) {
         }
         int64_t clock = 0;
         if (system_runtime_clock(s, &clock) != 0) {
+            s->dns_startup_deadline = saved_deadline;
             return system_dns_startup_failed(s, "connect");
         }
         struct starsead_deadline pause = {
@@ -6538,18 +6449,65 @@ static int system_dns_prepare(struct starsead_system_supervisor *s) {
         };
         (void)system_pump_condition(s, &pause, system_dns_wait_aborted);
         if (system_dns_wait_aborted(s)) {
+            s->dns_startup_deadline = saved_deadline;
             return system_dns_startup_failed(s, "connect");
         }
     }
-    if (!(s->dns.result & system_dns_mode_bit(s))) {
-        starsead_dns_close(&s->dns); s->dns.snapshot.phase = DNS_UNSUPPORTED;
-        snprintf(s->dns.snapshot.reason, sizeof(s->dns.snapshot.reason),
-            "module does not support selected mode: supported=0x%" PRIx32 " required=0x%" PRIx32,
-            s->dns.result, system_dns_mode_bit(s));
-        return system_dns_startup_failed(s, "capabilities");
-    }
-    if (system_dns_exchange(s, 2) != 0) return system_dns_startup_failed(s, "prepare");
+    s->dns_startup_deadline = starsead_dns_monotime() + 8000U;
     return 0;
+}
+
+static int system_dns_prepare(struct starsead_system_supervisor *s) {
+    if (!s->loaded_config.config.dns_enhancement) return 0;
+    for (unsigned attempt = 0; attempt < 3; ++attempt) {
+        if (attempt == 0) {
+            if (system_dns_await_companion(s) != 0) return -1;
+        } else if (system_dns_begin_generation(s) != 0) {
+            return system_dns_startup_failed(s, "connect");
+        } else if (system_dns_wait(s) != 0) {
+            return system_dns_startup_failed(s, "capabilities");
+        }
+        if (!(s->dns.result & system_dns_mode_bit(s))) {
+            starsead_dns_close(&s->dns); s->dns.snapshot.phase = DNS_UNSUPPORTED;
+            snprintf(s->dns.snapshot.reason, sizeof(s->dns.snapshot.reason),
+                "module does not support selected mode: supported=0x%" PRIx32 " required=0x%" PRIx32,
+                s->dns.result, system_dns_mode_bit(s));
+            return system_dns_startup_failed(s, "capabilities");
+        }
+        if (system_dns_exchange(s, 2) != 0) return system_dns_startup_failed(s, "prepare");
+        if (!s->dns.prepare_retry) return 0;
+        char message[256];
+        snprintf(message, sizeof(message), "DNS prepare transient failure: attempt=%u %s",
+            attempt + 1, s->dns.snapshot.reason);
+        (void)starsead_log_line(&s->logger, STARSEAD_LOG_LEVEL_WARNING,
+            STARSEAD_COMPONENT_NETWORK, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
+        if (attempt == 2 || !s->dns_startup_deadline ||
+            starsead_dns_monotime() >= s->dns_startup_deadline) break;
+        // Wait through the reactor, so stop/child exit/control requests remain responsive.
+        // Retry only after a resolver event. The deadline bounds the operation;
+        // it is not a timer for probing whether the network has become ready.
+        const uint64_t until = s->dns_startup_deadline;
+        while (!s->dns.network_changed && starsead_dns_monotime() < until) {
+            int64_t now = 0;
+            if (system_runtime_clock(s, &now) != 0) return system_dns_startup_failed(s, "retry-clock");
+            uint64_t current = starsead_dns_monotime();
+            if (current >= until) break;
+            uint64_t remaining = until - current;
+            struct starsead_deadline deadline = {.armed=true,
+                .monotonic_milliseconds=now+(int64_t)remaining};
+            struct starsead_runtime_delta delta;
+            if (starsead_runtime_pump_once(s->runtime, &deadline, &delta) != 0 ||
+                system_accept_pump_delta(s, &delta) != 0)
+                return system_dns_startup_failed(s, "retry-interrupted");
+            if (s->stop_requested || s->manual_stop_pending || s->shutdown_requested ||
+                s->core_reaped || s->helper_reaped)
+                return system_dns_startup_failed(s, "retry-interrupted");
+        }
+        s->dns.network_changed = false;
+        if (starsead_dns_monotime() >= s->dns_startup_deadline) break;
+        s->dns.suspended = true;
+    }
+    return system_dns_startup_failed(s, "prepare-retry-exhausted");
 }
 
 static int system_dns_withdraw(struct starsead_system_supervisor *s) {
@@ -6605,7 +6563,7 @@ static int system_runtime_request_dns(void *opaque, const struct starsead_contro
         request->cycle_id != s->dns.snapshot.cycle_id || request->generation != s->dns.snapshot.generation) return -1;
     bool resume = request->method == STARSEAD_CONTROL_METHOD_DNS_RESUME;
     if ((resume && (!s->dns.suspended || s->dns.snapshot.phase != DNS_INACTIVE)) ||
-        (!resume && s->dns.snapshot.phase != DNS_ACTIVE)) return -1;
+        (!resume && !starsead_dns_serving(s->dns.snapshot.phase))) return -1;
     s->dns_hot_completed_generation = 0;
     s->dns_regenerating = false;
     s->dns_hot_request = *request; s->dns_hot_result = 0; s->dns_hot_stage = resume ? 10 : 1;
@@ -6614,13 +6572,28 @@ static int system_runtime_request_dns(void *opaque, const struct starsead_contro
     return 0;
 }
 
-static bool system_dns_consumers_current(struct starsead_system_supervisor *s) {
-    return !s->core_reaped && !s->helper_reaped && s->rules_verified &&
+static bool system_dns_consumers_live(struct starsead_system_supervisor *s) {
+    return !s->core_reaped && !s->helper_reaped &&
         !s->stop_requested && !s->manual_stop_pending && !s->shutdown_requested &&
         !s->cleanup_in_progress && (!s->runtime ||
           (!(s->runtime->pending_delta.flags & (STARSEAD_DELTA_STOP_REQUESTED |
             STARSEAD_DELTA_CHILD_EXITED | STARSEAD_DELTA_FATAL)) &&
            !runtime_lifecycle_stop_requested(s->runtime)));
+}
+static bool system_dns_consumers_current(struct starsead_system_supervisor *s) {
+    return s->rules_verified && system_dns_consumers_live(s);
+}
+static bool system_dns_waiting_for_rules(struct starsead_system_supervisor *s) {
+    return (s->dns_hot_stage == 10 || s->dns_hot_stage == 12) &&
+        s->rules_reconciling && !s->rules_verified && system_dns_consumers_live(s);
+}
+static int system_dns_complete(struct starsead_system_supervisor *s, int result, uint64_t now) {
+    s->dns_hot_stage = 0;
+    s->dns_hot_result = result;
+    s->dns.busy = false;
+    // Queue the original request's immutable response in this dispatch, before
+    // another request can replace dns_hot_request. Tick does not pump or write.
+    return s->control ? starsead_control_server_tick(s->control, now) : 0;
 }
 static int system_dns_activate(struct starsead_system_supervisor *s,uint64_t now) {
     // Activation still requires live consumers and an acknowledged PREPARE.
@@ -6684,21 +6657,34 @@ static int system_dns_tick(struct starsead_system_supervisor *s, struct starsead
             if (s->dns.retained || s->dns.snapshot.phase == DNS_DRAINING) { s->dns_hot_stage = 2; return 0; }
             s->dns.suspended = true; s->dns.topology_changed=false;
             if (s->dns_regenerating || s->dns_hot_request.method == STARSEAD_CONTROL_METHOD_DNS_RESUME) s->dns_hot_stage=10;
-            else { s->dns_hot_result = 1; s->dns_hot_stage = 0; s->dns.busy = false; }
+            else return system_dns_complete(s, 1, now);
         } else if (stage == 10) {
-            if (s->core_reaped || s->helper_reaped || !s->rules_verified || system_dns_begin_generation(s) != 0) goto hot_failed;
+            if (system_dns_waiting_for_rules(s)) return 0;
+            if (!system_dns_consumers_current(s) || system_dns_begin_generation(s) != 0) goto hot_failed;
             s->dns_hot_stage = 11;
         } else if (stage == 11) {
             if (!(s->dns.result & system_dns_mode_bit(s)) ||
                 starsead_dns_command(&s->dns, 2, &s->loaded_config.config, now) != 0) goto hot_failed;
             s->dns_hot_stage = 12;
         } else if (stage == 12) {
+            if (system_dns_waiting_for_rules(s)) return 0;
+            if (!system_dns_consumers_current(s)) goto hot_failed;
+            if (s->dns.prepare_retry) {
+                s->dns_hot_stage = 14;
+                return 0;
+            }
             if (system_dns_activate(s,now) != 0) goto hot_failed;
             s->dns_hot_stage = 13;
+        } else if (stage == 14) {
+            if (s->dns.network_changed) {
+                s->dns.network_changed = false;
+                s->dns.suspended = true;
+                s->dns_hot_stage = 10;
+            }
         } else if (stage == 13) {
             s->dns_hot_completed_generation = s->dns_regenerating ? 0 : s->dns.snapshot.generation;
             s->dns_regenerating=false;
-            s->dns_hot_stage = 0; s->dns_hot_result = 1; s->dns.busy = false;
+            return system_dns_complete(s, 1, now);
         }
         return 0;
     }
@@ -6707,10 +6693,21 @@ static int system_dns_tick(struct starsead_system_supervisor *s, struct starsead
     return 0;
 hot_failed:
     s->dns_regenerating=false;
-    starsead_dns_fail(&s->dns, "DNS hot transition failed or drain timed out");
-    s->dns_hot_stage = 0; s->dns_hot_result = -1; s->dns.busy = false;
+    if (s->dns.snapshot.reason[0] && (s->dns.snapshot.phase == DNS_FAILED ||
+        s->dns.snapshot.phase == DNS_UNSUPPORTED || s->dns.prepare_retry)) {
+        starsead_dns_close(&s->dns);
+        s->dns.snapshot.phase = DNS_FAILED;
+    } else {
+        char reason[192];
+        snprintf(reason, sizeof(reason),
+            "DNS hot transition %s: stage=%d phase=%d rulesVerified=%d reconciling=%d consumersLive=%d",
+            now >= s->dns_hot_deadline ? "timed out" : "failed",
+            s->dns_hot_stage, (int)s->dns.snapshot.phase, s->rules_verified,
+            s->rules_reconciling, system_dns_consumers_live(s));
+        starsead_dns_fail(&s->dns, reason);
+    }
     system_runtime_fatal(delta, STARSEAD_COMPONENT_NETWORK, s->dns.snapshot.reason);
-    return 0;
+    return system_dns_complete(s, -1, now);
 }
 
 static int system_effect_rules(void *opaque, bool *active,
@@ -6718,8 +6715,12 @@ static int system_effect_rules(void *opaque, bool *active,
     struct starsead_system_supervisor *system = opaque;
     if (active == NULL || generation == NULL || categories == NULL) return -1;
     system->rules_verified = false;
-    if (system_dns_prepare(system) != 0) return -1;
+    // PREPARE can fail before rule installation. The lifecycle still invokes
+    // remove_rules, so initialize its empty ownership journal before that boundary.
     if (!system->rules_initialized) system_rules_backend_init(system);
+    if (system->loaded_config.config.dns_enhancement)
+        system->dns_startup_deadline = starsead_dns_monotime() + 8000;
+    if (system_dns_prepare(system) != 0) return -1;
     if (system->network_opened && !system->network.no_op) {
         int64_t now = 0;
         char error[128U];
@@ -6774,6 +6775,7 @@ static int system_effect_reconcile(void *opaque, bool *active,
     if (active == NULL || generation == NULL || categories == NULL ||
         !system->rules_initialized) return -1;
     system->rules_verified = false;
+    system->rules_reconciling = true;
     const char *failed_stage = NULL;
     if (system_capture_local_address_snapshot(system) != 0) {
         failed_stage = "local-address-snapshot";
@@ -6800,6 +6802,7 @@ static int system_effect_reconcile(void *opaque, bool *active,
     }
     system_rule_snapshot_destroy(&system->rule_snapshot);
     system_clear_local_address_snapshot(system);
+    system->rules_reconciling = false;
     if (failed_stage != NULL) {
         char message[160U];
         int written = snprintf(message, sizeof(message),
@@ -6840,7 +6843,6 @@ static int system_effect_verify(void *opaque) {
         system->rules_initialized, system->rules_verified) ? 0 : -1;
     system_clear_local_address_snapshot(system);
     if (result == 0 && system->loaded_config.config.dns_enhancement) {
-        system->dns_startup_deadline = starsead_dns_monotime() + 8000;
         result = system_dns_verify_startup(system);
         system->dns_startup_deadline = 0;
         system->dns.busy = false;
@@ -7354,7 +7356,6 @@ static int system_runtime_run(const char *config_path, bool initial_start,
         system.wifi_monitor_opened = starsead_wifi_monitor_open(
             &system.wifi_monitor, error, sizeof(error)) == 0;
     }
-    enum starsead_service_action wifi_baseline_action = STARSEAD_SERVICE_ACTION_NONE;
     if (system.wifi_monitor_opened) {
         enum starsead_wifi_transition transition;
         struct starsead_wifi_identity identity;
@@ -7362,7 +7363,7 @@ static int system_runtime_run(const char *config_path, bool initial_start,
                 &system.wifi_monitor, &transition, &identity) != 0) {
             system.wifi_monitor_opened = false;
         } else {
-            wifi_baseline_action = starsead_service_control_on_wifi(
+            (void)starsead_service_control_on_wifi(
                 &system.service_control, transition, &identity);
         }
     }
@@ -7427,12 +7428,6 @@ static int system_runtime_run(const char *config_path, bool initial_start,
     struct starsead_runtime_effect_backend effects = system_runtime_effects(&system);
     int status = 0;
     bool should_start = initial_start;
-    if (wifi_baseline_action == STARSEAD_SERVICE_ACTION_STOP) {
-        should_start = false;
-        system.service_running = false;
-    } else if (wifi_baseline_action == STARSEAD_SERVICE_ACTION_START) {
-        should_start = true;
-    }
     while (!system.shutdown_requested) {
         if (should_start || system.service_start_requested) {
             if (!should_start) {

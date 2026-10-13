@@ -7,7 +7,10 @@
 #include <stdint.h>
 struct starsead_config;
 enum starsead_dns_phase { DNS_DISABLED, DNS_PREPARING, DNS_PREPARED, DNS_ACTIVE,
-    DNS_INACTIVE, DNS_DRAINING, DNS_UNSUPPORTED, DNS_FAILED };
+    DNS_INACTIVE, DNS_DRAINING, DNS_UNSUPPORTED, DNS_FAILED, DNS_WAITING_NETWORK };
+static inline bool starsead_dns_serving(enum starsead_dns_phase phase) {
+    return phase == DNS_ACTIVE || phase == DNS_WAITING_NETWORK;
+}
 struct starsead_dns_snapshot {
     bool required;
     enum starsead_dns_phase phase;
@@ -23,6 +26,7 @@ struct starsead_dns_client {
     uint16_t opcode;
     uint64_t netd, deadline;
     bool pending, complete, connected, suspended, busy, topology_changed, network_changed;
+    bool prepare_retry;
     unsigned char *tx;
     size_t tx_size, tx_offset, rx_size;
     unsigned char rx[68+32*STARSEAD_DNS_MAX_ROUTES];

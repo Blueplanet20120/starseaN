@@ -39,7 +39,7 @@ internal fun StarseadSnapshot.rejectBound(owner: StarseadOwner): Nothing {
 internal fun StarseadSnapshot.requireRunning(owner: StarseadOwner, expectedMode: StarseadMode) {
     requireOwner(owner)
     check(phase == StarseadPhase.Running && mode == expectedMode)
-    check(!dnsEnhancement.required || dnsEnhancement.active) {
+    check(!dnsEnhancement.required || dnsEnhancement.ready) {
         dnsEnhancement.reason ?: "Application list enhancement is not active"
     }
 }
