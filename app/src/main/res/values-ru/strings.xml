@@ -597,7 +597,6 @@
     <string name="subscription_update_group">Обновить группу подписки</string>
     <string name="subscription_edit_group">Редактировать группу подписки</string>
     <string name="subscription_delete_group">Удалить группу подписки</string>
-    <string name="subscription_new_group">Новая группа подписки</string>
     <string name="subscription_edit">Редактировать подписку</string>
     <string name="subscription_add">Добавить подписку</string>
     <string name="subscription_default_group">По умолчанию</string>

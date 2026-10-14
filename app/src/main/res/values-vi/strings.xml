@@ -646,7 +646,6 @@
     <string name="subscription_update_group">Cập nhật nhóm đăng ký</string>
     <string name="subscription_edit_group">Sửa nhóm đăng ký</string>
     <string name="subscription_delete_group">Xóa nhóm đăng ký</string>
-    <string name="subscription_new_group">Nhóm đăng ký mới</string>
     <string name="subscription_edit">Sửa đăng ký</string>
     <string name="subscription_add">Thêm đăng ký</string>
     <string name="subscription_default_group">Mặc định</string>
