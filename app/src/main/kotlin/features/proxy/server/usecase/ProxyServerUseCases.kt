@@ -21,12 +21,15 @@ import features.proxy.server.model.VMess
 import features.proxy.server.model.Wireguard
 import features.proxy.server.model.getUrlOrNull
 import features.proxy.server.model.isCompositeProxyServer
+import ui.text.formatTemplate
+import utils.resolveSubscriptionName
 
 internal data class ProxyServerListSubscriptionUpdate(
     val groupId: Int,
     val sourceIdentity: SubscriptionGroupFetchIdentity,
     val urlCount: Int,
     val servers: List<ProxyServer<*>>,
+    val remoteName: String? = null,
 )
 
 internal data class SubscriptionGroupFetchIdentity(
@@ -145,6 +148,7 @@ internal fun AppState.withSavedProxyServer(
 internal fun AppState.withUpdatedSubscriptionServers(
     updates: List<ProxyServerListSubscriptionUpdate>,
     updatedAtMillis: Long,
+    duplicateNameTemplate: String,
 ): AppState {
     val applicableUpdates = updates.filter { update ->
         subscriptionGroups.any { group ->
@@ -188,10 +192,25 @@ internal fun AppState.withUpdatedSubscriptionServers(
             ?: nextServers.firstOrNull()?.id
             ?: selectedProxyServerId
     }
+    val remoteNamesByGroupId = applicableUpdates.associate { update -> update.groupId to update.remoteName }
+    val takenNames = subscriptionGroups.mapTo(mutableListOf()) { group -> group.name }
     return copy(
         subscriptionGroups = subscriptionGroups.map { group ->
             if (group.id in updatedGroupIds) {
-                group.copy(lastUpdatedAtMillis = updatedAtMillis)
+                val resolvedName = group.name.takeIf(String::isBlank)?.let {
+                    resolveSubscriptionName(
+                        preferredName = remoteNamesByGroupId[group.id],
+                        subscriptionUrl = group.url,
+                        takenNames = takenNames,
+                        formatDuplicate = { name, ordinal ->
+                            duplicateNameTemplate.formatTemplate("name" to name, "ordinal" to ordinal)
+                        },
+                    )
+                }?.also(takenNames::add)
+                group.copy(
+                    name = resolvedName ?: group.name,
+                    lastUpdatedAtMillis = updatedAtMillis,
+                )
             } else {
                 group
             }

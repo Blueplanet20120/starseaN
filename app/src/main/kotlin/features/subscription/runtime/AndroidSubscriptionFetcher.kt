@@ -15,6 +15,7 @@ import java.net.Socket
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import utils.decodeContentDispositionFilename
 import utils.runCancellableHttpRequest
 import utils.encodeBase64
 import java.net.Authenticator
@@ -39,7 +40,13 @@ internal class AndroidSubscriptionFetcher(
         url: String,
         userAgent: String,
         options: AndroidSubscriptionFetchOptions,
-    ): String {
+    ): String = fetchSubscription(url, userAgent, options).text
+
+    suspend fun fetchSubscription(
+        url: String,
+        userAgent: String,
+        options: AndroidSubscriptionFetchOptions,
+    ): AndroidSubscriptionResponse {
         val proxy = options.toProxy()
         return runCancellableHttpRequest { track ->
             val requestCredentials = options.toRequestCredentials(
@@ -54,13 +61,22 @@ internal class AndroidSubscriptionFetcher(
                     requestCredentials = requestCredentials,
                     proxy = proxy,
                 )
-            }.decryptAgeArmoredOrPassThrough(
-                secretKey = options.ageSecretKey,
-                ageCrypto = ageCrypto,
-            )
+            }.let { response ->
+                response.copy(
+                    text = response.text.decryptAgeArmoredOrPassThrough(
+                        secretKey = options.ageSecretKey,
+                        ageCrypto = ageCrypto,
+                    ),
+                )
+            }
         }
     }
 }
+
+internal data class AndroidSubscriptionResponse(
+    val text: String,
+    val remoteName: String? = null,
+)
 
 internal data class AndroidSubscriptionFetchOptions(
     val useRunningProxy: Boolean = false,
@@ -149,7 +165,7 @@ private fun fetchWithRedirects(
     userAgent: String,
     requestCredentials: SubscriptionRequestCredentials,
     proxy: AndroidSubscriptionProxy?,
-): String {
+): AndroidSubscriptionResponse {
     var currentUrl = url
     repeat(MaxRedirects) {
         val connection = currentUrl.toConnection(proxy)
@@ -173,7 +189,10 @@ private fun fetchWithRedirects(
             if (code !in 200..299) {
                 throw SubscriptionHttpException(code)
             }
-            return connection.inputStream.bufferedReader().use { reader -> reader.readText() }
+            return AndroidSubscriptionResponse(
+                text = connection.inputStream.bufferedReader().use { reader -> reader.readText() },
+                remoteName = decodeContentDispositionFilename(connection.getHeaderField("Content-Disposition")),
+            )
         } finally {
             connection.disconnect()
         }

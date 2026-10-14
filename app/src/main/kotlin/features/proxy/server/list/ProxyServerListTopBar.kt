@@ -349,6 +349,7 @@ private suspend fun installSubscriptionFromText(
         SubscriptionInstallConfigUseCase(
             stateStore = stateStore,
             subscriptionFetcher = subscriptionFetcher,
+            duplicateNameTemplate = messages.subscriptionGroupNameDuplicateTemplate,
         ).install(config)
     }.onSuccess { result ->
         tipNotifier.show(
@@ -607,6 +608,7 @@ private fun updateSubscriptionGroups(
                 state.withUpdatedSubscriptionServers(
                     updates = result.updates,
                     updatedAtMillis = result.updatedAtMillis,
+                    duplicateNameTemplate = messages.subscriptionGroupNameDuplicateTemplate,
                 )
             }
         }

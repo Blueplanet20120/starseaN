@@ -132,7 +132,7 @@
     <string name="settings_app_list_enhancement">应用名单增强</string>
     <string name="settings_app_list_enhancement_summary">按应用名单分流系统 DNS，并隔离缓存</string>
     <string name="enhancement_module_acknowledge">知道了</string>
-    <string name="enhancement_module_apk_install_failed">ROOT 工具无法直接刷入本应用 APK。若不支持 APK，请导出本应用 APK，将 .apk 后缀改为 .zip，在 ROOT 管理器中自行刷入并重启</string>
+    <string name="enhancement_module_apk_install_failed">刷入失败，请检查错误输出。可尝试导出本应用，将 .apk 后缀改为 .zip，在 ROOT 管理器中刷入</string>
     <string name="enhancement_module_failed">模块操作失败。请检查 ROOT 管理器，确认 Zygisk Next 已安装且启用后重试</string>
     <string name="enhancement_module_incompatible">当前运行的增强模块不支持此运行环境</string>
     <string name="enhancement_module_install_close">关闭</string>
@@ -144,6 +144,8 @@
     <string name="enhancement_module_manager_unsupported">未找到可用的 Magisk、KernelSU 或 APatch 模块安装命令</string>
     <string name="enhancement_module_missing">未检测到可用增强模块，可安装或重新安装后重启</string>
     <string name="enhancement_module_reboot">增强模块已安装或更新，需重启设备</string>
+    <string name="enhancement_module_reboot_action">重启</string>
+    <string name="enhancement_module_reboot_failed">无法重启设备，请手动重启。</string>
     <string name="enhancement_module_root_denied">ROOT 授权被拒绝。请授权后重试</string>
     <string name="enhancement_module_timeout">模块操作超时。请检查 ROOT 管理器后重试</string>
     <string name="enhancement_module_title">增强模块</string>
@@ -651,12 +653,13 @@
     <string name="subscription_update_group">更新订阅分组</string>
     <string name="subscription_edit_group">编辑订阅分组</string>
     <string name="subscription_delete_group">删除订阅分组</string>
-    <string name="subscription_new_group">新订阅分组</string>
     <string name="subscription_edit">编辑订阅</string>
     <string name="subscription_add">添加订阅</string>
     <string name="subscription_default_group">默认</string>
     <string name="subscription_unnamed_group">未命名分组</string>
     <string name="subscription_group_name">分组名称</string>
+    <string name="subscription_group_name_duplicate">{name}({ordinal})</string>
+    <string name="subscription_group_name_placeholder">分组名称（留空则首次同步后自动命名）</string>
     <string name="subscription_url">订阅地址，手动分组可留空</string>
     <string name="subscription_hwid">HWID</string>
     <string name="subscription_age_secret_key">Mihomo Age 私钥</string>

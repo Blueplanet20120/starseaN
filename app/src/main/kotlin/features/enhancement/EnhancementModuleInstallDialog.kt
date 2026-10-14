@@ -36,6 +36,8 @@ import top.yukonga.miuix.kmp.window.WindowDialog
 @Composable
 internal fun EnhancementModuleInstallDialog(
     progress: EnhancementModuleInstallProgress,
+    rebooting: Boolean,
+    onReboot: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     val scroll = rememberScrollState()
@@ -46,9 +48,9 @@ internal fun EnhancementModuleInstallDialog(
         show = true,
         title = stringResource(R.string.enhancement_module_install_title),
         modifier = Modifier.height(520.dp),
-        onDismissRequest = { if (!progress.running) onDismiss() },
+        onDismissRequest = { if (!progress.running && !rebooting) onDismiss() },
     ) {
-        BackHandler(enabled = progress.running) {}
+        BackHandler(enabled = progress.running || rebooting) {}
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -95,12 +97,25 @@ internal fun EnhancementModuleInstallDialog(
                     style = MiuixTheme.textStyles.body2.copy(fontFamily = FontFamily.Monospace),
                 )
             }
-            TextButton(
-                text = stringResource(R.string.enhancement_module_install_close),
-                onClick = onDismiss,
-                enabled = !progress.running,
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-            )
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (!progress.running && progress.result?.phase == EnhancementModulePhase.PendingReboot) {
+                    TextButton(
+                        text = stringResource(R.string.enhancement_module_reboot_action),
+                        onClick = onReboot,
+                        enabled = !rebooting,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                TextButton(
+                    text = stringResource(R.string.enhancement_module_install_close),
+                    onClick = onDismiss,
+                    enabled = !progress.running && !rebooting,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }

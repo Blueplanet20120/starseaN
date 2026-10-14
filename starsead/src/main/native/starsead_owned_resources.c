@@ -12,6 +12,8 @@ static const char *const owned_pin_paths[STARSEAD_PIN_COUNT] = {
         "/sys/fs/bpf/starsea/xt_prerouting_v4",
     [STARSEAD_PIN_MATCHER_PREROUTING_V6] =
         "/sys/fs/bpf/starsea/xt_prerouting_v6",
+    [STARSEAD_PIN_MATCHER_DNS_UID] =
+        "/sys/fs/bpf/starsea/xt_dns_uid",
     [STARSEAD_PIN_BPF2SOCKS_LOCAL_ADDRESS_V4] =
         "/sys/fs/bpf/starsea/bpf2socks/local_addr_v4",
     [STARSEAD_PIN_BPF2SOCKS_LOCAL_ADDRESS_V6] =
@@ -30,6 +32,8 @@ static const struct starsead_owned_chain owned_chains[] = {
     {STARSEAD_IP_FAMILY_IPV4, STARSEAD_IP_TABLE_MANGLE,
         "ASTERISK_LOCAL4_BEGIN"},
     {STARSEAD_IP_FAMILY_IPV4, STARSEAD_IP_TABLE_MANGLE,
+        "ASTERISK_DNS_UID4"},
+    {STARSEAD_IP_FAMILY_IPV4, STARSEAD_IP_TABLE_MANGLE,
         "ASTERISK_LOCAL4_END"},
     {STARSEAD_IP_FAMILY_IPV4, STARSEAD_IP_TABLE_MANGLE,
         "ASTERISK_TUN_PREROUTING"},
@@ -47,6 +51,8 @@ static const struct starsead_owned_chain owned_chains[] = {
         "ASTERISK_TPROXY6_OUTPUT"},
     {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_MANGLE,
         "ASTERISK_LOCAL6_BEGIN"},
+    {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_MANGLE,
+        "ASTERISK_DNS_UID6"},
     {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_MANGLE,
         "ASTERISK_LOCAL6_END"},
     {STARSEAD_IP_FAMILY_IPV6, STARSEAD_IP_TABLE_MANGLE,

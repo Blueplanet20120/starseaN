@@ -76,15 +76,14 @@ internal fun SubscriptionGroupEditorDialog(
 ) {
     val isEditing = group != null
     val builtIn = group?.builtIn == true
-    val newGroupName = stringResource(R.string.subscription_new_group)
     val defaultGroupName = stringResource(R.string.subscription_default_group)
     val unnamedGroupName = stringResource(R.string.subscription_unnamed_group)
 
-    var name by remember(show, group?.id, newGroupName, defaultGroupName, builtIn) {
+    var name by remember(show, group?.id, defaultGroupName, builtIn) {
         mutableStateOf(
             when {
                 builtIn -> group.displayName(defaultGroupName)
-                else -> group?.name ?: newGroupName
+                else -> group?.name.orEmpty()
             },
         )
     }
@@ -139,8 +138,11 @@ internal fun SubscriptionGroupEditorDialog(
 
         showHttpSubscriptionWarning = false
         val savedUserAgent = userAgentSelection.resolveUserAgent(customUserAgent)
+        val savedName = name.trim().ifBlank {
+            if (savedUrl.isNotBlank()) "" else unnamedGroupName
+        }
         val savedGroup = group?.copy(
-            name = if (group.builtIn) group.name else name.trim().ifBlank { unnamedGroupName },
+            name = if (group.builtIn) group.name else savedName,
             url = savedUrl,
             hwid = hwid.trim(),
             ageSecretKey = ageSecretKey.trim(),
@@ -149,7 +151,7 @@ internal fun SubscriptionGroupEditorDialog(
             updateViaProxy = updateViaProxy && savedUrl.isNotBlank(),
         ) ?: SubscriptionGroupState(
                 id = nextGroupId,
-                name = name.trim().ifBlank { unnamedGroupName },
+                name = savedName,
                 url = savedUrl,
                 hwid = hwid.trim(),
                 ageSecretKey = ageSecretKey.trim(),
@@ -184,7 +186,11 @@ internal fun SubscriptionGroupEditorDialog(
                         inputTransformation = InputTransformation {
                             name = asCharSequence().toString()
                         },
-                        label = stringResource(R.string.subscription_group_name),
+                        label = if (name.isBlank() && !builtIn) {
+                            stringResource(R.string.subscription_group_name_placeholder)
+                        } else {
+                            stringResource(R.string.subscription_group_name)
+                        },
                         lineLimits = TextFieldLineLimits.SingleLine,
                         enabled = !builtIn,
                         modifier = Modifier.padding(bottom = 12.dp),

@@ -76,6 +76,7 @@ class MainActivity : FragmentActivity() {
         SubscriptionInstallConfigUseCase(
             stateStore = AndroidAppStateStore.get(this),
             subscriptionFetcher = AndroidSubscriptionFetcher(this),
+            duplicateNameTemplate = appString(R.string.subscription_group_name_duplicate),
         )
     }
 

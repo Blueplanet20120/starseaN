@@ -7,12 +7,13 @@ import features.subscription.DefaultSubscriptionGroupId
 import app.ProxyServerState
 import app.SubscriptionGroupState
 import ui.text.formatTemplate
+import utils.nameFromSubscriptionUrl
 
 internal fun SubscriptionGroupState.displayName(defaultGroupName: String): String {
     return if (builtIn && id == DefaultSubscriptionGroupId) {
         defaultGroupName
     } else {
-        name
+        name.ifBlank { nameFromSubscriptionUrl(url).orEmpty() }
     }
 }
 

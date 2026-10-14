@@ -1171,6 +1171,7 @@ enum starsead_pin_id {
     STARSEAD_PIN_MATCHER_OUTPUT_V6,
     STARSEAD_PIN_MATCHER_PREROUTING_V4,
     STARSEAD_PIN_MATCHER_PREROUTING_V6,
+    STARSEAD_PIN_MATCHER_DNS_UID,
     STARSEAD_PIN_BPF2SOCKS_LOCAL_ADDRESS_V4,
     STARSEAD_PIN_BPF2SOCKS_LOCAL_ADDRESS_V6,
     STARSEAD_PIN_BPF2SOCKS_TC_INGRESS,
@@ -1266,7 +1267,7 @@ struct starsead_matcher_pin_expectation {
 };
 
 struct starsead_matcher_pin_plan {
-    struct starsead_matcher_pin_expectation pins[4U];
+    struct starsead_matcher_pin_expectation pins[5U];
     size_t pin_count;
 };
 
@@ -2481,7 +2482,7 @@ struct starsead_matcher_verified_pin {
 };
 
 struct starsead_matcher_verification {
-    struct starsead_matcher_verified_pin pins[4U];
+    struct starsead_matcher_verified_pin pins[5U];
     size_t pin_count;
 };
 
