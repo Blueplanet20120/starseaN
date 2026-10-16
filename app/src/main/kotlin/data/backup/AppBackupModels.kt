@@ -38,6 +38,7 @@ internal data class AppBackupSettings(
     val languageMode: Int = BackupDefaults.languageMode,
     val seedIndex: Int = BackupDefaults.seedIndex,
     val hideRecentTasks: Boolean = BackupDefaults.hideRecentTasks,
+    val allowScreenshots: Boolean = BackupDefaults.allowScreenshots,
     val enableAllProxyGroup: Boolean = BackupDefaults.enableAllProxyGroup,
     val enableDeletionConfirmation: Boolean = BackupDefaults.enableDeletionConfirmation,
     val enableAppLock: Boolean = BackupDefaults.enableAppLock,

@@ -97,6 +97,8 @@ internal fun SettingsThemeSection(
 internal fun SettingsSubscriptionsSection(
     hideRecentTasks: Boolean,
     onHideRecentTasksChange: (Boolean) -> Unit,
+    allowScreenshots: Boolean,
+    onAllowScreenshotsChange: (Boolean) -> Unit,
     enableAllProxyGroup: Boolean,
     enableDeletionConfirmation: Boolean,
     hideLauncherIcon: Boolean,
@@ -130,6 +132,12 @@ internal fun SettingsSubscriptionsSection(
             summary = stringResource(R.string.settings_hide_recent_tasks_summary),
             checked = hideRecentTasks,
             onCheckedChange = onHideRecentTasksChange,
+        )
+        SwitchPreference(
+            title = stringResource(R.string.settings_allow_screenshots),
+            summary = stringResource(R.string.settings_allow_screenshots_summary),
+            checked = allowScreenshots,
+            onCheckedChange = onAllowScreenshotsChange,
         )
         SwitchPreference(
             title = stringResource(R.string.settings_enable_all_proxy_group),

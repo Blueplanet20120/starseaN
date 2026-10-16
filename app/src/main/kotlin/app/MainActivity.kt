@@ -39,6 +39,7 @@ import features.subscription.toSubscriptionInstallConfigOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import system.applyScreenshotProtection
 import system.setRecentTasksHidden
 import ui.feedback.AndroidToastTipNotifier
 
@@ -127,6 +128,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         observeRecentTasksVisibility()
+        observeScreenshotProtection()
         vpnPermissionRequester.registerLauncher { intent ->
             vpnPermissionLauncher.launch(intent)
         }
@@ -157,6 +159,18 @@ class MainActivity : FragmentActivity() {
                 state.map { it.hideRecentTasks }
                     .distinctUntilChanged()
                     .collect { setRecentTasksHidden(it) }
+            }
+        }
+    }
+
+    private fun observeScreenshotProtection() {
+        val state = (application as StarseaApplication).stateStore.state
+        applyScreenshotProtection(state.value.allowScreenshots)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                state.map { it.allowScreenshots }
+                    .distinctUntilChanged()
+                    .collect { applyScreenshotProtection(it) }
             }
         }
     }

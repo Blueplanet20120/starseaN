@@ -92,6 +92,8 @@
     <string name="settings_deletion_confirmation_summary">删除节点、路由、分组、资源时需二次确认</string>
     <string name="settings_hide_recent_tasks">隐藏最近任务</string>
     <string name="settings_hide_recent_tasks_summary">开启后应用不在最近任务列表中显示</string>
+    <string name="settings_allow_screenshots">允许截屏</string>
+    <string name="settings_allow_screenshots_summary">关闭后系统将阻止该窗口的截屏与录屏</string>
     <string name="settings_hide_launcher_icon">隐藏桌面图标</string>
     <string name="settings_hide_launcher_icon_summary">拨号盘输入*#*#····#*#*打开</string>
     <string name="settings_hide_launcher_secret_code">拨号暗码</string>

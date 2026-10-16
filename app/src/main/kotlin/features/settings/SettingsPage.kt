@@ -234,6 +234,10 @@ private fun SettingsContent(
                     onHideRecentTasksChange = { hidden ->
                         updateAppState { state -> state.copy(hideRecentTasks = hidden) }
                     },
+                    allowScreenshots = appState.allowScreenshots,
+                    onAllowScreenshotsChange = { allowed ->
+                        updateAppState { state -> state.copy(allowScreenshots = allowed) }
+                    },
                     enableAllProxyGroup = appState.enableAllProxyGroup,
                     enableDeletionConfirmation = appState.enableDeletionConfirmation,
                     hideLauncherIcon = appState.hideLauncherIcon,

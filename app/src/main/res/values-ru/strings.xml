@@ -632,6 +632,8 @@
     <string name="common_error_update_interval">Введите значение не менее 0,25 часа</string>
     <string name="settings_deletion_confirmation">Подтверждение удаления</string>
     <string name="settings_deletion_confirmation_summary">Запрашивать подтверждение перед удалением серверов, правил, групп или ресурсов</string>
+    <string name="settings_allow_screenshots">Разрешить снимки экрана</string>
+    <string name="settings_allow_screenshots_summary">Если выключено, система блокирует снимки и запись экрана для этого окна</string>
     <string name="settings_hide_launcher_icon">Скрыть значок на рабочем столе</string>
     <string name="settings_hide_launcher_icon_summary">Наберите *#*#····#*#*, чтобы открыть</string>
     <string name="settings_hide_launcher_secret_code">Код набора</string>
