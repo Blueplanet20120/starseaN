@@ -192,7 +192,7 @@ fun versionCodeFromName(versionName: String): Int {
     val major = parts.getOrElse(0) { 0 }
     val minor = parts.getOrElse(1) { 0 }
     val patch = parts.getOrElse(2) { 0 }
-    return major * 10_000 + minor * 100 + patch
+    return major * 1_000_000 + minor * 1_000 + patch
 }
 
 abstract class GenerateProjectInfoTask : DefaultTask() {

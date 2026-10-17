@@ -61,7 +61,18 @@ jobs:
           increment_patch() {
             local major minor patch
             IFS=. read -r major minor patch <<< "$1"
-            echo "${major}.${minor}.$((10#$patch + 1))"
+            major=$((10#$major))
+            minor=$((10#$minor))
+            patch=$((10#$patch + 1))
+            if [ "$patch" -ge 100 ]; then
+              patch=0
+              minor=$((minor + 1))
+              if [ "$minor" -ge 100 ]; then
+                minor=0
+                major=$((major + 1))
+              fi
+            fi
+            echo "${major}.${minor}.${patch}"
           }
 
           max_semver() {
