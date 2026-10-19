@@ -62,6 +62,7 @@
     <string name="common_merge_import">Merge import</string>
     <string name="common_clipboard_empty">Clipboard is empty</string>
     <string name="common_clipboard_unsupported_format">Unsupported clipboard format</string>
+    <string name="common_close">Close</string>
     <string name="common_replace">Replace</string>
     <string name="common_update">Update</string>
     <string name="common_error_update_interval">Enter at least 0.25 hours</string>
@@ -130,9 +131,9 @@
     <string name="settings_root_boot_script_summary">Generate service.d startup script</string>
     <string name="settings_root_boot_script_failed">Failed to update start on boot</string>
     <string name="settings_root_ebpf_matcher">Use eBPF matcher</string>
-    <string name="settings_root_ebpf_matcher_summary">Improve performance for large app lists and support address filtering</string>
+    <string name="settings_root_ebpf_matcher_summary">Faster large app lists and address filtering</string>
     <string name="settings_app_list_enhancement">Application list enhancement</string>
-    <string name="settings_app_list_enhancement_summary">Route system DNS by the application list and isolate caches</string>
+    <string name="settings_app_list_enhancement_summary">Route system DNS by app list; isolate caches</string>
     <string name="enhancement_module_acknowledge">OK</string>
     <string name="enhancement_module_apk_install_failed">Installation failed. Check the error output. You can try exporting this app, changing the .apk extension to .zip, and installing it with your ROOT manager</string>
     <string name="enhancement_module_failed">Module operation failed. Check your ROOT manager and ensure Zygisk Next is installed and enabled, then retry</string>
@@ -154,7 +155,7 @@
     <string name="enhancement_module_update">Update enhancement module</string>
     <string name="enhancement_module_update_available">A module update is available from this app. Update it and reboot before using application list enhancement</string>
     <string name="settings_root_ebpf_bypass_direct_cidrs">Bypass direct addresses</string>
-    <string name="settings_root_ebpf_bypass_direct_cidrs_summary">Uses China address lists by default; adjust them in Resource Management</string>
+    <string name="settings_root_ebpf_bypass_direct_cidrs_summary">China lists by default; edit in Resource Management</string>
     <string name="settings_broadcast_control">Broadcast control</string>
     <string name="settings_broadcast_control_summary">Allow external broadcasts to control app services</string>
     <string name="settings_root_ipv6_disabler">Disable system IPv6</string>
@@ -404,9 +405,16 @@
     <string name="proxy_app_list_fake_dns_requires_global">The current run mode only supports all-app mode when using FakeDNS</string>
     <string name="proxy_app_list_mode">App proxy mode</string>
     <string name="proxy_app_list_more_actions">More actions</string>
+    <string name="proxy_app_list_pick_installed_apps">Choose from installed apps</string>
+    <string name="proxy_app_list_picker_title">Select apps</string>
     <string name="proxy_app_list_show_system_apps">Show system apps</string>
     <string name="proxy_app_list_search_label">Search apps</string>
     <string name="proxy_app_list_entry_summary">{package}</string>
+    <string name="proxy_app_list_help">Help</string>
+    <string name="proxy_app_list_help_blacklist">Blacklist mode: apps on the blacklist bypass the proxy; everything else uses it.</string>
+    <string name="proxy_app_list_help_global">All-app mode: every app uses the proxy.</string>
+    <string name="proxy_app_list_help_title">App proxy modes</string>
+    <string name="proxy_app_list_help_whitelist">Whitelist mode: only apps on the whitelist use the proxy; everything else bypasses it.</string>
     <string name="proxy_app_list_pull_to_refresh">Pull down to refresh</string>
     <string name="proxy_app_list_release_to_refresh">Release to refresh</string>
     <string name="proxy_app_list_refreshing">Refreshing…</string>
@@ -462,6 +470,7 @@
     <string name="proxy_server_list_add_socks">Add Socks</string>
     <string name="proxy_server_list_add_hysteria2">Add Hysteria2</string>
     <string name="proxy_server_list_add_wireguard">Add Wireguard</string>
+    <string name="proxy_server_list_add_masque">Add MASQUE</string>
     <string name="proxy_server_list_restart_service">Restart service</string>
     <string name="proxy_server_list_update_subscriptions">Update subscriptions</string>
     <string name="proxy_server_list_saved">{name} saved</string>
@@ -517,6 +526,11 @@
     <string name="proxy_editor_preshared_key_optional">PreSharedKey (optional)</string>
     <string name="proxy_editor_reserved_optional">Reserved (optional, comma-separated)</string>
     <string name="proxy_editor_local_address_optional">Local address (optional IPv4/IPv6, comma-separated)</string>
+    <string name="proxy_editor_masque_host_optional">Host (optional)</string>
+    <string name="proxy_editor_masque_path_optional">Path (optional, default /.well-known/masque/ip/{target}/{ipproto}/)</string>
+    <string name="proxy_editor_masque_remote_dns_optional">Remote DNS (optional, comma-separated IPv4/IPv6; default Cloudflare)</string>
+    <string name="proxy_editor_masque_warp_address">WARP device address (IPv4/IPv6 CIDR, comma-separated)</string>
+    <string name="proxy_editor_masque_warp_settings">WARP settings (optional)</string>
     <string name="proxy_editor_mtu_optional">MTU (optional, default 1420)</string>
     <string name="proxy_editor_auth">Password (auth)</string>
     <string name="proxy_editor_obfs_password">Obfs password</string>
@@ -606,6 +620,9 @@
     <string name="proxy_validation_shadowsocks_2022_key_base64_invalid">Shadowsocks 2022 key must be base64</string>
     <string name="proxy_validation_shadowsocks_2022_key_length_invalid">Invalid Shadowsocks 2022 key length. Decoded length must be {lengths} bytes</string>
     <string name="proxy_validation_vless_vision_flow_unsupported">VLESS Vision flow only supports RAW + TLS/REALITY</string>
+    <string name="proxy_validation_masque_remote_dns_invalid">Remote DNS must contain comma-separated IPv4/IPv6 addresses</string>
+    <string name="proxy_validation_masque_warp_address_family_duplicate">WARP device address takes at most one IPv4 and one IPv6 address</string>
+    <string name="proxy_validation_masque_warp_credentials_conflict">Username and password cannot be used with WARP</string>
 
     <!-- Routing -->
     <string name="routing_title">Routing rules</string>
@@ -683,7 +700,7 @@
     <string name="subscription_install_config_invalid">Invalid subscription link</string>
     <string name="subscription_install_config_failed">Failed to import subscription</string>
     <string name="settings_service_control">Service control</string>
-    <string name="settings_service_control_summary">Automatically start or stop the proxy service when conditions match</string>
+    <string name="settings_service_control_summary">Auto start or stop the proxy by conditions</string>
     <string name="settings_service_control_basic">Basic</string>
     <string name="settings_service_control_enable">Enable service control</string>
     <string name="settings_service_control_enable_summary">Keep starsead resident while the proxy service is stopped</string>

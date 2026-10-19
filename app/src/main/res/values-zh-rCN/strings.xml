@@ -62,6 +62,7 @@
     <string name="common_merge_import">合并导入</string>
     <string name="common_clipboard_empty">剪贴板为空</string>
     <string name="common_clipboard_unsupported_format">剪贴板格式不支持</string>
+    <string name="common_close">关闭</string>
     <string name="common_replace">替换</string>
     <string name="common_update">更新</string>
     <string name="common_error_update_interval">请输入不少于 0.25 小时的数值</string>
@@ -130,7 +131,7 @@
     <string name="settings_root_boot_script_summary">生成 service.d 启动脚本</string>
     <string name="settings_root_boot_script_failed">开机自启设置失败</string>
     <string name="settings_root_ebpf_matcher">使用 eBPF 匹配器</string>
-    <string name="settings_root_ebpf_matcher_summary">提高大应用清单性能，并提供地址过滤支持</string>
+    <string name="settings_root_ebpf_matcher_summary">提升大应用清单性能，支持地址过滤</string>
     <string name="settings_app_list_enhancement">应用名单增强</string>
     <string name="settings_app_list_enhancement_summary">按应用名单分流系统 DNS，并隔离缓存</string>
     <string name="enhancement_module_acknowledge">知道了</string>
@@ -404,9 +405,16 @@
     <string name="proxy_app_list_fake_dns_requires_global">当前运行模式使用 FakeDNS 时仅支持全应用模式</string>
     <string name="proxy_app_list_mode">代理模式</string>
     <string name="proxy_app_list_more_actions">更多操作</string>
+    <string name="proxy_app_list_pick_installed_apps">从已安装应用中选择</string>
+    <string name="proxy_app_list_picker_title">选择应用</string>
     <string name="proxy_app_list_show_system_apps">显示系统应用</string>
     <string name="proxy_app_list_search_label">搜索应用名称</string>
     <string name="proxy_app_list_entry_summary">{package}</string>
+    <string name="proxy_app_list_help">帮助</string>
+    <string name="proxy_app_list_help_blacklist">黑名单模式：仅名单中的应用不使用代理，其他应用均使用代理。</string>
+    <string name="proxy_app_list_help_global">全应用模式：所有应用均使用代理。</string>
+    <string name="proxy_app_list_help_title">分应用代理模式</string>
+    <string name="proxy_app_list_help_whitelist">白名单模式：仅名单中的应用使用代理，其他应用均不使用代理。</string>
     <string name="proxy_app_list_pull_to_refresh">下拉刷新</string>
     <string name="proxy_app_list_release_to_refresh">松开刷新</string>
     <string name="proxy_app_list_refreshing">正在刷新…</string>
@@ -462,6 +470,7 @@
     <string name="proxy_server_list_add_socks">添加 Socks</string>
     <string name="proxy_server_list_add_hysteria2">添加 Hysteria2</string>
     <string name="proxy_server_list_add_wireguard">添加 Wireguard</string>
+    <string name="proxy_server_list_add_masque">添加 MASQUE</string>
     <string name="proxy_server_list_restart_service">服务重启</string>
     <string name="proxy_server_list_update_subscriptions">更新订阅</string>
     <string name="proxy_server_list_saved">{name} 已保存</string>
@@ -517,6 +526,11 @@
     <string name="proxy_editor_preshared_key_optional">PreSharedKey（可选）</string>
     <string name="proxy_editor_reserved_optional">Reserved（可选，逗号隔开）</string>
     <string name="proxy_editor_local_address_optional">本地地址（可选 IPv4/IPv6 逗号隔开）</string>
+    <string name="proxy_editor_masque_host_optional">Host（可选）</string>
+    <string name="proxy_editor_masque_path_optional">路径（可选，默认 /.well-known/masque/ip/{target}/{ipproto}/）</string>
+    <string name="proxy_editor_masque_remote_dns_optional">远程 DNS（可选，IPv4/IPv6 用逗号分隔，默认 Cloudflare）</string>
+    <string name="proxy_editor_masque_warp_address">WARP 设备地址（IPv4/IPv6 CIDR，逗号分隔）</string>
+    <string name="proxy_editor_masque_warp_settings">WARP 设置（可选）</string>
     <string name="proxy_editor_mtu_optional">MTU（可选，默认 1420）</string>
     <string name="proxy_editor_auth">密码（auth）</string>
     <string name="proxy_editor_obfs_password">混淆密码</string>
@@ -606,6 +620,9 @@
     <string name="proxy_validation_shadowsocks_2022_key_base64_invalid">Shadowsocks 2022 密钥必须是 base64</string>
     <string name="proxy_validation_shadowsocks_2022_key_length_invalid">Shadowsocks 2022 密钥长度无效，解码后长度必须为 {lengths} 字节</string>
     <string name="proxy_validation_vless_vision_flow_unsupported">VLESS Vision flow 仅支持 RAW + TLS/REALITY</string>
+    <string name="proxy_validation_masque_remote_dns_invalid">远程 DNS 必须是用逗号分隔的 IPv4/IPv6 地址</string>
+    <string name="proxy_validation_masque_warp_address_family_duplicate">WARP 设备地址最多包含一个 IPv4 和一个 IPv6 地址</string>
+    <string name="proxy_validation_masque_warp_credentials_conflict">WARP 不能与用户名和密码同时使用</string>
 
     <!-- Routing -->
     <string name="routing_title">路由规则</string>

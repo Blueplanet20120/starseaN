@@ -339,6 +339,16 @@ bool starsead_state_is_stopped(const struct starsead_state_document *document) {
     return document_valid(document) && document->phase == STARSEAD_PHASE_STOPPED;
 }
 
+const char *starsead_mode_name(enum starsead_mode mode) {
+    return (size_t)mode < sizeof(mode_names) / sizeof(mode_names[0])
+        ? mode_names[mode] : "invalid";
+}
+
+const char *starsead_failure_code_name(enum starsead_failure_code code) {
+    return (size_t)code < sizeof(failure_names) / sizeof(failure_names[0])
+        ? failure_names[code] : "invalid";
+}
+
 struct string_builder {
     char *bytes;
     size_t length;

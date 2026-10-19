@@ -345,7 +345,7 @@ struct starsead_bpf_helper_config {
     uint32_t worker_count;
     uint32_t tcp_buffer_size;
     uint32_t max_tcp_sessions;
-    uint32_t tcp_connect_timeout_milliseconds;
+    uint32_t connect_timeout_milliseconds;
     uint32_t tcp_idle_timeout_milliseconds;
     uint32_t udp_socket_buffer_size;
     uint32_t udp_batch_size;
@@ -983,6 +983,8 @@ int starsead_readiness_poll(
     const struct starsead_config *, struct starsead_readiness_tracker *,
     const struct starsead_child_identity *, const struct starsead_readiness_backend *,
     uint64_t, bool);
+int starsead_readiness_target_describe(
+    const struct starsead_config *, enum starsead_child_role, char *, size_t);
 
 struct starsead_child_exit_status {
     bool has_exit_code;
@@ -1816,6 +1818,8 @@ int starsead_state_set_failure(
 void starsead_state_clear_failure(struct starsead_state_document *);
 int starsead_state_mark_stopped(struct starsead_state_document *, char *, size_t);
 bool starsead_state_is_stopped(const struct starsead_state_document *);
+const char *starsead_mode_name(enum starsead_mode);
+const char *starsead_failure_code_name(enum starsead_failure_code);
 int starsead_state_serialize(
     const struct starsead_state_document *, char **, size_t *, char *, size_t);
 int starsead_state_store_init(

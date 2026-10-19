@@ -2022,6 +2022,42 @@ static bool system_core_readiness_done(void *opaque) {
     return system->readiness_result != STARSEAD_READINESS_PENDING;
 }
 
+static const char *system_readiness_result_name(int result) {
+    switch (result) {
+        case STARSEAD_READINESS_PENDING: return "pending";
+        case STARSEAD_READINESS_READY: return "ready";
+        case STARSEAD_READINESS_TIMEOUT: return "timeout";
+        case STARSEAD_READINESS_CONFLICT: return "conflict";
+        case STARSEAD_READINESS_CHILD_LOST: return "child-lost";
+        case STARSEAD_READINESS_STOP_REQUESTED: return "stop-requested";
+        case STARSEAD_READINESS_IO: return "io-error";
+        default: return "invalid";
+    }
+}
+
+/* Name the probe target so a readiness failure can be checked on the device. */
+static void system_log_readiness_failure(struct starsead_system_supervisor *system,
+    enum starsead_child_role role, int result) {
+    if (result == STARSEAD_READINESS_READY || result == STARSEAD_READINESS_STOP_REQUESTED) return;
+    char target[96U];
+    if (starsead_readiness_target_describe(
+            &system->loaded_config.config, role, target, sizeof(target)) != 0) {
+        (void)snprintf(target, sizeof(target), "%s", "unknown");
+    }
+    char message[256U];
+    int written = snprintf(message, sizeof(message),
+        "%s readiness failed: result=%s mode=%s target=%s timeoutMs=%" PRIu32,
+        role == STARSEAD_CHILD_CORE ? "core" : "helper",
+        system_readiness_result_name(result),
+        starsead_mode_name(system->loaded_config.config.mode), target,
+        system->loaded_config.config.readiness_timeout_milliseconds);
+    if (written > 0 && (size_t)written < sizeof(message)) {
+        (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_ERROR,
+            role == STARSEAD_CHILD_CORE ? STARSEAD_COMPONENT_CORE : STARSEAD_COMPONENT_HELPER,
+            STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
+    }
+}
+
 static int system_effect_wait_core(void *opaque) {
     struct starsead_system_supervisor *system = opaque;
     int64_t now = 0;
@@ -2037,6 +2073,7 @@ static int system_effect_wait_core(void *opaque) {
     int pumped = system_pump_condition_periodic(system, &deadline,
         STARSEAD_READINESS_POLL_INTERVAL_MILLIS, system_core_readiness_done);
     if (pumped == 0 && system->readiness_result == STARSEAD_READINESS_READY) return 0;
+    system_log_readiness_failure(system, STARSEAD_CHILD_CORE, system->readiness_result);
     return system->readiness_result == STARSEAD_READINESS_TIMEOUT
         ? STARSEAD_RUNTIME_EFFECT_READINESS_TIMEOUT : -1;
 }
@@ -2171,8 +2208,12 @@ static int system_effect_wait_helper(void *opaque) {
             STARSEAD_READINESS_POLL_INTERVAL_MILLIS, system_helper_readiness_done);
         if (pumped == 0 && system->helper_readiness_result == STARSEAD_READINESS_READY) {
             result = 0;
-        } else if (system->helper_readiness_result == STARSEAD_READINESS_TIMEOUT) {
-            result = STARSEAD_RUNTIME_EFFECT_READINESS_TIMEOUT;
+        } else {
+            system_log_readiness_failure(
+                system, STARSEAD_CHILD_HELPER, system->helper_readiness_result);
+            if (system->helper_readiness_result == STARSEAD_READINESS_TIMEOUT) {
+                result = STARSEAD_RUNTIME_EFFECT_READINESS_TIMEOUT;
+            }
         }
     }
 

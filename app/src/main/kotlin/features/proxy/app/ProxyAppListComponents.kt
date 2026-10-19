@@ -76,6 +76,7 @@ internal enum class ProxyAppListMoreAction {
     ClearSelection,
     ImportClipboard,
     ExportClipboard,
+    Help,
 }
 
 @Composable
@@ -152,6 +153,11 @@ internal fun ProxyAppListMoreActionsMenu(
                 key = "export-clipboard",
                 title = stringResource(R.string.common_export_to_clipboard),
                 action = ProxyAppListMoreAction.ExportClipboard,
+            ),
+            IconDropdownMenuEntry(
+                key = "help",
+                title = stringResource(R.string.proxy_app_list_help),
+                action = ProxyAppListMoreAction.Help,
             ),
         ),
         onAction = onAction,

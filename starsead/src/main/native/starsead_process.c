@@ -409,6 +409,7 @@ int starsead_process_identity_read(
         anonymous_error(error, error_size, "invalid process identity input");
         return STARSEAD_CONFIG_INVALID;
     }
+    const char *reason = "stat-unreadable";
     char stat_text[4096U];
     size_t stat_length = 0U;
     struct process_stat_snapshot first;
@@ -416,17 +417,21 @@ int starsead_process_identity_read(
     if (backend->read_stat(
             backend->context, pid, stat_text, sizeof(stat_text) - 1U, &stat_length) != 0 ||
         stat_length >= sizeof(stat_text) ||
-        process_parse_stat(stat_text, stat_length, pid, &first) != 0 ||
-        first.process_group_id != pid || first.session_id != pid) goto mismatch;
+        process_parse_stat(stat_text, stat_length, pid, &first) != 0) goto mismatch;
+    reason = "session-mismatch";
+    if (first.process_group_id != pid || first.session_id != pid) goto mismatch;
+    reason = "exe-unreadable";
     uint64_t device = 0U;
     uint64_t inode = 0U;
     if (backend->read_exe_identity(backend->context, pid, &device, &inode) != 0 ||
         device == 0U || inode == 0U) goto mismatch;
+    reason = "cmdline-unreadable";
     unsigned char cmdline[STARSEAD_MAX_PROCESS_ARGV * STARSEAD_MAX_CHILD_ARG + 1U];
     size_t cmdline_length = 0U;
     if (backend->read_cmdline(
             backend->context, pid, cmdline, sizeof(cmdline), &cmdline_length) != 0 ||
         cmdline_length == 0U || cmdline_length >= sizeof(cmdline)) goto mismatch;
+    reason = "cmdline-mismatch";
     size_t offset = 0U;
     for (size_t index = 0U; index < spec->argc; ++index) {
         size_t expected_length = strnlen(spec->argv[index], STARSEAD_MAX_CHILD_ARG);
@@ -437,6 +442,7 @@ int starsead_process_identity_read(
         offset += expected_length + 1U;
     }
     if (offset != cmdline_length) goto mismatch;
+    reason = "stat-changed";
     struct process_stat_snapshot second;
     memset(&second, 0, sizeof(second));
     if (backend->read_stat(
@@ -461,7 +467,9 @@ int starsead_process_identity_read(
 
 mismatch:
     memset(identity, 0, sizeof(*identity));
-    anonymous_error(error, error_size, "process identity mismatch");
+    if (error != NULL && error_size != 0U) {
+        (void)snprintf(error, error_size, "process identity mismatch: %s", reason);
+    }
     return STARSEAD_CONFIG_IO;
 }
 
@@ -656,6 +664,41 @@ int starsead_readiness_poll(
     if (ready) return STARSEAD_READINESS_READY;
     return now_milliseconds >= tracker->deadline_milliseconds ?
         STARSEAD_READINESS_TIMEOUT : STARSEAD_READINESS_PENDING;
+}
+
+/* Describe the probe used by starsead_readiness_poll for failure diagnostics. */
+int starsead_readiness_target_describe(
+    const struct starsead_config *config,
+    enum starsead_child_role role,
+    char *out,
+    size_t size) {
+    if (out == NULL || size == 0U) return STARSEAD_CONFIG_INVALID;
+    out[0] = '\0';
+    if (config == NULL || !readiness_role_valid(config, role)) return STARSEAD_CONFIG_INVALID;
+    int written = -1;
+    if (role == STARSEAD_CHILD_CORE && config->mode == STARSEAD_MODE_TPROXY) {
+        written = snprintf(out, size, "tcp-listener:%u", (unsigned)config->transparent_port);
+    } else if (role == STARSEAD_CHILD_CORE && config->mode == STARSEAD_MODE_TUN) {
+        written = snprintf(out, size, "interface:%s", config->tunnel_name);
+    } else if (role == STARSEAD_CHILD_CORE && config->mode == STARSEAD_MODE_TUN2SOCKS) {
+        written = snprintf(out, size, "tcp-listener:%u",
+            (unsigned)config->helper.value.hev.socks_port);
+    } else if (role == STARSEAD_CHILD_CORE && config->mode == STARSEAD_MODE_BPF2SOCKS) {
+        written = snprintf(out, size, "tcp-listener:%u",
+            (unsigned)config->helper.value.bpf.socks_port);
+    } else if (role == STARSEAD_CHILD_CORE && config->mode == STARSEAD_MODE_EBPF) {
+        written = snprintf(out, size, "%s", "none");
+    } else if (role == STARSEAD_CHILD_HELPER && config->mode == STARSEAD_MODE_TUN2SOCKS) {
+        written = snprintf(out, size, "interface:%s", config->helper.value.hev.tunnel_name);
+    } else if (role == STARSEAD_CHILD_HELPER && config->mode == STARSEAD_MODE_BPF2SOCKS) {
+        written = snprintf(out, size, "tcp-listener:%u",
+            (unsigned)config->helper.value.bpf.bridge_port);
+    }
+    if (written < 0 || (size_t)written >= size) {
+        out[0] = '\0';
+        return STARSEAD_CONFIG_INVALID;
+    }
+    return 0;
 }
 
 void starsead_stop_coordinator_init(struct starsead_stop_coordinator *coordinator) {
@@ -1300,45 +1343,19 @@ static int system_context_child_alive(
     return 0;
 }
 
-static bool process_owns_socket(int pid, uint64_t inode) {
-    char path[64U], expected[64U];
-    if (inode == 0U || system_proc_path(path, sizeof(path), pid, "fd") != 0) return false;
-    int length = snprintf(expected, sizeof(expected), "socket:[%" PRIu64 "]", inode);
-    if (length <= 0 || (size_t)length >= sizeof(expected)) return false;
-    DIR *directory = opendir(path);
-    if (directory == NULL) return false;
-    bool found = false;
-    struct dirent *entry;
-    while ((entry = readdir(directory)) != NULL) {
-        if (entry->d_name[0] == '.') continue;
-        char target[64U];
-        ssize_t size = readlinkat(dirfd(directory), entry->d_name, target, sizeof(target));
-        if (size == length && memcmp(target, expected, (size_t)length) == 0) {
-            found = true;
-            break;
-        }
-    }
-    (void)closedir(directory);
-    return found;
-}
-
-static bool process_listener_file_matches(const char *path, uint16_t port, int pid) {
+/* Match the port marker anywhere in the TCP table. Socket ownership is not
+ * verified: the stricter /proc/<pid>/fd check failed readiness on some devices. */
+static bool process_listener_file_matches(const char *path, uint16_t port) {
+    char marker[8U];
+    int length = snprintf(marker, sizeof(marker), ":%04X ", (unsigned)port);
+    if (length <= 0 || (size_t)length >= sizeof(marker)) return false;
     FILE *file = fopen(path, "re");
     if (file == NULL) return false;
     char *line = NULL;
     size_t capacity = 0U;
     bool matched = false;
     while (getline(&line, &capacity, file) >= 0) {
-        char address[33U];
-        unsigned local_port = 0U, state = 0U;
-        uint64_t inode = 0U;
-        // /proc/<pid>/net/tcp describes the network namespace, not PID-owned
-        // sockets. Require a local LISTEN entry and verify its FD owner.
-        if (sscanf(line, "%*u: %32[0-9A-Fa-f]:%x %*32[0-9A-Fa-f]:%*x %x %*s %*s %*s %*u %*u %" SCNu64,
-                address, &local_port, &state, &inode) == 4 &&
-            local_port == port && state == 0x0AU && process_owns_socket(pid, inode)) {
-            matched = true;
-        }
+        if (strstr(line, marker) != NULL) matched = true;
     }
     bool complete = feof(file) != 0 && ferror(file) == 0;
     free(line);
@@ -1357,7 +1374,7 @@ static int system_context_listener_ready(
     for (size_t index = 0U; index < sizeof(tables) / sizeof(tables[0]); ++index) {
         char path[64U];
         if (system_proc_path(path, sizeof(path), pid, tables[index]) != 0) return -1;
-        if (process_listener_file_matches(path, port, pid)) {
+        if (process_listener_file_matches(path, port)) {
             *ready = true;
             break;
         }
