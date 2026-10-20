@@ -6,6 +6,7 @@ package engine.xray
 import app.AppState
 import app.effectiveFakeDnsEnabled
 import engine.network.isIpAddress
+import engine.network.normalizedFakeIpIpv4Pool
 import engine.network.isIpv4Address
 import engine.vpn.VpnDefaults
 import features.proxy.server.model.normalizedServerHost
@@ -80,10 +81,14 @@ internal fun buildXrayDnsConfig(plan: XrayDnsPlan): JsonObject {
     }
 }
 
-private fun buildXrayFakeDnsConfig(): JsonElement {
+private fun AppState.buildXrayFakeDnsConfig(): JsonElement {
+    val pool = fakeDnsIpv4Pool.normalizedFakeIpIpv4Pool()
+    val prefixLength = pool.substringAfter('/').toInt()
+    // Xray requires the LRU capacity to be strictly smaller than the subnet.
+    val poolSize = minOf(XrayFakeDnsIpv4OnlyPoolSize.toLong(), (1L shl (32 - prefixLength)) - 1)
     return buildJsonObject {
-        put("ipPool", XrayFakeDnsIpv4Pool)
-        put("poolSize", XrayFakeDnsIpv4OnlyPoolSize)
+        put("ipPool", pool)
+        put("poolSize", poolSize)
     }
 }
 

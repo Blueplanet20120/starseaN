@@ -8,6 +8,7 @@ import app.AppState
 import app.ProxyServerState
 import app.effectiveFakeDnsEnabled
 import app.effectiveLocalDnsEnabled
+import engine.network.normalizedFakeIpIpv4Pool
 import engine.network.toPortOrNull
 import engine.proxy.ProxyEngineStartRequest
 import engine.proxy.xrayStatsApiConfig
@@ -108,6 +109,7 @@ private fun AppState.toRootStartConfig(
         enableLocalDns = effectiveLocalDnsEnabled,
         enableAppListEnhancement = enableAppListEnhancement,
         enableFakeDns = effectiveFakeDnsEnabled,
+        fakeDnsIpv4Pool = fakeDnsIpv4Pool.normalizedFakeIpIpv4Pool(),
         enableBoot = enableRootBootScript,
         serviceControl = serviceControl,
     )

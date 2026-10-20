@@ -323,6 +323,8 @@
     <string name="settings_transparent_proxy_port">Transparent proxy port</string>
     <string name="settings_tun2socks_socks5_port">TUN2SOCKS SOCKS5 port</string>
     <string name="settings_fake_dns_summary">Enable FakeDNS</string>
+    <string name="settings_fake_dns_ipv4_pool">FakeDNS IPv4 pool</string>
+    <string name="settings_fake_ip_pool_invalid">Enter an IPv4 CIDR with a prefix from /1 to /30</string>
     <string name="settings_proxy_dns">Proxy DNS</string>
     <string name="settings_proxy_dns_empty">No proxy DNS added</string>
     <string name="settings_direct_dns">Direct DNS</string>

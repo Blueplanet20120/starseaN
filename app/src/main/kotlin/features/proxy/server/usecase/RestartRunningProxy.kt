@@ -15,6 +15,7 @@ internal fun AppState.proxyConnectionRevision(): List<Any?> {
         selectedProxyServerId,
         enableVpnLocalDns,
         enableFakeDns,
+        fakeDnsIpv4Pool,
         enableResolveProxyServerDomain,
         proxyDns,
         directDns,

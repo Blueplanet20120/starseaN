@@ -15,6 +15,8 @@ import app.modes.ProxyServerListSortDefault
 import app.modes.RunModeVpnService
 import app.modes.isRootRunMode
 import app.modes.supportsAppListEnhancement
+import engine.network.DefaultFakeIpIpv4Pool
+import engine.network.withoutIpv6FakeIpPool
 import engine.root.RootModeEngine
 import engine.vpn.VpnDefaults
 import engine.xray.DefaultDirectDnsDomains
@@ -107,6 +109,7 @@ data class AppState(
     val enableIpv6: Boolean = false,
     val enableIpv6Prefer: Boolean = false,
     val enableFakeDns: Boolean = false,
+    val fakeDnsIpv4Pool: String = DefaultFakeIpIpv4Pool,
     val proxyDns: List<String> = VpnDefaults.PROXY_DNS_SERVERS,
     val directDns: List<String> = VpnDefaults.DIRECT_DNS_SERVERS,
     val directDnsDomains: List<String> = DefaultDirectDnsDomains,
@@ -148,29 +151,31 @@ val AppState.requiresGlobalProxyAppMode: Boolean
         !(enableAppListEnhancement && runMode.supportsAppListEnhancement())
 
 internal fun AppState.withCompatibleProxyAppListMode(): AppState {
-    if (requiresGlobalProxyAppMode) {
-        if (proxyAppListMode == ProxyAppListModeGlobal) return this
-        return copy(
-            proxyAppListModeBeforeFakeDns = proxyAppListMode,
+    val pool = fakeDnsIpv4Pool.withoutIpv6FakeIpPool()
+    val state = if (pool == fakeDnsIpv4Pool) this else copy(fakeDnsIpv4Pool = pool)
+    if (state.requiresGlobalProxyAppMode) {
+        if (state.proxyAppListMode == ProxyAppListModeGlobal) return state
+        return state.copy(
+            proxyAppListModeBeforeFakeDns = state.proxyAppListMode,
             proxyAppListMode = ProxyAppListModeGlobal,
         )
     }
-    val remembered = proxyAppListModeBeforeFakeDns
+    val remembered = state.proxyAppListModeBeforeFakeDns
     if (remembered == ProxyAppListModeBlacklist || remembered == ProxyAppListModeWhitelist) {
-        return copy(
+        return state.copy(
             proxyAppListMode = remembered,
             proxyAppListModeBeforeFakeDns = ProxyAppListModeUnset,
             proxyAppListFakeDnsModeRepaired = true,
         )
     }
-    if (!proxyAppListFakeDnsModeRepaired && proxyAppListMode == ProxyAppListModeGlobal) {
-        return copy(
+    if (!state.proxyAppListFakeDnsModeRepaired && state.proxyAppListMode == ProxyAppListModeGlobal) {
+        return state.copy(
             proxyAppListMode = ProxyAppListModeWhitelist,
             proxyAppListFakeDnsModeRepaired = true,
         )
     }
-    if (!proxyAppListFakeDnsModeRepaired) {
-        return copy(proxyAppListFakeDnsModeRepaired = true)
+    if (!state.proxyAppListFakeDnsModeRepaired) {
+        return state.copy(proxyAppListFakeDnsModeRepaired = true)
     }
-    return this
+    return state
 }

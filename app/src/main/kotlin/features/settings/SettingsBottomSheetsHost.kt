@@ -184,6 +184,7 @@ internal fun SettingsBottomSheetsHost(
         show = sheetState.showDnsSettings,
         enableVpnLocalDns = sheetState.dnsSettingsDraft.enableVpnLocalDns,
         enableFakeDns = sheetState.dnsSettingsDraft.enableFakeDns,
+        fakeDnsIpv4Pool = sheetState.dnsSettingsDraft.fakeDnsIpv4Pool,
         enableResolveProxyServerDomain = sheetState.dnsSettingsDraft.enableResolveProxyServerDomain,
         proxyDns = sheetState.dnsSettingsDraft.proxyDns,
         directDns = sheetState.dnsSettingsDraft.directDns,
@@ -198,6 +199,9 @@ internal fun SettingsBottomSheetsHost(
         },
         onEnableFakeDnsChange = {
             sheetState.dnsSettingsDraft = sheetState.dnsSettingsDraft.copy(enableFakeDns = it)
+        },
+        onFakeDnsIpv4PoolChange = {
+            sheetState.dnsSettingsDraft = sheetState.dnsSettingsDraft.copy(fakeDnsIpv4Pool = it)
         },
         onEnableResolveProxyServerDomainChange = {
             sheetState.dnsSettingsDraft = sheetState.dnsSettingsDraft.copy(enableResolveProxyServerDomain = it)
@@ -214,11 +218,12 @@ internal fun SettingsBottomSheetsHost(
         },
         onDnsHostsChange = { sheetState.dnsSettingsDraft = sheetState.dnsSettingsDraft.copy(dnsHosts = it) },
         onDismissRequest = { sheetState.showDnsSettings = false },
-        onSave = { enableVpnLocalDns, enableFakeDns, enableResolveProxyServerDomain, proxyDns, directDns, directDnsDomains, enableDirectDnsForProxyServerDomains, dnsHosts ->
+        onSave = { enableVpnLocalDns, enableFakeDns, fakeDnsIpv4Pool, enableResolveProxyServerDomain, proxyDns, directDns, directDnsDomains, enableDirectDnsForProxyServerDomains, dnsHosts ->
             saveAndApply { state ->
                 state.copy(
                     enableVpnLocalDns = enableVpnLocalDns,
                     enableFakeDns = enableFakeDns,
+                    fakeDnsIpv4Pool = fakeDnsIpv4Pool,
                     enableResolveProxyServerDomain = enableResolveProxyServerDomain,
                     proxyDns = proxyDns,
                     directDns = directDns,
