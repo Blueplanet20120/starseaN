@@ -18,7 +18,7 @@ object ProjectConfig {
     const val PROJECT_NAME = "starseaN"
     const val PACKAGE_NAME = "org.starsean"
     const val STARSEAD_VERSION = "v2.0.32"
-    const val BPF2SOCKS_VERSION = "v1.1.6"
+    const val BPF2SOCKS_VERSION = "v1.1.7"
     const val ENHANCE_VERSION = "v1.0.7"
     const val BPF_MATCHER_VERSION = "v1.0.1"
     const val ANDROID_LIB_XRAY_LITE_VERSION_FALLBACK = "v26.10.17"
