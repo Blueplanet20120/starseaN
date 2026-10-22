@@ -45,6 +45,34 @@ def build_tool(directory, name):
     return executable
 
 
+def build_tools_directory(sdk):
+    """Use the newest installed build-tools that actually contains aidl.
+
+    CI images ship 37.0.0. A local SDK may only have 36.x, and aidl from that
+    release still compiles these interfaces.
+    """
+    root = sdk / "build-tools"
+    if not root.is_dir():
+        raise FileNotFoundError(f"Android build-tools directory is missing: {root}")
+    suffix = ".exe" if platform.system() == "Windows" else ""
+    candidates = []
+    for directory in root.iterdir():
+        if not directory.is_dir() or not (directory / ("aidl" + suffix)).is_file():
+            continue
+        parts = []
+        for piece in directory.name.split("."):
+            if not piece.isdigit():
+                parts = None
+                break
+            parts.append(int(piece))
+        if parts:
+            candidates.append((tuple(parts), directory))
+    if not candidates:
+        raise FileNotFoundError(f"aidl was not found under {root}")
+    candidates.sort()
+    return candidates[-1][1]
+
+
 def build_identity(args, abi):
     digest = hashlib.sha256()
     for directory in ("native", "third_party"):
@@ -63,7 +91,7 @@ def build_libraries(args, abi, environment):
     toolchain = ndk_toolchain(args.ndk)
     compiler = build_tool(toolchain, "clang++")
     c_compiler = build_tool(toolchain, "clang")
-    aidl_compiler = build_tool(args.sdk / "build-tools/37.0.0", "aidl")
+    aidl_compiler = build_tool(build_tools_directory(args.sdk), "aidl")
     output = args.work_directory / "release" / abi
     output.mkdir(parents=True, exist_ok=True)
     library = output / "libasterisk_enhance.so"
