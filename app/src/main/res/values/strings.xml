@@ -32,11 +32,12 @@
     <string name="proxy_traffic_stats_notification_speed">Speed: ↑ %1$s / ↓ %2$s</string>
     <string name="proxy_traffic_stats_notification_total">Traffic: ↑ %1$s / ↓ %2$s</string>
     <string name="quick_settings_tile_label">starseaN</string>
-    <string name="quick_settings_tile_running">Proxy running</string>
-    <string name="quick_settings_tile_stopped">Proxy stopped</string>
+    <string name="quick_settings_tile_running">starseaN running</string>
+    <string name="quick_settings_tile_stopped">starseaN stopped</string>
+    <string name="quick_settings_tile_started">starseaN started</string>
     <string name="quick_settings_tile_processing">Processing…</string>
     <string name="quick_settings_tile_vpn_permission_required">Grant VPN permission, then tap again to start</string>
-    <string name="quick_settings_tile_toggle_failed">Failed to toggle proxy</string>
+    <string name="quick_settings_tile_toggle_failed">Failed to toggle starseaN</string>
     <string name="root_foreign_owner_conflict">The ROOT proxy service is being used by %1$s. Stop it in %1$s and try again.</string>
 <!-- Common -->
     <string name="common_cancel">Cancel</string>

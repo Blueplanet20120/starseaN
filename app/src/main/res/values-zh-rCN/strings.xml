@@ -32,11 +32,12 @@
     <string name="proxy_traffic_stats_notification_speed">速度：↑ %1$s / ↓ %2$s</string>
     <string name="proxy_traffic_stats_notification_total">流量：↑ %1$s / ↓ %2$s</string>
     <string name="quick_settings_tile_label">starseaN</string>
-    <string name="quick_settings_tile_running">代理运行中</string>
-    <string name="quick_settings_tile_stopped">代理已停止</string>
+    <string name="quick_settings_tile_running">starseaN运行中</string>
+    <string name="quick_settings_tile_stopped">starseaN已停止</string>
+    <string name="quick_settings_tile_started">starseaN已启动</string>
     <string name="quick_settings_tile_processing">正在处理…</string>
     <string name="quick_settings_tile_vpn_permission_required">授予 VPN 权限后，再次点击即可启动</string>
-    <string name="quick_settings_tile_toggle_failed">代理切换失败</string>
+    <string name="quick_settings_tile_toggle_failed">starseaN切换失败</string>
     <string name="root_foreign_owner_conflict">ROOT 代理服务正被 %1$s 占用，请先在 %1$s 中停止服务后重试。</string>
 <!-- Common -->
     <string name="common_cancel">取消</string>

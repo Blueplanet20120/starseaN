@@ -143,9 +143,9 @@ class ProxyQuickSettingsTileService : TileService() {
                 }
                 showToast(
                     when {
-                        result.proxyRunning -> getString(R.string.proxy_server_list_service_started)
+                        result.proxyRunning -> getString(R.string.quick_settings_tile_started)
                         result.heldByServiceControl -> getString(R.string.proxy_server_list_service_held_by_rule)
-                        else -> getString(R.string.proxy_server_list_service_stopped)
+                        else -> getString(R.string.quick_settings_tile_stopped)
                     },
                 )
                 return result.proxyRunning
