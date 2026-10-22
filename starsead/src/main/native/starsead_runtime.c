@@ -1164,6 +1164,7 @@ struct starsead_system_supervisor {
     int stop_result;
     struct starsead_network_runtime network;
     bool network_opened;
+    uint64_t ipv6_guard_deadline_milliseconds;
     struct starsead_network_effect_sink network_effect_sink;
     struct starsead_rules_runtime rules_runtime;
     struct starsead_rules_backend rules_backend;
@@ -1188,6 +1189,7 @@ static const struct starsead_b2s_verified_pin *system_b2s_verified_pin(
     const struct starsead_system_supervisor *, enum starsead_pin_id);
 static int system_tc_netlink_dispatch(struct starsead_system_supervisor *, short);
 
+static int system_apply_initial_ipv6_guard(struct starsead_system_supervisor *);
 static int system_dns_tick(struct starsead_system_supervisor *, struct starsead_runtime_delta *);
 static bool system_dns_waiting_for_rules(struct starsead_system_supervisor *);
 static int system_dns_prepare(struct starsead_system_supervisor *);
@@ -1513,6 +1515,9 @@ static int system_runtime_prepare(
         starsead_network_next_deadline(&system->network, &network_deadline)) {
         system_runtime_min_deadline(deadline, network_deadline);
     }
+    if (system->network_opened && system->loaded_config.config.disable_system_ipv6) {
+        system_runtime_min_deadline(deadline, system->ipv6_guard_deadline_milliseconds);
+    }
     if (system->logger.opened) {
         for (size_t role = 0U; role < 2U; ++role) {
             for (size_t stream = 0U; stream < STARSEAD_LOG_STREAM_COUNT; ++stream) {
@@ -1792,6 +1797,12 @@ static int system_runtime_expire(
     if (system->logger.opened &&
         starsead_log_flush_expired(&system->logger, (uint64_t)now) != 0) {
         system_runtime_fatal(delta, STARSEAD_COMPONENT_LOG, "log deadline failed");
+    }
+    if (system->network_opened &&
+        system->loaded_config.config.disable_system_ipv6 &&
+        (uint64_t)now >= system->ipv6_guard_deadline_milliseconds) {
+        (void)system_apply_initial_ipv6_guard(system);
+        system->ipv6_guard_deadline_milliseconds = (uint64_t)now + UINT64_C(2000);
     }
     uint64_t network_deadline = 0U;
     if (system->network_opened &&
@@ -5190,7 +5201,11 @@ static int system_apply_initial_ipv6_guard(struct starsead_system_supervisor *sy
     if (!system->loaded_config.config.disable_system_ipv6) return 0;
     DIR *directory = opendir("/proc/sys/net/ipv6/conf");
     if (directory == NULL) return -1;
-    int result = 0;
+    /* A missing ifindex or a write failure must not skip later interfaces.
+     * netd turns per-interface disable_ipv6 back off after validation, so
+     * this scan also runs on reconcile and every two seconds. "all" is left
+     * alone because writing it disables lo as well. "default" is applied
+     * last so a new interface starts with IPv6 disabled. */
     struct dirent *entry;
     while ((entry = readdir(directory)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 ||
@@ -5198,13 +5213,12 @@ static int system_apply_initial_ipv6_guard(struct starsead_system_supervisor *sy
             strcmp(entry->d_name, "lo") == 0 ||
             starsead_interface_matches_selector(entry->d_name, "ipsec+")) continue;
         unsigned index = if_nametoindex(entry->d_name);
-        if (index == 0U || system_apply_ipv6_guard(system, entry->d_name, index) != 0) {
-            result = -1;
-            break;
-        }
+        if (index == 0U) continue;
+        (void)system_apply_ipv6_guard(system, entry->d_name, index);
     }
-    if (closedir(directory) != 0) result = -1;
-    return result;
+    (void)closedir(directory);
+    (void)system_apply_ipv6_guard(system, "default", 0U);
+    return 0;
 }
 
 static int system_effect_start_matcher(void *opaque) {
@@ -6969,6 +6983,8 @@ static int system_effect_reconcile(void *opaque, bool *active,
     system->rules_verified = false;
     system->rules_reconciling = true;
     const char *failed_stage = NULL;
+    /* Re-apply after netd re-enables IPv6 on a newly validated network. */
+    (void)system_apply_initial_ipv6_guard(system);
     if (system_capture_local_address_snapshot(system) != 0) {
         failed_stage = "local-address-snapshot";
     } else if (system_reconcile_iptables_local_bypass(system) != 0) {
