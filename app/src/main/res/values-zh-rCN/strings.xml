@@ -96,10 +96,7 @@
     <string name="settings_allow_screenshots">允许截屏</string>
     <string name="settings_allow_screenshots_summary">关闭后系统将阻止该窗口的截屏与录屏</string>
     <string name="settings_hide_launcher_icon">隐藏桌面图标</string>
-    <string name="settings_hide_launcher_icon_summary">拨号盘输入*#*#····#*#*打开。会留一条静音通知，手机才能把暗码送进来。</string>
-    <string name="settings_hidden_launcher_standby_channel">隐藏桌面图标</string>
-    <string name="settings_hidden_launcher_standby_title">拨号暗码待命</string>
-    <string name="settings_hidden_launcher_standby_text">保持进程可被拨号暗码打开</string>
+    <string name="settings_hide_launcher_icon_summary">拨号盘输入*#*#····#*#*打开</string>
     <string name="settings_hide_launcher_secret_code">拨号暗码</string>
     <string name="settings_hide_launcher_secret_code_value">*#*#%1$s#*#*</string>
     <string name="settings_hide_launcher_secret_code_error">请输入 3 到 6 位数字</string>

@@ -96,10 +96,7 @@
     <string name="settings_allow_screenshots">Allow screenshots</string>
     <string name="settings_allow_screenshots_summary">When off, the system blocks screenshots and screen recording for this window</string>
     <string name="settings_hide_launcher_icon">Hide launcher icon</string>
-    <string name="settings_hide_launcher_icon_summary">Dial *#*#····#*#* to open. A silent notification stays up so the phone can deliver that code.</string>
-    <string name="settings_hidden_launcher_standby_channel">Hidden launcher</string>
-    <string name="settings_hidden_launcher_standby_title">Dial code standby</string>
-    <string name="settings_hidden_launcher_standby_text">Keeps the dial code able to open the app</string>
+    <string name="settings_hide_launcher_icon_summary">Dial *#*#····#*#* to open</string>
     <string name="settings_hide_launcher_secret_code">Dial code</string>
     <string name="settings_hide_launcher_secret_code_value">*#*#%1$s#*#*</string>
     <string name="settings_hide_launcher_secret_code_error">Enter 3 to 6 digits</string>

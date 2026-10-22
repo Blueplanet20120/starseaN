@@ -89,9 +89,8 @@ class StarseaApplication : Application(), SingletonImageLoader.Factory {
             stateStore.state
                 .map { state -> state.colorMode to state.hideLauncherIcon }
                 .distinctUntilChanged()
-                .collect { (_, hidden) ->
+                .collect {
                     runCatching { syncLauncherIcon(applicationContext, stateStore.state.value) }
-                    runCatching { HiddenLauncherStandbyService.reconcile(applicationContext, hidden) }
                 }
         }
         appScope.launch {

@@ -163,15 +163,6 @@
         </receiver>
 
         <service
-            android:name=".HiddenLauncherStandbyService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Keeps the app process running so a dialer secret code can open it while the launcher icon is hidden." />
-        </service>
-
-        <service
             android:name="engine.stats.ProxyTrafficStatsService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
