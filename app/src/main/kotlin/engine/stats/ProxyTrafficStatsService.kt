@@ -15,7 +15,9 @@ import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
+import app.HiddenLauncherStandbyService
 import app.R
+import data.AppSettingsPreferences
 import engine.xray.XrayStatsApiTag
 import features.logs.AndroidAppLogger
 import kotlinx.coroutines.CancellationException
@@ -99,6 +101,11 @@ class ProxyTrafficStatsService : Service() {
         stopStats()
         serviceJob.cancel()
         super.onDestroy()
+        HiddenLauncherStandbyService.reconcile(
+            this,
+            AppSettingsPreferences(this).load().hideLauncherIcon,
+            assumeNoOtherForeground = true,
+        )
     }
 
     private fun startStats(runtime: ProxyTrafficStatsRuntime, startId: Int): Boolean {
@@ -170,6 +177,10 @@ class ProxyTrafficStatsService : Service() {
             start = {
                 startForegroundCompat(buildNotification(serverName, EmptyTrafficSample))
                 foregroundStarted = true
+                HiddenLauncherStandbyService.reconcile(
+                    this,
+                    AppSettingsPreferences(this).load().hideLauncherIcon,
+                )
             },
             onFailure = { error ->
                 AndroidAppLogger.warn(LogTag, "Failed to start traffic stats foreground service", error)

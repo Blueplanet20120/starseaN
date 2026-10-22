@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import app.AppState
+import app.HiddenLauncherStandbyService
 import app.MainActivity
 import app.modes.ColorModeThemeDark
 import app.modes.ColorModeThemeSystem
@@ -33,6 +34,7 @@ internal fun LauncherIconSynchronizer(
                 runCatching {
                     withContext(Dispatchers.IO) {
                         appContext.setLauncherIcon(useMonetIcon, hideLauncherIcon)
+                        HiddenLauncherStandbyService.reconcile(appContext, hideLauncherIcon)
                     }
                 }.onFailure { error ->
                     AndroidAppLogger.warn(
