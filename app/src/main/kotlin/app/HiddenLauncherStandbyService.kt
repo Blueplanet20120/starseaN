@@ -69,7 +69,6 @@ class HiddenLauncherStandbyService : Service() {
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setSilent(true)
             .setShowWhen(false)
             .setLocalOnly(true)
             .setCategory(Notification.CATEGORY_SERVICE)
