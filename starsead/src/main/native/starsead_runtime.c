@@ -23,8 +23,10 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <sched.h>
 #include <sys/syscall.h>
 #include <signal.h>
+#include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/signalfd.h>
 #include <sys/stat.h>
@@ -5197,15 +5199,137 @@ static int system_apply_ipv6_guard(
         system, &record.resource.sysctl, error, sizeof(error));
 }
 
+/* Qualcomm IPA keeps reinstalling the carrier IPv6 after disable_ipv6 is set
+ * back to 0. Cover the sysctl node so that later write does not reach the
+ * kernel. The kernel value stays 1, and the address cannot be added again. */
+#define STARSEAD_IPV6_PIN_SOURCE "/dev/.starsead_disable_ipv6"
+
+static int system_ipv6_sysctl_path(
+    const char *interface_name, char *path, size_t path_size) {
+    int written = snprintf(path, path_size,
+        "/proc/sys/net/ipv6/conf/%s/disable_ipv6", interface_name);
+    if (written <= 0 || (size_t)written >= path_size) return -1;
+    if (strchr(interface_name, '/') != NULL) return -1;
+    return 0;
+}
+
+static int system_ipv6_pin_source(void) {
+    int fd = open(STARSEAD_IPV6_PIN_SOURCE,
+        O_CREAT | O_WRONLY | O_CLOEXEC | O_TRUNC, 0644);
+    if (fd < 0) return -1;
+    const char value[] = "1\n";
+    ssize_t written;
+    do {
+        written = write(fd, value, sizeof(value) - 1U);
+    } while (written < 0 && errno == EINTR);
+    int saved = errno;
+    if (close(fd) != 0 && written >= 0) saved = errno;
+    errno = saved;
+    return written == (ssize_t)(sizeof(value) - 1U) ? 0 : -1;
+}
+
+static int system_ipv6_mount_op(const char *target, bool unmount) {
+    struct stat self_ns;
+    struct stat init_ns;
+    bool same = true;
+    if (stat("/proc/self/ns/mnt", &self_ns) == 0 && stat("/proc/1/ns/mnt", &init_ns) == 0) {
+        same = self_ns.st_ino == init_ns.st_ino && self_ns.st_dev == init_ns.st_dev;
+    }
+    if (same) {
+        if (!unmount) return mount(STARSEAD_IPV6_PIN_SOURCE, target, NULL, MS_BIND, NULL);
+        if (umount2(target, MNT_DETACH) == 0) return 0;
+        return umount(target);
+    }
+    pid_t pid = fork();
+    if (pid < 0) return -1;
+    if (pid == 0) {
+        int fd = open("/proc/1/ns/mnt", O_RDONLY | O_CLOEXEC);
+        int result = 1;
+        if (fd >= 0 && setns(fd, CLONE_NEWNS) == 0) {
+            if (!unmount) {
+                result = mount(STARSEAD_IPV6_PIN_SOURCE, target, NULL, MS_BIND, NULL) == 0 ? 0 : 1;
+            } else if (umount2(target, MNT_DETACH) == 0 || umount(target) == 0) {
+                result = 0;
+            }
+        }
+        if (fd >= 0) (void)close(fd);
+        _exit(result);
+    }
+    int status = 1;
+    if (waitpid(pid, &status, 0) < 0) return -1;
+    return status == 0 ? 0 : -1;
+}
+
+static bool system_ipv6_sysctl_pinned(const char *sysctl_path) {
+    FILE *mounts = fopen("/proc/1/mountinfo", "r");
+    if (mounts == NULL) mounts = fopen("/proc/self/mountinfo", "r");
+    if (mounts == NULL) return false;
+    char line[768U];
+    bool pinned = false;
+    while (!pinned && fgets(line, sizeof(line), mounts) != NULL) {
+        char *cursor = line;
+        char *mount_point = NULL;
+        for (int field = 1; field <= 5 && cursor != NULL; ++field) {
+            char *token = cursor;
+            char *gap = strchr(cursor, ' ');
+            if (gap != NULL) *gap = '\0';
+            if (field == 5) mount_point = token;
+            cursor = gap == NULL ? NULL : gap + 1U;
+        }
+        if (mount_point != NULL && strcmp(mount_point, sysctl_path) == 0 &&
+            strstr(cursor == NULL ? "" : cursor, STARSEAD_IPV6_PIN_SOURCE) != NULL) {
+            pinned = true;
+        }
+    }
+    (void)fclose(mounts);
+    return pinned;
+}
+
+static void system_pin_ipv6_sysctl(const char *interface_name) {
+    char path[160U];
+    if (system_ipv6_sysctl_path(interface_name, path, sizeof(path)) != 0) return;
+    if (system_ipv6_sysctl_pinned(path)) return;
+    (void)system_ipv6_mount_op(path, false);
+}
+
+static void system_unpin_ipv6_disabled(void) {
+    FILE *mounts = fopen("/proc/1/mountinfo", "r");
+    if (mounts == NULL) mounts = fopen("/proc/self/mountinfo", "r");
+    if (mounts == NULL) return;
+    char paths[48U][160U];
+    size_t count = 0U;
+    char line[768U];
+    while (count < sizeof(paths) / sizeof(paths[0]) &&
+        fgets(line, sizeof(line), mounts) != NULL) {
+        if (strstr(line, STARSEAD_IPV6_PIN_SOURCE) == NULL) continue;
+        char *cursor = line;
+        char *mount_point = NULL;
+        for (int field = 1; field <= 5 && cursor != NULL; ++field) {
+            char *token = cursor;
+            char *gap = strchr(cursor, ' ');
+            if (gap != NULL) *gap = '\0';
+            if (field == 5) mount_point = token;
+            cursor = gap == NULL ? NULL : gap + 1U;
+        }
+        if (mount_point == NULL) continue;
+        if (snprintf(paths[count], sizeof(paths[count]), "%s", mount_point) <= 0) continue;
+        ++count;
+    }
+    (void)fclose(mounts);
+    for (size_t index = 0U; index < count; ++index) {
+        (void)system_ipv6_mount_op(paths[index], true);
+    }
+    (void)unlink(STARSEAD_IPV6_PIN_SOURCE);
+}
+
 static int system_apply_initial_ipv6_guard(struct starsead_system_supervisor *system) {
     if (!system->loaded_config.config.disable_system_ipv6) return 0;
+    bool pin_ready = system_ipv6_pin_source() == 0;
     DIR *directory = opendir("/proc/sys/net/ipv6/conf");
     if (directory == NULL) return -1;
-    /* A missing ifindex or a write failure must not skip later interfaces.
-     * netd turns per-interface disable_ipv6 back off after validation, so
-     * this scan also runs on reconcile and every two seconds. "all" is left
-     * alone because writing it disables lo as well. "default" is applied
-     * last so a new interface starts with IPv6 disabled. */
+    /* lo stays enabled. "all" is not written: that would disable lo too.
+     * Each other node is set to 1 and then bind-mounted, so netd/IPA cannot
+     * turn that interface back on and republish the carrier address. */
     struct dirent *entry;
     while ((entry = readdir(directory)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 ||
@@ -5214,10 +5338,18 @@ static int system_apply_initial_ipv6_guard(struct starsead_system_supervisor *sy
             starsead_interface_matches_selector(entry->d_name, "ipsec+")) continue;
         unsigned index = if_nametoindex(entry->d_name);
         if (index == 0U) continue;
-        (void)system_apply_ipv6_guard(system, entry->d_name, index);
+        char path[160U];
+        if (system_ipv6_sysctl_path(entry->d_name, path, sizeof(path)) != 0) continue;
+        if (pin_ready && system_ipv6_sysctl_pinned(path)) continue;
+        if (system_apply_ipv6_guard(system, entry->d_name, index) != 0) continue;
+        if (pin_ready) system_pin_ipv6_sysctl(entry->d_name);
     }
     (void)closedir(directory);
-    (void)system_apply_ipv6_guard(system, "default", 0U);
+    if (!(pin_ready && system_ipv6_sysctl_pinned(
+            "/proc/sys/net/ipv6/conf/default/disable_ipv6")) &&
+        system_apply_ipv6_guard(system, "default", 0U) == 0 && pin_ready) {
+        system_pin_ipv6_sysctl("default");
+    }
     return 0;
 }
 
@@ -7240,6 +7372,7 @@ static int system_effect_close_network(void *opaque) {
 static int system_effect_restore_best_effort(void *opaque) {
     struct starsead_system_supervisor *system = opaque;
     system->cleanup_in_progress = true;
+    system_unpin_ipv6_disabled();
     char error[128U];
     struct starsead_effect_backend backend = system_effect_backend(system);
     return starsead_effect_journal_rollback(
