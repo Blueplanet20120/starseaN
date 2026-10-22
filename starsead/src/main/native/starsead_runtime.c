@@ -1749,8 +1749,14 @@ static int system_runtime_dispatch(void *opaque, const struct starsead_poll_sour
             starsead_network_handle(
                 &system->network, (uint64_t)now, error, sizeof(error)) != 0) {
             system_runtime_fatal(delta, STARSEAD_COMPONENT_NETWORK, "network drain failed");
-        } else if (starsead_network_has_immediate(&system->network)) {
-            delta->flags |= STARSEAD_DELTA_NETWORK_CHANGED;
+        } else {
+            if (system->loaded_config.config.disable_system_ipv6) {
+                (void)system_apply_initial_ipv6_guard(system);
+                system->ipv6_guard_deadline_milliseconds = (uint64_t)now + UINT64_C(400);
+            }
+            if (starsead_network_has_immediate(&system->network)) {
+                delta->flags |= STARSEAD_DELTA_NETWORK_CHANGED;
+            }
         }
     } else if (source->kind == STARSEAD_POLL_TC_NETLINK &&
         system->tc_netlink_active) {
@@ -1802,7 +1808,7 @@ static int system_runtime_expire(
         system->loaded_config.config.disable_system_ipv6 &&
         (uint64_t)now >= system->ipv6_guard_deadline_milliseconds) {
         (void)system_apply_initial_ipv6_guard(system);
-        system->ipv6_guard_deadline_milliseconds = (uint64_t)now + UINT64_C(2000);
+        system->ipv6_guard_deadline_milliseconds = (uint64_t)now + UINT64_C(400);
     }
     uint64_t network_deadline = 0U;
     if (system->network_opened &&
