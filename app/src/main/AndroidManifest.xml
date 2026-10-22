@@ -135,7 +135,10 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.provider.Telephony.SECRET_CODE" />
-                <data android:scheme="android_secret_code" />
+                <action android:name="android.telephony.action.SECRET_CODE" />
+                <data
+                    android:host="*"
+                    android:scheme="android_secret_code" />
             </intent-filter>
         </receiver>
 
