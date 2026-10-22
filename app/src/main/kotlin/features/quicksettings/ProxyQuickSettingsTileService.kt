@@ -82,7 +82,7 @@ class ProxyQuickSettingsTileService : TileService() {
 
         val appContext = applicationContext
         operationScope.launch {
-            updateTile(processing = true)
+            updateTile()
             requestTileRefresh(appContext)
             var finalRunning: Boolean? = null
             try {
@@ -115,7 +115,7 @@ class ProxyQuickSettingsTileService : TileService() {
 
     private suspend fun refreshTileState() {
         if (operationInProgress.get()) {
-            updateTile(processing = true)
+            updateTile()
             return
         }
         val running = syncProxyRunningState()
@@ -189,29 +189,14 @@ class ProxyQuickSettingsTileService : TileService() {
 
     private fun updateTile(
         running: Boolean = stateStore.state.value.proxyRunning,
-        processing: Boolean = false,
     ) {
         val tile = qsTile ?: return
         tile.label = getString(R.string.quick_settings_tile_label)
         tile.state = if (running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            tile.subtitle = when {
-                processing -> getString(R.string.quick_settings_tile_processing)
-                running -> selectedProxyServerRemarks() ?: getString(R.string.quick_settings_tile_running)
-                else -> getString(R.string.quick_settings_tile_stopped)
-            }
+            tile.subtitle = null
         }
         tile.updateTile()
-    }
-
-    private fun selectedProxyServerRemarks(): String? {
-        val state = stateStore.state.value
-        return state.proxyServers
-            .firstOrNull { server -> server.id == state.selectedProxyServerId }
-            ?.server
-            ?.getInfo()
-            ?.remarks
-            ?.takeIf(String::isNotBlank)
     }
 
     @SuppressLint("StartActivityAndCollapseDeprecated")
