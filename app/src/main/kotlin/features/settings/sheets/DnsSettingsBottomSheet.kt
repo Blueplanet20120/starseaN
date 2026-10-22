@@ -131,7 +131,7 @@ internal fun DnsSettingsBottomSheet(
                     SettingsTextField(
                         value = fakeDnsIpv4Pool,
                         onValueChange = onFakeDnsIpv4PoolChange,
-                        label = stringResource(R.string.settings_fake_dns_ipv4_pool),
+                        label = stringResource(R.string.settings_fake_dns_pool),
                         errorText = fakeDnsPoolError,
                     )
                 }
