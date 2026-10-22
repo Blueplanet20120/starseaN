@@ -489,8 +489,8 @@
     <string name="proxy_server_list_strategy_group_summary_with_filter">{strategy} · {group} · Filter: {filter}</string>
     <string name="proxy_server_list_chain_proxy_summary">{count} hops</string>
     <string name="proxy_server_list_no_subscription_updates">No subscriptions to update</string>
-    <string name="proxy_server_list_service_started">Proxy service started</string>
-    <string name="proxy_server_list_service_stopped">Proxy service stopped</string>
+    <string name="proxy_server_list_service_started">starseaN started</string>
+    <string name="proxy_server_list_service_stopped">starseaN stopped</string>
     <string name="proxy_server_list_service_held_by_rule">The app is running and is currently off under the active rule</string>
     <string name="proxy_server_list_select_first">Select a proxy server first</string>
     <string name="proxy_server_list_latency_result">{name} latency {latency}</string>
