@@ -5228,6 +5228,14 @@ static int system_ipv6_pin_source(void) {
     return written == (ssize_t)(sizeof(value) - 1U) ? 0 : -1;
 }
 
+#ifndef SYS_setns
+#ifdef __NR_setns
+#define SYS_setns __NR_setns
+#else
+#define SYS_setns 268
+#endif
+#endif
+
 static int system_ipv6_mount_op(const char *target, bool unmount) {
     struct stat self_ns;
     struct stat init_ns;
@@ -5245,7 +5253,7 @@ static int system_ipv6_mount_op(const char *target, bool unmount) {
     if (pid == 0) {
         int fd = open("/proc/1/ns/mnt", O_RDONLY | O_CLOEXEC);
         int result = 1;
-        if (fd >= 0 && setns(fd, CLONE_NEWNS) == 0) {
+        if (fd >= 0 && syscall(SYS_setns, fd, CLONE_NEWNS) == 0) {
             if (!unmount) {
                 result = mount(STARSEAD_IPV6_PIN_SOURCE, target, NULL, MS_BIND, NULL) == 0 ? 0 : 1;
             } else if (umount2(target, MNT_DETACH) == 0 || umount(target) == 0) {
