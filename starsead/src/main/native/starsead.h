@@ -60,7 +60,9 @@ struct starsead_resource_operation;
 #define STARSEAD_PROCESS_MAX_INHERITED_FDS 8U
 #define STARSEAD_PROCESS_TERM_GRACE_MILLIS 3000U
 #define STARSEAD_PROCESS_KILL_REAP_MILLIS 1000U
-#define STARSEAD_READINESS_POLL_INTERVAL_MILLIS 100U
+// A readiness check reads one /proc listing; a short interval keeps the
+// notice delay small for children that become ready a few hundred ms in.
+#define STARSEAD_READINESS_POLL_INTERVAL_MILLIS 20U
 #define STARSEAD_ANONYMOUS_CREATE_CLOEXEC UINT32_C(0x1)
 #define STARSEAD_ANONYMOUS_CREATE_ALLOW_SEALING UINT32_C(0x2)
 #define STARSEAD_ANONYMOUS_SEAL_WRITE UINT32_C(0x1)
@@ -1484,6 +1486,8 @@ bool starsead_xtables_private_chain_shape_valid(
 size_t starsead_xtables_fake_dns_arguments(const char *, const char **);
 int starsead_xtables_private_chain_counts(
     const char *, size_t, const char *, size_t *, size_t *);
+int starsead_xtables_save_table_listing(
+    const char *, size_t, const char *, struct starsead_byte_buffer *);
 size_t starsead_xtables_hook_arguments(
     const struct starsead_traffic_hook *, const char **);
 int starsead_xtables_rule_output_locate(
