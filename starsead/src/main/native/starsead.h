@@ -4,6 +4,7 @@
 #ifndef STARSEAD_H
 #define STARSEAD_H
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include "starsead_dns.h"
 #include "starsead_marks.h"
@@ -32,25 +33,19 @@ struct starsead_resource_operation;
 #define STARSEAD_MAX_ADDRESSES 256U
 #define STARSEAD_MAX_CHAIN_NAME 29U
 #define STARSEAD_MAX_NETWORK_EVENTS 16U
-#define STARSEAD_MAX_EMERGENCY_PROCESSES 8U
+#define STARSEAD_MAX_NETWORK_KNOWN_ADDRESSES 128U
 #define STARSEAD_MAX_COMMAND_MARKER 256U
 #define STARSEAD_SYNC_DEBOUNCE_MILLIS 1500
 #define STARSEAD_STATE_VERSION 2U
-#define STARSEAD_LEGACY_ROUTE_LOCALNET_LEAF "starsead.state.route-localnet"
 #define STARSEAD_MAX_CHILD_ARGV 16U
 #define STARSEAD_MAX_PROCESS_ARGV 32U
 #define STARSEAD_MAX_CHILD_ARG 512U
 #define STARSEAD_MAX_STATE_MESSAGE 4096U
-#define STARSEAD_MAX_HEX_ID 129U
-#define STARSEAD_BPF_PROGRAM_TAG_HEX_LENGTH 16U
 #define STARSEAD_TC_BPF_FLAG_ACT_DIRECT UINT32_C(1)
 #define STARSEAD_TC_PARENT_CLSACT_INGRESS UINT32_C(0xfffffff2)
 #define STARSEAD_TC_PARENT_CLSACT_EGRESS UINT32_C(0xfffffff3)
 #define STARSEAD_TC_PARENT_CLSACT UINT32_C(0xfffffff1)
 #define STARSEAD_TC_HANDLE_CLSACT UINT32_C(0xffff0000)
-#define STARSEAD_LOG_MAX_CHILD_LINE 16384U
-#define STARSEAD_LOG_MAX_BUFFERED_PER_CHILD 65536U
-#define STARSEAD_LOG_PARTIAL_TIMEOUT_MILLIS 2000U
 #define STARSEAD_LOG_REDACTION "[REDACTED]"
 #define STARSEAD_CONTROL_PROTOCOL_VERSION 2U
 #define STARSEAD_CONTROL_MAX_PAYLOAD 65536U
@@ -75,12 +70,10 @@ struct starsead_resource_operation;
 #define STARSEAD_ANONYMOUS_REQUIRED_SEALS (STARSEAD_ANONYMOUS_SEAL_WRITE | \
     STARSEAD_ANONYMOUS_SEAL_GROW | STARSEAD_ANONYMOUS_SEAL_SHRINK | \
     STARSEAD_ANONYMOUS_SEAL_SEAL)
-#define STARSEAD_IPTABLES_WAIT_SECONDS 100U
 #define STARSEAD_ROUTE_RULE_PRIORITY 14599U
 #define STARSEAD_DNS_ROUTE_RULE_PRIORITY 12999U
 #define STARSEAD_TPROXY_TABLE 160U
 #define STARSEAD_TUN_TABLE 168U
-#define STARSEAD_RULE_PLAN_MAX_OPERATIONS 32U
 #define STARSEAD_RULE_TRANSACTION_MAX_GROUPS 12U
 #define STARSEAD_RULE_TRANSACTION_MAX_NAMES 4U
 #define STARSEAD_RULE_TRANSACTION_MAX_HOOKS 4U
@@ -105,12 +98,9 @@ struct starsead_resource_operation;
 #define STARSEAD_LIFECYCLE_HELPER_EXITED (-6)
 
 #define STARSEAD_STATE_OK 0
-#define STARSEAD_STATE_NOT_FOUND 1
 #define STARSEAD_STATE_INVALID (-20)
-#define STARSEAD_STATE_INCOMPATIBLE (-21)
 #define STARSEAD_STATE_IO (-22)
 #define STARSEAD_STATE_NO_MEMORY (-23)
-#define STARSEAD_STATE_WRITE_BLOCKED (-24)
 
 #define STARSEAD_LOG_OK 0
 #define STARSEAD_LOG_INVALID (-30)
@@ -138,8 +128,6 @@ struct starsead_cron_expression {
 };
 
 int starsead_cron_parse(const char *, struct starsead_cron_expression *);
-bool starsead_cron_matches(
-    const struct starsead_cron_expression *, const struct tm *);
 int starsead_cron_next(
     const struct starsead_cron_expression *, time_t, time_t *);
 int starsead_cron_latest_between(
@@ -209,7 +197,7 @@ struct starsead_service_control_config {
 struct starsead_service_control_runtime {
     const struct starsead_service_control_config *config;
     struct starsead_wifi_identity previous_wifi;
-    bool keyguard_baseline_established;
+    bool keyguard_event_received;
     bool keyguard_locked;
     bool wifi_baseline_established;
     bool wifi_connected;
@@ -424,98 +412,6 @@ struct starsead_config {
 
 };
 
-enum starsead_rule_plan_operation_kind {
-    STARSEAD_RULE_PLAN_PREPARE_PRIVATE,
-    STARSEAD_RULE_PLAN_PREPARE_LOCAL_BYPASS,
-    STARSEAD_RULE_PLAN_PREPARE_MATCHER,
-    STARSEAD_RULE_PLAN_PREPARE_ROUTE,
-    STARSEAD_RULE_PLAN_PREPARE_HELPER_TC,
-    STARSEAD_RULE_PLAN_POPULATE_POLICY,
-    STARSEAD_RULE_PLAN_POPULATE_DNS,
-    STARSEAD_RULE_PLAN_POPULATE_FAKE_DNS,
-    STARSEAD_RULE_PLAN_ACTIVATE_MAIN,
-    STARSEAD_RULE_PLAN_ACTIVATE_DNS,
-    STARSEAD_RULE_PLAN_ACTIVATE_FAKE_DNS,
-    STARSEAD_RULE_PLAN_QUIESCE_MAIN,
-    STARSEAD_RULE_PLAN_QUIESCE_DNS,
-    STARSEAD_RULE_PLAN_QUIESCE_FAKE_DNS,
-    STARSEAD_RULE_PLAN_REMOVE_PRIVATE,
-};
-
-struct starsead_rule_plan_operation {
-    enum starsead_rule_plan_operation_kind kind;
-    bool traffic_activation;
-};
-
-struct starsead_rule_plan {
-    bool no_op;
-    bool enable_ipv6;
-    bool uses_matcher;
-    bool uses_helper_tc;
-    uint32_t iptables_wait_seconds;
-    uint32_t route_rule_priority;
-    uint32_t primary_mark;
-    uint32_t mark_mask;
-    uint32_t routing_table;
-    char tunnel_name[STARSEAD_MAX_TUNNEL_NAME];
-    bool has_token_ipv6_route;
-    char token_ipv6_prefix[STARSEAD_MAX_CIDR];
-    struct starsead_rule_plan_operation operations[STARSEAD_RULE_PLAN_MAX_OPERATIONS];
-    size_t operation_count;
-    size_t first_activation;
-};
-
-int starsead_rule_plan_build(
-    const struct starsead_config *, bool, struct starsead_rule_plan *);
-int starsead_rule_quiesce_plan_build(
-    const struct starsead_rule_plan *, struct starsead_rule_plan *);
-size_t starsead_default_bypass_cidr_count(void);
-const char *starsead_default_bypass_cidr(size_t);
-
-enum starsead_packet_direction {
-    STARSEAD_PACKET_PREROUTING,
-    STARSEAD_PACKET_OUTPUT,
-};
-
-enum starsead_packet_protocol {
-    STARSEAD_PACKET_TCP,
-    STARSEAD_PACKET_UDP,
-    STARSEAD_PACKET_ICMP,
-};
-
-enum starsead_packet_action {
-    STARSEAD_PACKET_NONE,
-    STARSEAD_PACKET_RETURN,
-    STARSEAD_PACKET_MARK_PRIMARY,
-    STARSEAD_PACKET_TPROXY,
-    STARSEAD_PACKET_DROP,
-    STARSEAD_PACKET_REJECT,
-    STARSEAD_PACKET_FAKE_DNS_REDIRECT,
-};
-
-struct starsead_packet_model_input {
-    enum starsead_packet_direction direction;
-    enum starsead_packet_protocol protocol;
-    bool ipv6;
-    bool destination_port_53;
-    bool icmp_echo;
-    bool bypass_uid;
-    bool uid_listed;
-    bool core_gid;
-    bool local_address;
-    bool proxy_private;
-    bool bypass_private;
-    bool primary_marked;
-    bool output_virtual_interface;
-    bool output_ignored_interface;
-    bool hotspot_input;
-    bool matcher_selected;
-};
-
-int starsead_packet_model_decide(
-    const struct starsead_config *, const struct starsead_rule_plan *,
-    const struct starsead_packet_model_input *, enum starsead_packet_action *);
-
 struct starsead_lifecycle_backend {
     int (*acquire)(void *);
     int (*start_core)(void *);
@@ -626,22 +522,7 @@ struct starsead_loaded_config {
     void *close_context;
 };
 
-struct starsead_config_load_backend {
-    int (*open_directory)(void *, const char *, int *, uint64_t *, uint64_t *);
-    int (*read_config)(void *, int, const char *, char **, size_t *, int *, uint64_t *, uint64_t *);
-    int (*validate_files)(void *, const struct starsead_config *, int);
-    int (*read_resource)(void *, int, const char *, char **, size_t *);
-    void (*close_fd)(void *, int);
-};
-
 int starsead_config_load(const char *, struct starsead_loaded_config *, char *, size_t);
-int starsead_config_load_with_backend(
-    const char *,
-    struct starsead_loaded_config *,
-    const struct starsead_config_load_backend *,
-    void *,
-    char *,
-    size_t);
 void starsead_loaded_config_release(struct starsead_loaded_config *);
 void starsead_runtime_directory_release(struct starsead_runtime_directory *);
 int starsead_runtime_directory_open(
@@ -673,7 +554,6 @@ int starsead_file_requirements_validate(
     bool,
     bool,
     bool);
-int starsead_load_config(const char *, struct starsead_config *, char *, size_t);
 
 enum starsead_process_output_mode {
     STARSEAD_PROCESS_OUTPUT_CAPTURE,
@@ -703,6 +583,42 @@ struct starsead_anonymous_document {
     unsigned char *bytes;
     size_t length;
 };
+
+/* Shared helpers (starsead_util.c). Error writers are no-ops for NULL or empty buffers. */
+void starsead_error_copy(char *error, size_t error_size, const char *message);
+void starsead_error_format(char *error, size_t error_size, const char *format, ...)
+    __attribute__((format(printf, 3, 4)));
+void starsead_error_vformat(char *error, size_t error_size, const char *format, va_list arguments)
+    __attribute__((format(printf, 3, 0)));
+size_t starsead_bounded_length(const char *value, size_t capacity);
+/* Copies a nonempty string that fits capacity, including its terminator; -1 otherwise. */
+int starsead_copy_string(char *destination, size_t capacity, const char *source);
+int starsead_compare_u32(const void *left, const void *right);
+
+/* Document text writer (starsead_text.c). Failures latch into result. */
+struct starsead_text_writer {
+    unsigned char *bytes;
+    size_t length;
+    size_t capacity;
+    int result;
+};
+void starsead_text_writer_bytes(struct starsead_text_writer *, const char *, size_t);
+void starsead_text_writer_literal(struct starsead_text_writer *, const char *);
+void starsead_text_writer_format(struct starsead_text_writer *, const char *, ...)
+    __attribute__((format(printf, 2, 3)));
+void starsead_text_writer_json_string(struct starsead_text_writer *, const char *);
+void starsead_text_writer_yaml_string(struct starsead_text_writer *, const char *);
+int starsead_text_writer_take(
+    struct starsead_text_writer *, struct starsead_anonymous_document *);
+
+#define STARSEAD_BYTE_BUFFER_MAX_BYTES (8U * 1024U * 1024U)
+struct starsead_byte_buffer {
+    unsigned char *bytes;
+    size_t length;
+    size_t capacity;
+};
+void starsead_byte_buffer_destroy(struct starsead_byte_buffer *);
+int starsead_byte_buffer_append(struct starsead_byte_buffer *, const void *, size_t);
 
 struct starsead_helper_documents {
     struct starsead_anonymous_document config;
@@ -761,6 +677,8 @@ int starsead_process_environment_add(
     struct starsead_process_spec *, const char *, const char *);
 int starsead_process_argument_add(
     struct starsead_process_spec *, const char *);
+/* Maps an owned descriptor to a fixed child descriptor number; both must be unique. */
+int starsead_process_inherit_fd(struct starsead_process_spec *, int source, int target);
 int starsead_process_core_log_path(
     const struct starsead_process_spec *, char *, size_t);
 int starsead_log_sibling_path(const char *, const char *, char *, size_t);
@@ -1043,15 +961,6 @@ int starsead_child_exit_status_from_wait(int, struct starsead_child_exit_status 
 void starsead_child_setup_stream_init(struct starsead_child_setup_stream *);
 int starsead_child_setup_stream_feed(
     struct starsead_child_setup_stream *, const void *, size_t, bool);
-#if defined(STARSEAD_TESTING)
-bool starsead_test_action_identity_wait_can_retry(bool, int64_t, int64_t);
-int starsead_test_action_post_setup(
-    const struct starsead_child_setup_stream *, bool,
-    const struct starsead_child_exit_status *, int *);
-int starsead_test_action_post_identity(
-    int, int, const struct starsead_child_setup_stream *, bool,
-    const struct starsead_child_exit_status *, int *);
-#endif
 
 struct starsead_stop_role_state {
     bool present;
@@ -1425,6 +1334,13 @@ int starsead_effect_journal_apply(
 int starsead_effect_journal_rollback(
     struct starsead_effect_journal *, const struct starsead_effect_backend *,
     char *, size_t);
+/* Restores one journaled effect; an effect that was never applied is a no-op. */
+int starsead_effect_journal_restore(
+    struct starsead_effect_journal *, const struct starsead_effect *,
+    const struct starsead_effect_backend *, char *, size_t);
+/* Drops a journaled effect whose resource no longer exists. */
+void starsead_effect_journal_forget(
+    struct starsead_effect_journal *, const struct starsead_effect *);
 
 struct starsead_resource_operation {
     enum starsead_resource_operation_kind kind;
@@ -1517,8 +1433,6 @@ struct starsead_rule_transaction_plan {
 
 int starsead_rule_transaction_plan_build(
     const struct starsead_config *, bool, struct starsead_rule_transaction_plan *);
-int starsead_rule_transaction_quiesce_plan_build(
-    const struct starsead_rule_transaction_plan *, struct starsead_rule_transaction_plan *);
 int starsead_tproxy_rule_transaction_plan_build(
     const struct starsead_config *, bool, struct starsead_rule_transaction_plan *);
 int starsead_tun_rule_transaction_plan_build(
@@ -1572,8 +1486,6 @@ int starsead_xtables_private_chain_counts(
     const char *, size_t, const char *, size_t *, size_t *);
 size_t starsead_xtables_hook_arguments(
     const struct starsead_traffic_hook *, const char **);
-int starsead_xtables_rule_output_count(
-    const char *, size_t, const char *, const char *const *, size_t, size_t *);
 int starsead_xtables_rule_output_locate(
     const char *, size_t, const char *, const char *const *, size_t, size_t *, size_t *);
 int starsead_rules_install(struct starsead_rules_runtime *,
@@ -1602,13 +1514,6 @@ enum starsead_poll_source_kind {
     STARSEAD_POLL_SOURCE_KIND_COUNT,
 };
 
-#if defined(STARSEAD_TESTING)
-bool starsead_test_action_source_active(
-    bool, bool, enum starsead_poll_source_kind);
-bool starsead_test_action_setup_wait_done(
-    const struct starsead_child_setup_stream *, bool);
-bool starsead_test_action_io_drained(bool, bool, bool, bool);
-#endif
 
 struct starsead_poll_source {
     int fd;
@@ -1654,19 +1559,6 @@ struct starsead_runtime_delta {
     char error_message[256U];
 };
 
-#if defined(STARSEAD_TESTING)
-int starsead_test_start_failure_detail(
-    int, const char *, struct starsead_runtime_delta *);
-int starsead_test_capability_path_search_result(bool, bool);
-int starsead_test_capability_inspect_error(int);
-int starsead_test_periodic_deadline(int64_t, int64_t, uint32_t, int64_t *);
-unsigned starsead_test_runtime_dispatch_priority(enum starsead_poll_source_kind);
-bool starsead_test_startup_components_verified(
-    bool, bool, bool, bool, bool, bool, bool, bool, bool);
-bool starsead_test_admission_reconcile_ready(bool, bool);
-bool starsead_test_owned_hook_rule_probe_required(
-    const struct starsead_owned_hook *, bool);
-#endif
 
 enum starsead_reactor_wait_result {
     STARSEAD_REACTOR_WAIT_ERROR = -1,
@@ -1703,25 +1595,6 @@ int starsead_runtime_pump_until(
 int starsead_runtime_accept_delta(
     struct starsead_runtime *, const struct starsead_runtime_delta *);
 void starsead_runtime_destroy(struct starsead_runtime *);
-
-enum starsead_route_slot_state {
-    STARSEAD_ROUTE_SLOT_ABSENT,
-    STARSEAD_ROUTE_SLOT_OWNED,
-    STARSEAD_ROUTE_SLOT_FOREIGN,
-};
-
-struct starsead_token_route_plan {
-    bool create;
-    char prefix[STARSEAD_MAX_CIDR];
-    char interface_name[STARSEAD_MAX_INTERFACE_NAME];
-    uint32_t interface_index;
-    bool local_table;
-    struct starsead_resource_operation operation;
-};
-
-int starsead_b2s_token_route_plan_build(
-    const struct starsead_config *, enum starsead_route_slot_state, uint32_t,
-    struct starsead_token_route_plan *, char *, size_t);
 
 struct starsead_state_children {
     bool core_present;
@@ -2008,17 +1881,10 @@ struct starsead_runtime_effect_backend {
     int (*release)(void *);
 };
 
-int starsead_rule_batch_document_render(
-    const unsigned char *, size_t,
-    const unsigned char *, size_t,
-    const unsigned char *, size_t,
-    const unsigned char *, size_t,
+int starsead_rule_batch_restore_render(
+    const char *const *, const struct starsead_byte_buffer *, size_t,
     unsigned char **, size_t *);
 
-#if defined(STARSEAD_TESTING)
-int starsead_test_rule_batch_document(
-    const char *, const char *, const char *, const char *, char **, size_t *);
-#endif
 
 enum starsead_runtime_effect_result {
     STARSEAD_RUNTIME_EFFECT_READINESS_TIMEOUT = -100,
@@ -2033,9 +1899,6 @@ int starsead_runtime_start_system(
     const char *, bool *, struct starsead_control_result *);
 int starsead_runtime_monitor_system(
     const char *, bool *, struct starsead_control_result *);
-#if defined(STARSEAD_TESTING)
-bool starsead_test_cycle_failure_requires_shutdown(bool, bool);
-#endif
 
 enum starsead_control_backend_result {
     STARSEAD_CONTROL_BACKEND_OK = 0,
@@ -2215,13 +2078,13 @@ int starsead_control_server_finish_stop(
     const struct starsead_control_result *, uint64_t);
 bool starsead_control_server_drained(
     const struct starsead_control_server *);
-uint64_t starsead_control_server_sequence(
-    const struct starsead_control_server *);
 void starsead_control_server_destroy(
     struct starsead_control_server *);
 
 struct starsead_network_effect_request {
     struct starsead_effect effect;
+    /* Restore the journaled original value instead of applying the effect. */
+    bool restore;
 };
 
 struct starsead_network_effect_sink {
@@ -2331,16 +2194,6 @@ int starsead_log_open_append_fd_with_backend(
     const char *, const struct starsead_log_file_backend *, void *,
     int *, char *, size_t);
 
-struct starsead_log_partial {
-    unsigned char bytes[STARSEAD_LOG_MAX_CHILD_LINE + STARSEAD_MAX_SECRET_KEY - 1U];
-    size_t kept_length;
-    size_t raw_length;
-    uint64_t first_byte_milliseconds;
-    bool has_first_byte;
-    bool last_raw_was_cr;
-    bool truncated;
-};
-
 struct starsead_logger {
     int fd;
     bool fd_owned;
@@ -2356,7 +2209,6 @@ struct starsead_logger {
     struct starsead_clock_backend clock;
     const struct starsead_log_file_backend *file_backend;
     void *file_context;
-    struct starsead_log_partial partials[2][STARSEAD_LOG_STREAM_COUNT];
 };
 
 int starsead_log_open(
@@ -2373,11 +2225,7 @@ void starsead_log_diagnostic(
     int (*)(void *, const char *, size_t), void *);
 void starsead_log_stderr(
     enum starsead_log_level, enum starsead_component, const char *);
-int starsead_log_child_bytes(
-    struct starsead_logger *, enum starsead_child_role, enum starsead_log_stream,
-    const unsigned char *, size_t, uint64_t, bool);
 int starsead_log_flush_expired(struct starsead_logger *, uint64_t);
-size_t starsead_log_buffered_bytes(const struct starsead_logger *, enum starsead_child_role);
 int starsead_log_close(struct starsead_logger *);
 
 struct starsead_address_set {
@@ -2537,13 +2385,6 @@ int starsead_matcher_pin_preflight(
 int starsead_b2s_pin_preflight(
     const struct starsead_b2s_pin_plan *,
     const struct starsead_bpf_pin_ownership_backend *, char *, size_t);
-int starsead_bpf_pin_cleanup_owned(
-    const char *, uint64_t, const struct starsead_bpf_pin_ownership_backend *, char *, size_t);
-int starsead_matcher_verify_residue(
-    const struct starsead_config *, const struct starsead_matcher_pin_plan *,
-    const struct starsead_bpf_program_backend *,
-    const struct starsead_bpf_pin_ownership_backend *,
-    struct starsead_matcher_verification *, char *, size_t);
 int starsead_b2s_verify_residue(
     const struct starsead_config *, const struct starsead_b2s_pin_plan *,
     const struct starsead_bpf_program_backend *,
@@ -2560,6 +2401,7 @@ const struct starsead_bpf_program_backend *starsead_system_bpf_program_backend(v
 #define STARSEAD_NETWORK_GROUP_LINK UINT32_C(0x00000001)
 #define STARSEAD_NETWORK_GROUP_IPV4_ADDRESS UINT32_C(0x00000010)
 #define STARSEAD_NETWORK_GROUP_IPV6_ADDRESS UINT32_C(0x00000100)
+#define STARSEAD_NETWORK_GROUP_IPV6_RULE UINT32_C(0x00040000)
 #define STARSEAD_NETWORK_RECEIVE_BUFFER_SIZE (1024U * 1024U)
 #define STARSEAD_NETWORK_SOCKET_RAW UINT32_C(0x1)
 #define STARSEAD_NETWORK_SOCKET_NONBLOCK UINT32_C(0x2)
@@ -2567,6 +2409,7 @@ const struct starsead_bpf_program_backend *starsead_system_bpf_program_backend(v
 
 struct starsead_network_event;
 struct starsead_event_batch;
+struct starsead_netd_rule;
 
 enum starsead_network_receive_result {
     STARSEAD_NETWORK_RECEIVE_DATA,
@@ -2583,7 +2426,26 @@ struct starsead_network_backend {
         void *, int, void *, size_t, size_t *, uint32_t *, bool *);
     int (*interface_name)(void *, uint32_t, char *, size_t);
     int (*ipv6_disabled)(void *, const char *, uint32_t, uint8_t *, bool *);
+    /* Opens a blocking, time-bounded socket with an IPv6 FIB rule dump in flight. */
+    int (*dump_ipv6_rules)(void *, int *);
     int (*close)(void *, int);
+};
+
+/* A netd per-interface routing table, learned from its IPv6 FIB rules. */
+struct starsead_netd_network {
+    uint32_t table;
+    char interface_name[STARSEAD_MAX_INTERFACE_NAME];
+    uint16_t output_rules;
+    uint16_t unrestricted_rules;
+    uint16_t restricted_rules;
+    bool ipv6_guarded;
+};
+
+/* A tracked address already reported to reconciliation. */
+struct starsead_network_known_address {
+    uint32_t interface_index;
+    int family;
+    unsigned char address[16U];
 };
 
 struct starsead_network_runtime {
@@ -2601,6 +2463,13 @@ struct starsead_network_runtime {
     struct starsead_network_effect_request
         immediate_requests[STARSEAD_MAX_NETWORK_IMMEDIATE_REQUESTS];
     size_t immediate_request_count;
+    struct starsead_netd_network netd_networks[STARSEAD_MAX_INTERFACES];
+    size_t netd_network_count;
+    struct starsead_netd_rule *netd_rules;
+    bool netd_network_overflow;
+    bool ipv6_guard_resync;
+    struct starsead_network_known_address known_addresses[STARSEAD_MAX_NETWORK_KNOWN_ADDRESSES];
+    size_t known_address_count;
 };
 
 int starsead_network_open(
@@ -2624,11 +2493,15 @@ int starsead_network_apply_immediate(
     struct starsead_network_runtime *, char *, size_t);
 int starsead_network_reopen(
     struct starsead_network_runtime *, uint64_t, char *, size_t);
+/* Rebuilds the netd network set from an IPv6 rule dump and queues guard changes. */
+int starsead_network_sync_ipv6_guard(struct starsead_network_runtime *, char *, size_t);
+/* Writes "name:state" pairs (data, restricted, incomplete) for diagnostics. */
+void starsead_network_describe_ipv6_guard(
+    const struct starsead_network_runtime *, char *, size_t);
 const struct starsead_network_backend *starsead_system_network_backend(void);
 
 #define STARSEAD_HOTSPOT_TC_PRIORITY 1U
 #define STARSEAD_HOTSPOT_TC_HANDLE 1U
-#define STARSEAD_ETH_PROTOCOL_IPV6 UINT32_C(0x86dd)
 #define STARSEAD_ETH_PROTOCOL_ALL UINT32_C(0x0003)
 
 enum starsead_hotspot_ipv6_offload_policy {
@@ -2648,20 +2521,11 @@ enum starsead_tc_slot_state {
     STARSEAD_TC_SLOT_FOREIGN,
 };
 
-enum starsead_tc_qdisc_cleanup_decision {
-    STARSEAD_TC_QDISC_CLEANUP_DELETE,
-    STARSEAD_TC_QDISC_CLEANUP_RETAIN_SHARED,
-};
-
 enum starsead_tc_plan_operation_kind {
     STARSEAD_TC_PLAN_SET_ROUTE_LOCALNET,
     STARSEAD_TC_PLAN_CREATE_CLSACT,
     STARSEAD_TC_PLAN_CREATE_EGRESS,
     STARSEAD_TC_PLAN_CREATE_INGRESS,
-    STARSEAD_TC_PLAN_REMOVE_INGRESS,
-    STARSEAD_TC_PLAN_REMOVE_EGRESS,
-    STARSEAD_TC_PLAN_REMOVE_CLSACT,
-    STARSEAD_TC_PLAN_RESTORE_ROUTE_LOCALNET,
 };
 
 struct starsead_tc_interface_probe {
@@ -2689,12 +2553,6 @@ struct starsead_tc_plan {
 int starsead_tc_install_plan_build(
     const struct starsead_config *, const struct starsead_tc_interface_probe *,
     struct starsead_tc_plan *, char *, size_t);
-int starsead_tc_cleanup_plan_build(
-    const struct starsead_tc_plan *, struct starsead_tc_plan *);
-enum starsead_tc_qdisc_cleanup_decision starsead_tc_qdisc_cleanup_decide(
-    bool ingress_occupied, bool egress_occupied);
-bool starsead_tc_qdisc_cleanup_restored(bool qdisc_present,
-    enum starsead_tc_qdisc_cleanup_decision decision);
 
 struct starsead_tc_filter_expectation {
     uint32_t interface_index;

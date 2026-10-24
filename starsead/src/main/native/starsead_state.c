@@ -46,14 +46,6 @@ static const char *const category_names[] = {
     "tproxy", "routing", "dns", "fake-dns", "local-bypass", "hotspot", "tc", "bpf", "ipv6-guard",
 };
 
-static void set_error(char *error, size_t error_size, const char *format, ...) {
-    if (error == NULL || error_size == 0U) return;
-    va_list arguments;
-    va_start(arguments, format);
-    (void)vsnprintf(error, error_size, format, arguments);
-    va_end(arguments);
-}
-
 static bool owner_core_valid(enum starsead_owner owner, enum starsead_core_type core) {
     return (owner == STARSEAD_OWNER_NG && core == STARSEAD_CORE_XRAY) ||
         (owner == STARSEAD_OWNER_BOX && core == STARSEAD_CORE_SING_BOX) ||
@@ -219,7 +211,7 @@ int starsead_state_set_child(
     size_t error_size) {
     if (document == NULL || !document->initialized || child == NULL ||
         !child_valid(document, child, child->role)) {
-        set_error(error, error_size, "invalid child identity");
+        starsead_error_format(error, error_size, "invalid child identity");
         return STARSEAD_STATE_INVALID;
     }
     if (child->role == STARSEAD_CHILD_CORE) {
@@ -289,7 +281,7 @@ int starsead_state_set_failure(
     if (document == NULL || !document->initialized || code < 0 || code >= STARSEAD_FAILURE_CODE_COUNT ||
         component < 0 || component >= STARSEAD_COMPONENT_COUNT || message == NULL || message[0] == '\0' ||
         strnlen(message, STARSEAD_MAX_STATE_MESSAGE) >= STARSEAD_MAX_STATE_MESSAGE) {
-        set_error(error, error_size, "invalid failure summary");
+        starsead_error_format(error, error_size, "invalid failure summary");
         return STARSEAD_STATE_INVALID;
     }
     struct starsead_state_failure failure;
@@ -303,7 +295,7 @@ int starsead_state_set_failure(
     failure.has_signal = has_signal;
     failure.signal = has_signal ? signal_value : 0;
     if (!failure_valid(&failure)) {
-        set_error(error, error_size, "invalid failure process result");
+        starsead_error_format(error, error_size, "invalid failure process result");
         return STARSEAD_STATE_INVALID;
     }
     document->failure = failure;
@@ -321,17 +313,17 @@ int starsead_state_mark_stopped(
     if (document == NULL || !document->initialized || document->children.core_present ||
         document->children.helper_present || document->matcher.active || document->rules.active ||
         document->rules.generation != 0U || document->rules.categories != 0U) {
-        set_error(error, error_size, "live telemetry remains");
+        starsead_error_format(error, error_size, "live telemetry remains");
         return STARSEAD_STATE_INVALID;
     }
     enum starsead_phase previous = document->phase;
     document->phase = STARSEAD_PHASE_STOPPED;
     if (!document_valid(document)) {
         document->phase = previous;
-        set_error(error, error_size, "invalid stopped state");
+        starsead_error_format(error, error_size, "invalid stopped state");
         return STARSEAD_STATE_INVALID;
     }
-    set_error(error, error_size, "ok");
+    starsead_error_format(error, error_size, "ok");
     return STARSEAD_STATE_OK;
 }
 
@@ -473,7 +465,7 @@ int starsead_state_serialize(
     if (out != NULL) *out = NULL;
     if (out_length != NULL) *out_length = 0U;
     if (out == NULL || out_length == NULL || !document_valid(document)) {
-        set_error(error, error_size, "invalid state document");
+        starsead_error_format(error, error_size, "invalid state document");
         return STARSEAD_STATE_INVALID;
     }
     struct string_builder builder = {.result = STARSEAD_STATE_OK};
@@ -515,12 +507,12 @@ int starsead_state_serialize(
     builder_raw(&builder, "}");
     if (builder.result != STARSEAD_STATE_OK) {
         free(builder.bytes);
-        set_error(error, error_size, builder.result == STARSEAD_STATE_NO_MEMORY ? "out of memory" : "state too large");
+        starsead_error_format(error, error_size, builder.result == STARSEAD_STATE_NO_MEMORY ? "out of memory" : "state too large");
         return builder.result;
     }
     *out = builder.bytes;
     *out_length = builder.length;
-    set_error(error, error_size, "ok");
+    starsead_error_format(error, error_size, "ok");
     return STARSEAD_STATE_OK;
 }
 
@@ -626,38 +618,38 @@ int starsead_state_store_init_with_backend(
         strcmp(file_name, ".") == 0 || strcmp(file_name, "..") == 0 ||
         strnlen(file_name, sizeof(store->file_name)) >= sizeof(store->file_name) ||
         !file_backend_complete(backend)) {
-        set_error(error, error_size, "invalid state store arguments");
+        starsead_error_format(error, error_size, "invalid state store arguments");
         return STARSEAD_STATE_INVALID;
     }
     uint64_t source_device, source_inode;
     enum starsead_file_kind source_kind;
     if (backend->fstat_fd(context, runtime_directory_fd, &source_device, &source_inode, &source_kind) != 0) {
-        set_error(error, error_size, "state directory stat failed");
+        starsead_error_format(error, error_size, "state directory stat failed");
         return STARSEAD_STATE_IO;
     }
     if (source_kind != STARSEAD_FILE_DIRECTORY || source_device != expected_device ||
         source_inode != expected_inode) {
-        set_error(error, error_size, "state directory identity mismatch");
+        starsead_error_format(error, error_size, "state directory identity mismatch");
         return STARSEAD_STATE_INVALID;
     }
     int duplicate = -1;
     int duplicate_result = backend->dup_cloexec(context, runtime_directory_fd, &duplicate);
     if (duplicate_result != 0 || duplicate < 0) {
         if (duplicate >= 0) (void)backend->close_fd(context, duplicate);
-        set_error(error, error_size, "state directory duplicate failed");
+        starsead_error_format(error, error_size, "state directory duplicate failed");
         return STARSEAD_STATE_IO;
     }
     uint64_t duplicate_device, duplicate_inode;
     enum starsead_file_kind duplicate_kind;
     if (backend->fstat_fd(context, duplicate, &duplicate_device, &duplicate_inode, &duplicate_kind) != 0) {
         (void)backend->close_fd(context, duplicate);
-        set_error(error, error_size, "duplicated state directory stat failed");
+        starsead_error_format(error, error_size, "duplicated state directory stat failed");
         return STARSEAD_STATE_IO;
     }
     if (duplicate_kind != STARSEAD_FILE_DIRECTORY || duplicate_device != source_device ||
         duplicate_inode != source_inode) {
         (void)backend->close_fd(context, duplicate);
-        set_error(error, error_size, "duplicated state directory identity mismatch");
+        starsead_error_format(error, error_size, "duplicated state directory identity mismatch");
         return STARSEAD_STATE_INVALID;
     }
     store->directory_fd = duplicate;
@@ -668,7 +660,7 @@ int starsead_state_store_init_with_backend(
     store->backend = backend;
     store->backend_context = context;
     store->initialized = true;
-    set_error(error, error_size, "ok");
+    starsead_error_format(error, error_size, "ok");
     return STARSEAD_STATE_OK;
 }
 
@@ -683,7 +675,7 @@ int starsead_state_store_init(
         store->directory_fd = -1;
     }
     (void)path;
-    set_error(error, error_size, "real state store requires Linux; use injected host backend");
+    starsead_error_format(error, error_size, "real state store requires Linux; use injected host backend");
     return STARSEAD_STATE_IO;
 #else
     if (store == NULL) return STARSEAD_STATE_INVALID;
@@ -766,7 +758,7 @@ int starsead_state_store_save(
             flags, 0600U, &fd) != 0 || fd < 0) {
         if (fd >= 0) (void)store->backend->close_fd(store->backend_context, fd);
         free(json);
-        set_error(error, error_size, "open state failed");
+        starsead_error_format(error, error_size, "open state failed");
         return STARSEAD_STATE_IO;
     }
     uint64_t device, inode;
@@ -782,6 +774,6 @@ int starsead_state_store_save(
         result = STARSEAD_STATE_IO;
     }
     free(json);
-    set_error(error, error_size, result == STARSEAD_STATE_OK ? "ok" : "state save failed");
+    starsead_error_format(error, error_size, result == STARSEAD_STATE_OK ? "ok" : "state save failed");
     return result;
 }

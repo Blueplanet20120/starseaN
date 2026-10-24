@@ -32,14 +32,6 @@
 
 #define TOKEN_NONE SIZE_MAX
 
-static void set_message(char *message, size_t message_size, const char *format, ...) {
-    if (message == NULL || message_size == 0U) return;
-    va_list arguments;
-    va_start(arguments, format);
-    (void)vsnprintf(message, message_size, format, arguments);
-    va_end(arguments);
-}
-
 bool starsead_mode_is_readable(uint32_t mode) { return (mode & 0444U) != 0U; }
 bool starsead_mode_is_writable(uint32_t mode) { return (mode & 0222U) != 0U; }
 bool starsead_mode_is_executable(uint32_t mode) { return (mode & 0111U) != 0U; }
@@ -1054,7 +1046,7 @@ int starsead_config_parse(
         (schema == 2U
             ? object_fields(&document, 0U, root_names_v2, 13U, values)
             : schema == 5U ? object_fields(&document, 0U, root_names_v5, 15U, values)
-             : object_fields(&document, 0U, root_names_v3, 14U, values)) != 0 ||
+            : object_fields(&document, 0U, root_names_v3, 14U, values)) != 0 ||
         copy_string(&document, values[3], config->core_executable_path, sizeof(config->core_executable_path)) != 0 || !path_is_normal(config->core_executable_path) ||
         copy_string(&document, values[4], config->core_config_path, sizeof(config->core_config_path)) != 0 || !path_is_normal(config->core_config_path) ||
         copy_string(&document, values[5], config->state_path, sizeof(config->state_path)) != 0 || !path_is_normal(config->state_path) ||
@@ -1081,21 +1073,21 @@ int starsead_config_parse(
     if (!supported(config)) {
         starsead_json_document_destroy(&document);
         starsead_config_destroy(config);
-        set_message(message, message_size, "unsupported combination");
+        starsead_error_format(message, message_size, "unsupported combination");
         return STARSEAD_CONFIG_UNSUPPORTED_COMBINATION;
     }
     starsead_json_document_destroy(&document);
-    set_message(message, message_size, "ok");
+    starsead_error_format(message, message_size, "ok");
     return 0;
 no_memory:
     starsead_json_document_destroy(&document);
     starsead_config_destroy(config);
-    set_message(message, message_size, "out of memory");
+    starsead_error_format(message, message_size, "out of memory");
     return STARSEAD_CONFIG_NO_MEMORY;
 invalid:
     starsead_json_document_destroy(&document);
     starsead_config_destroy(config);
-    set_message(message, message_size, "invalid config");
+    starsead_error_format(message, message_size, "invalid config");
     return STARSEAD_CONFIG_INVALID;
 }
 
@@ -1134,96 +1126,6 @@ void starsead_loaded_config_release(struct starsead_loaded_config *loaded) {
     memset(loaded, 0, sizeof(*loaded));
     loaded->directory.fd = -1;
     loaded->config_fd = -1;
-}
-
-static int load_direct_resources_with_backend(
-    struct starsead_config *config,
-    int directory_fd,
-    const struct starsead_config_load_backend *backend,
-    void *context) {
-    if (!config->has_direct_cidr_paths) return 0;
-    if (backend->read_resource == NULL) return STARSEAD_CONFIG_INVALID;
-    char *ipv4 = NULL;
-    size_t ipv4_length = 0U;
-    char *ipv6 = NULL;
-    size_t ipv6_length = 0U;
-    int result = backend->read_resource(
-        context, directory_fd, config->direct_cidr_path_v4, &ipv4, &ipv4_length);
-    if (result == 0 && (ipv4 == NULL && ipv4_length != 0U)) result = STARSEAD_CONFIG_INVALID;
-    if (result == 0 && ipv4_length > STARSEAD_MAX_JSON_SIZE) result = STARSEAD_CONFIG_INVALID;
-    if (result == 0 && config->enable_ipv6) {
-        result = backend->read_resource(
-            context, directory_fd, config->direct_cidr_path_v6, &ipv6, &ipv6_length);
-        if (result == 0 && (ipv6 == NULL && ipv6_length != 0U)) result = STARSEAD_CONFIG_INVALID;
-        if (result == 0 && ipv6_length > STARSEAD_MAX_JSON_SIZE) result = STARSEAD_CONFIG_INVALID;
-    }
-    if (result == 0) {
-        result = starsead_config_load_direct_cidrs(
-            config, ipv4, ipv4_length, ipv6, ipv6_length);
-    }
-    free(ipv4);
-    free(ipv6);
-    return result;
-}
-
-int starsead_config_load_with_backend(
-    const char *path,
-    struct starsead_loaded_config *loaded,
-    const struct starsead_config_load_backend *backend,
-    void *context,
-    char *message,
-    size_t message_size) {
-    if (loaded != NULL) {
-        memset(loaded, 0, sizeof(*loaded));
-        loaded->directory.fd = -1;
-        loaded->config_fd = -1;
-    }
-    if (loaded == NULL || backend == NULL || backend->open_directory == NULL ||
-        backend->read_config == NULL || backend->validate_files == NULL || backend->close_fd == NULL) {
-        return STARSEAD_CONFIG_INVALID;
-    }
-    loaded->close_owned_fd = backend->close_fd;
-    loaded->close_context = context;
-    loaded->directory.close_owned_fd = backend->close_fd;
-    loaded->directory.close_context = context;
-    if (path == NULL || !path_is_normal(path)) {
-        set_message(message, message_size, "invalid config path");
-        return STARSEAD_CONFIG_INVALID;
-    }
-    int result = backend->open_directory(context, path, &loaded->directory.fd,
-        &loaded->directory.device, &loaded->directory.inode);
-    loaded->directory.owned = loaded->directory.fd >= 0;
-    if (result == 0 && loaded->directory.fd < 0) result = STARSEAD_CONFIG_INVALID;
-    if (result != 0) {
-        starsead_loaded_config_release(loaded);
-        set_message(message, message_size, "directory open failed");
-        return result;
-    }
-    char *json = NULL;
-    size_t length = 0U;
-    result = backend->read_config(
-        context,
-        loaded->directory.fd,
-        path,
-        &json,
-        &length,
-        &loaded->config_fd,
-        &loaded->config_device,
-        &loaded->config_inode);
-    loaded->config_fd_owned = loaded->config_fd >= 0;
-    if (result == 0 && loaded->config_fd < 0) result = STARSEAD_CONFIG_INVALID;
-    if (result == 0 && json == NULL && length != 0U) result = STARSEAD_CONFIG_INVALID;
-    if (result == 0 && length > STARSEAD_MAX_JSON_SIZE) result = STARSEAD_CONFIG_INVALID;
-    if (result == 0) result = starsead_config_parse(json, length, &loaded->config, message, message_size);
-    free(json);
-    if (result == 0) result = backend->validate_files(context, &loaded->config, loaded->directory.fd);
-    if (result == 0) result = load_direct_resources_with_backend(
-        &loaded->config, loaded->directory.fd, backend, context);
-    if (result != 0) {
-        starsead_loaded_config_release(loaded);
-        return result;
-    }
-    return 0;
 }
 
 #ifndef _WIN32
@@ -1539,7 +1441,7 @@ int starsead_runtime_directory_open(
     char directory[STARSEAD_MAX_PATH];
     if (path == NULL || !path_is_normal(path) ||
         parent_path(path, directory, sizeof(directory)) != 0) {
-        set_message(message, message_size, "invalid config path");
+        starsead_error_format(message, message_size, "invalid config path");
         return STARSEAD_CONFIG_INVALID;
     }
     struct stat path_directory_status;
@@ -1638,7 +1540,7 @@ int starsead_config_load(
         loaded->directory.fd = -1;
         loaded->config_fd = -1;
     }
-    set_message(message, message_size, "real config load requires Linux; use injected host seam");
+    starsead_error_format(message, message_size, "real config load requires Linux; use injected host seam");
     return STARSEAD_CONFIG_IO;
 }
 
@@ -1652,23 +1554,7 @@ int starsead_runtime_directory_open(
         memset(directory, 0, sizeof(*directory));
         directory->fd = -1;
     }
-    set_message(message, message_size, "real directory open requires Linux");
+    starsead_error_format(message, message_size, "real directory open requires Linux");
     return STARSEAD_CONFIG_IO;
 }
 #endif
-
-int starsead_load_config(
-    const char *path,
-    struct starsead_config *config,
-    char *message,
-    size_t message_size) {
-    if (config == NULL) return STARSEAD_CONFIG_INVALID;
-    memset(config, 0, sizeof(*config));
-    struct starsead_loaded_config loaded;
-    int result = starsead_config_load(path, &loaded, message, message_size);
-    if (result != 0) return result;
-    *config = loaded.config;
-    memset(&loaded.config, 0, sizeof(loaded.config));
-    starsead_loaded_config_release(&loaded);
-    return 0;
-}

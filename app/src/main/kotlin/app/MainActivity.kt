@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.journeyapps.barcodescanner.ScanContract
 import data.AndroidAppStateStore
@@ -209,6 +211,11 @@ class MainActivity : FragmentActivity() {
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightNavigationBars =
             !applicationContext.currentSystemUiSnapshot().isDark
         setContent {
+            val composeView = LocalView.current
+            SideEffect {
+                // Compose handles IME insets; let Android resize instead of panning native editors.
+                composeView.isScrollContainer = true
+            }
             App(
                 padding = WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues(),
                 qrCodeScanner = qrCodeScanRequester::scan,

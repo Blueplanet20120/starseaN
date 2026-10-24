@@ -20,10 +20,6 @@ enum matcher_map_role {
     MATCHER_MAP_DIRECT_V6,
 };
 
-static void verify_error(char *error, size_t capacity, const char *message) {
-    if (error != NULL && capacity != 0U) (void)snprintf(error, capacity, "%s", message);
-}
-
 static bool backend_valid(const struct starsead_bpf_program_backend *backend) {
     return backend != NULL && backend->open_program != NULL && backend->program_info != NULL &&
         backend->open_map != NULL && backend->map_info != NULL && backend->map_next != NULL &&
@@ -237,7 +233,7 @@ static int verify_pins(
     if (config == NULL || plan == NULL || verification == NULL || !config->matcher.enabled ||
         (allow_absent && (ownership == NULL || ownership->probe == NULL)) ||
         !backend_valid(backend) || plan->pin_count != (config->enable_ipv6 ? 4U : 2U) + (config->dns_enhancement ? 1U : 0U)) {
-        verify_error(error, error_capacity, "invalid matcher verification input");
+        starsead_error_copy(error, error_capacity, "invalid matcher verification input");
         return STARSEAD_CONFIG_INVALID;
     }
     struct starsead_matcher_verification result;
@@ -303,7 +299,7 @@ program_done:
     return 0;
 
 mismatch:
-    verify_error(error, error_capacity, "matcher pin or map verification failed");
+    starsead_error_copy(error, error_capacity, "matcher pin or map verification failed");
     return STARSEAD_CONFIG_IO;
 }
 
@@ -312,14 +308,5 @@ int starsead_matcher_verify(
     const struct starsead_bpf_program_backend *backend,
     struct starsead_matcher_verification *verification, char *error, size_t error_capacity) {
     return verify_pins(config, plan, backend, NULL, false,
-        verification, error, error_capacity);
-}
-
-int starsead_matcher_verify_residue(
-    const struct starsead_config *config, const struct starsead_matcher_pin_plan *plan,
-    const struct starsead_bpf_program_backend *backend,
-    const struct starsead_bpf_pin_ownership_backend *ownership,
-    struct starsead_matcher_verification *verification, char *error, size_t error_capacity) {
-    return verify_pins(config, plan, backend, ownership, true,
         verification, error, error_capacity);
 }

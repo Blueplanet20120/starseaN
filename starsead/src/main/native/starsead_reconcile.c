@@ -7,13 +7,6 @@
 #include <stdio.h>
 #include <string.h>
 
-static void reconcile_error(
-    char *error, size_t error_size, const char *message) {
-    if (error != NULL && error_size != 0U) {
-        (void)snprintf(error, error_size, "%s", message);
-    }
-}
-
 int starsead_reconcile_owned_resources(
     const struct starsead_reconcile_backend *backend,
     struct starsead_reconcile_report *report,
@@ -28,7 +21,7 @@ int starsead_reconcile_owned_resources(
     if (error != NULL && error_size != 0U) error[0] = '\0';
     if (backend == NULL || report == NULL || backend->remove_phase == NULL ||
         backend->verify_absent == NULL) {
-        reconcile_error(error, error_size, "invalid reconcile backend");
+        starsead_error_copy(error, error_size, "invalid reconcile backend");
         return STARSEAD_CONFIG_INVALID;
     }
 
@@ -186,7 +179,7 @@ int starsead_reconcile_after_listener(
             report->failed_phase = STARSEAD_RECONCILE_PHASE_COUNT;
         }
         if (error != NULL && error_size != 0U) error[0] = '\0';
-        reconcile_error(error, error_size, "control listener not acquired");
+        starsead_error_copy(error, error_size, "control listener not acquired");
         return STARSEAD_CONFIG_NOT_READY;
     }
     return starsead_reconcile_owned_resources(

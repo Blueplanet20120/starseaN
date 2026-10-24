@@ -147,8 +147,6 @@ int starsead_cli_main(int argc, const char *const *argv) {
     return starsead_cli_main_with_backend(argc, argv, &system_cli_backend, NULL);
 }
 
-#ifndef STARSEAD_TESTING
 int main(int argc, char **argv) {
     return starsead_cli_main(argc, (const char *const *)argv);
 }
-#endif

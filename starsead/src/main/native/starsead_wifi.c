@@ -25,10 +25,6 @@
 #define WIFI_NLA_ALIGN(length) (((length) + WIFI_NLA_ALIGNTO - 1U) & ~(WIFI_NLA_ALIGNTO - 1U))
 #define WIFI_NLA_HEADER_LENGTH WIFI_NLA_ALIGN(sizeof(struct nlattr))
 
-static void wifi_error(char *error, size_t error_size, const char *message) {
-    if (error != NULL && error_size > 0U) (void)snprintf(error, error_size, "%s", message);
-}
-
 static bool wifi_attr_valid(const struct nlattr *attribute, size_t remaining) {
     return remaining >= sizeof(*attribute) && attribute->nla_len >= sizeof(*attribute) &&
         attribute->nla_len <= remaining;
@@ -377,7 +373,7 @@ int starsead_wifi_monitor_open(
     monitor->fd = -1;
     int fd = wifi_open_socket();
     if (fd < 0) {
-        wifi_error(error, error_size, "nl80211 socket unavailable");
+        starsead_error_copy(error, error_size, "nl80211 socket unavailable");
         return -1;
     }
     uint32_t sequence = 1U;
@@ -388,19 +384,19 @@ int starsead_wifi_monitor_open(
         setsockopt(fd, SOL_NETLINK, NETLINK_ADD_MEMBERSHIP,
             &group_id, sizeof(group_id)) != 0) {
         (void)close(fd);
-        wifi_error(error, error_size, "nl80211 MLME subscription failed");
+        starsead_error_copy(error, error_size, "nl80211 MLME subscription failed");
         return -1;
     }
     if (wifi_query_association(family_id,
             &monitor->baseline_connected, &monitor->baseline_identity) != 0) {
         (void)close(fd);
-        wifi_error(error, error_size, "nl80211 association baseline failed");
+        starsead_error_copy(error, error_size, "nl80211 association baseline failed");
         return -1;
     }
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) != 0) {
         (void)close(fd);
-        wifi_error(error, error_size, "nl80211 nonblocking setup failed");
+        starsead_error_copy(error, error_size, "nl80211 nonblocking setup failed");
         return -1;
     }
     monitor->fd = fd;
@@ -477,7 +473,7 @@ int starsead_wifi_monitor_handle(struct starsead_wifi_monitor *monitor,
             break;
         }
         if (count < 0) {
-            wifi_error(error, error_size, "nl80211 receive failed");
+            starsead_error_copy(error, error_size, "nl80211 receive failed");
             return -1;
         }
         if (count == 0) break;
@@ -500,7 +496,7 @@ int starsead_wifi_monitor_handle(struct starsead_wifi_monitor *monitor,
         }
     }
     if (relevant && wifi_arm_debounce(monitor, integrity_lost) != 0) {
-        wifi_error(error, error_size, "nl80211 debounce clock failed");
+        starsead_error_copy(error, error_size, "nl80211 debounce clock failed");
         return -1;
     }
     return 0;
@@ -526,7 +522,7 @@ int starsead_wifi_monitor_take_reconcile(struct starsead_wifi_monitor *monitor,
     bool connected = false;
     struct starsead_wifi_identity current;
     if (wifi_query_association(monitor->family_id, &connected, &current) != 0) {
-        wifi_error(error, error_size, "nl80211 association reconcile failed");
+        starsead_error_copy(error, error_size, "nl80211 association reconcile failed");
         return -1;
     }
     bool lost = monitor->integrity_lost;

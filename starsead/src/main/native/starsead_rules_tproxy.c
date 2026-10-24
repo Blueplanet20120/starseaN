@@ -5,13 +5,6 @@
 
 #include <string.h>
 
-static int copy_text(char *target, size_t capacity, const char *value) {
-    size_t length = strnlen(value, capacity);
-    if (length == 0U || length >= capacity) return STARSEAD_CONFIG_INVALID;
-    memcpy(target, value, length + 1U);
-    return 0;
-}
-
 static struct starsead_private_chain_group *add_private_group(
     struct starsead_rule_transaction_plan *plan,
     enum starsead_ip_family family,
@@ -35,7 +28,7 @@ static int add_private_name(struct starsead_private_chain_group *group, const ch
     if (group == NULL || group->name_count >= STARSEAD_RULE_TRANSACTION_MAX_NAMES) {
         return STARSEAD_CONFIG_INVALID;
     }
-    return copy_text(group->names[group->name_count++], STARSEAD_MAX_CHAIN_NAME, name);
+    return starsead_copy_string(group->names[group->name_count++], STARSEAD_MAX_CHAIN_NAME, name);
 }
 
 static struct starsead_traffic_hook_group *add_hook_group(
@@ -74,7 +67,7 @@ static int add_jump(
     hook->insert_at_head = insert_at_head;
     hook->dns_destination_protocol = dns_protocol;
     hook->verdict = STARSEAD_HOOK_JUMP;
-    return copy_text(hook->jump_target, sizeof(hook->jump_target), target);
+    return starsead_copy_string(hook->jump_target, sizeof(hook->jump_target), target);
 }
 
 static struct starsead_route_effect *add_route(
@@ -104,8 +97,8 @@ static int add_normal_route(
     route->local_route = true;
     route->loopback_source = dns_enhancement && family == STARSEAD_IP_FAMILY_IPV4;
     route->route_id = STARSEAD_ROUTE_TPROXY;
-    if (copy_text(route->destination, sizeof(route->destination), "default") != 0 ||
-        copy_text(route->interface_name, sizeof(route->interface_name), "lo") != 0) {
+    if (starsead_copy_string(route->destination, sizeof(route->destination), "default") != 0 ||
+        starsead_copy_string(route->interface_name, sizeof(route->interface_name), "lo") != 0) {
         return STARSEAD_CONFIG_INVALID;
     }
     return 0;

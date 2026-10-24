@@ -219,6 +219,10 @@ fun AppContent(
 
         NavDisplay(
             entries = entries,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MiuixTheme.colorScheme.surface)
+                .imePadding(),
             onBack = { navigator.pop() },
             transitionEffects = transitionEffects,
         )

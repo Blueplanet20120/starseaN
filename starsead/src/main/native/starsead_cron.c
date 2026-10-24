@@ -198,23 +198,6 @@ static bool starsead_cron_day_matches(
     return day_of_month || day_of_week;
 }
 
-bool starsead_cron_matches(
-    const struct starsead_cron_expression *expression, const struct tm *value) {
-    if (expression == NULL || value == NULL ||
-        value->tm_min < 0 || value->tm_min > 59 ||
-        value->tm_hour < 0 || value->tm_hour > 23 ||
-        value->tm_mon < 0 || value->tm_mon > 11) {
-        return false;
-    }
-    return starsead_cron_mask_has(
-            expression->minutes, (unsigned int)value->tm_min, 0U) &&
-        starsead_cron_mask_has(
-            expression->hours, (unsigned int)value->tm_hour, 0U) &&
-        starsead_cron_mask_has(
-            expression->months, (unsigned int)value->tm_mon + 1U, 1U) &&
-        starsead_cron_day_matches(expression, value);
-}
-
 static bool starsead_cron_localtime(time_t epoch, struct tm *value) {
 #if defined(_WIN32)
     return localtime_s(value, &epoch) == 0;
