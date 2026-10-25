@@ -49,7 +49,8 @@ internal fun RootStartConfig.buildStarseadConfig(
         mode = mode,
         core = StarseadCoreConfig(
             workingDirectory = runtimePaths.workingDirectory,
-            readinessTimeoutMilliseconds = 5000,
+            // Cold boot can take the core several seconds just to begin loading its config.
+            readinessTimeoutMilliseconds = 15000,
             ageSecretKey = null,
         ),
         network = StarseadNetworkConfig(

@@ -138,7 +138,7 @@ internal class StarseadClient(
         const val LogTag = "StarseadClient"
         const val InitialWatchRetryDelayMilliseconds = 10L
         const val MaxWatchRetryDelayMilliseconds = 250L
-        const val WatchProcessTimeoutSeconds = 16L
+        const val WatchProcessTimeoutSeconds = 31L
         val DefaultWatchRetryDelaysMilliseconds = listOf(25L, 50L, 100L, 200L, 400L, 800L)
     }
 

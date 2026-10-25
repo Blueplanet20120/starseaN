@@ -378,7 +378,8 @@ internal class RootSupervisorController(
 }
 
 private const val LogTag = "RootSupervisorController"
-private const val StartTimeoutMilliseconds = 15_000L
+// Must exceed starsead's core readiness timeout plus the rule and helper stages around it.
+private const val StartTimeoutMilliseconds = 30_000L
 private const val ServiceControlHoldSettleNanoseconds = 750_000_000L
 
 internal fun sanitizeLauncherStderr(stderr: String): String {
