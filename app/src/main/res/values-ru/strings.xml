@@ -38,6 +38,7 @@
     <string name="quick_settings_tile_toggle_failed">Не удалось переключить прокси</string>
     <string name="root_foreign_owner_conflict">ROOT-прокси уже используется приложением %1$s. Остановите сервис в %1$s и повторите попытку.</string>
 <string name="common_cancel">Отмена</string>
+    <string name="common_close">Закрыть</string>
     <string name="common_save">Сохранить</string>
     <string name="settings_save_and_apply">Сохранить и применить</string>
     <string name="common_add">Добавить</string>

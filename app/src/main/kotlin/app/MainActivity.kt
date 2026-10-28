@@ -29,6 +29,7 @@ import com.journeyapps.barcodescanner.ScanContract
 import data.AndroidAppStateStore
 import data.AppSettingsPreferences
 import engine.vpn.AndroidVpnPermissionRequester
+import features.boot.BootAutoConnect
 import features.logs.AndroidLogFileCreator
 import features.proxy.server.qr.AndroidQrCodeScanRequester
 import features.resources.runtime.AndroidResourceFilePicker
@@ -46,6 +47,8 @@ import system.setRecentTasksHidden
 import ui.feedback.AndroidToastTipNotifier
 
 class MainActivity : FragmentActivity() {
+    private var pendingAutoConnect = false
+
     private val vpnPermissionRequester = AndroidVpnPermissionRequester {
         appString(R.string.error_vpn_permission_launcher_missing)
     }
@@ -149,8 +152,31 @@ class MainActivity : FragmentActivity() {
         showAppContent()
         requestStartupPermissions()
         if (savedInstanceState == null) {
+            readAutoConnectRequest(intent)
             handleExternalIntent(intent)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!pendingAutoConnect) return
+        pendingAutoConnect = false
+        lifecycleScope.launch {
+            BootAutoConnect.connectAfterConsent(applicationContext, vpnPermissionRequester::request)
+                .onSuccess { running ->
+                    if (running) tipNotifier.show(appString(R.string.proxy_server_list_service_started))
+                }
+                .onFailure { error ->
+                    tipNotifier.showError(error, appString(R.string.proxy_error_dialog_title))
+                }
+        }
+    }
+
+    private fun readAutoConnectRequest(intent: Intent?) {
+        if (intent?.action != BootAutoConnect.ActionConnectAfterConsent) return
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        intent.action = null
+        pendingAutoConnect = true
     }
 
     private fun observeRecentTasksVisibility() {
@@ -181,6 +207,7 @@ class MainActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleExternalIntent(intent)
+        readAutoConnectRequest(intent)
     }
 
     override fun onDestroy() {

@@ -4,22 +4,32 @@
 package engine.vpn
 
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.net.ProxyInfo
 import android.net.VpnService
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import androidx.core.app.NotificationCompat
+import app.MainActivity
 import app.R
+import app.StarseaApplication
 import app.modes.ProxyAppListModeBlacklist
 import app.modes.ProxyAppListModeGlobal
 import app.modes.ProxyAppListModeWhitelist
+import app.modes.RunModeVpnService
+import data.AppSettingsPreferences
 import engine.network.NetworkDefaults
 import engine.proxy.LocalProxyLoopbackAddress
 import engine.proxy.LocalProxyRuntime
+import engine.proxy.ProxyEngineStartRequest
 import engine.vpn.hevtun.HevTunRuntime
 import engine.xray.logDirectoryPath
 import engine.xray.startCoreLogTailers
@@ -51,7 +61,15 @@ class StarseaVpnService : VpnService() {
     private val operationMutex = Mutex()
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    @Volatile
+    private var foregroundStarted = false
+
+    @Volatile
+    private var latestStartId = 0
+    private val sessionPreferences by lazy { AppSettingsPreferences(this) }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        latestStartId = startId
         when (intent?.action) {
             StarseaVpnServiceIntents.ACTION_STOP -> {
                 serviceScope.launch {
@@ -77,6 +95,7 @@ class StarseaVpnService : VpnService() {
                         runCatching {
                             startVpn(config)
                         }.onSuccess {
+                            sessionPreferences.setVpnSessionActive(true)
                             completeStart(Result.success(Unit))
                         }.onFailure { error ->
                             AndroidAppLogger.error(LogTag, "Failed to start VPN Service", error)
@@ -87,8 +106,128 @@ class StarseaVpnService : VpnService() {
                     }
                 }
             }
+
+            StarseaVpnServiceIntents.ACTION_RESUME,
+            VpnService.SERVICE_INTERFACE,
+            -> resumeVpn(startId)
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * Starts the tunnel from the persisted state when the caller only names the service: the
+     * boot receiver's resume request and the system's always-on VPN start.
+     */
+    private fun resumeVpn(startId: Int) {
+        val starseaApplication = application as? StarseaApplication
+        if (starseaApplication == null) {
+            AndroidAppLogger.error(LogTag, "Cannot resume VPN Service without the application")
+            stopSelfOnMain(startId)
+            return
+        }
+        if (VpnService.prepare(this) != null) {
+            AndroidAppLogger.warn(LogTag, "Refused to resume VPN Service without VPN permission")
+            stopSelfOnMain(startId)
+            return
+        }
+        promoteToForeground()
+        if (!foregroundStarted) {
+            stopSelfOnMain(startId)
+            return
+        }
+        serviceScope.launch {
+            val result = runCatching {
+                val state = starseaApplication.stateStore.state.value
+                check(state.runMode == RunModeVpnService) {
+                    "VPN Service is not the active run mode"
+                }
+                val server = checkNotNull(
+                    state.proxyServers.firstOrNull { server -> server.id == state.selectedProxyServerId },
+                ) {
+                    getString(R.string.proxy_server_list_select_first)
+                }
+                starseaApplication.proxyEngine.start(ProxyEngineStartRequest(state, server))
+            }
+            val status = result.getOrNull()
+            if (status?.running == true) {
+                starseaApplication.stateStore.update { current ->
+                    current.copy(
+                        proxyRunning = true,
+                        localProxyPort = status.appState?.localProxyPort ?: current.localProxyPort,
+                    )
+                }
+                stopForegroundNotification()
+                return@launch
+            }
+            AndroidAppLogger.error(
+                LogTag,
+                "Failed to resume VPN Service",
+                result.exceptionOrNull() ?: IllegalStateException("VPN Service did not start"),
+            )
+            operationMutex.withLock {
+                if (running || pendingStart != null) {
+                    stopForegroundNotification()
+                    return@withLock
+                }
+                stopVpn()
+                starseaApplication.stateStore.update { current -> current.copy(proxyRunning = false) }
+                stopSelfOnMain(latestStartId)
+            }
+        }
+    }
+
+    private fun promoteToForeground(): Boolean {
+        if (foregroundStarted) return true
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.createNotificationChannel(
+            NotificationChannel(
+                ForegroundChannelId,
+                getString(R.string.settings_run_mode_vpn_service),
+                NotificationManager.IMPORTANCE_LOW,
+            ),
+        )
+        val notification = NotificationCompat.Builder(this, ForegroundChannelId)
+            .setSmallIcon(R.drawable.ic_qs_proxy)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(R.string.quick_settings_tile_running))
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this,
+                    0,
+                    Intent(this, MainActivity::class.java)
+                        .setAction(Intent.ACTION_MAIN)
+                        .addCategory(Intent.CATEGORY_LAUNCHER)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            )
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setLocalOnly(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+        val promoted = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    ForegroundNotificationId,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED,
+                )
+            } else {
+                startForeground(ForegroundNotificationId, notification)
+            }
+        }.onFailure { error ->
+            AndroidAppLogger.error(LogTag, "Failed to promote VPN Service to the foreground", error)
+        }.isSuccess
+        if (promoted) foregroundStarted = true
+        return promoted
+    }
+
+    private fun stopForegroundNotification() {
+        if (!foregroundStarted) return
+        foregroundStarted = false
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     override fun onDestroy() {
@@ -119,7 +258,7 @@ class StarseaVpnService : VpnService() {
     }
 
     private fun startVpn(config: VpnServiceStartConfig) {
-        stopVpn()
+        stopVpn(removeForeground = false)
         clearServiceLogsAsApp(File(config.coreLogPaths.logDirectoryPath()), LogTag)
         logFileTailers = config.coreLogPaths.startCoreLogTailers(config.enableAccessLog)
         tunFileDescriptor = establishTun(config)
@@ -249,7 +388,7 @@ class StarseaVpnService : VpnService() {
             .distinct()
     }
 
-    private fun stopVpn() {
+    private fun stopVpn(removeForeground: Boolean = true) {
         logFileTailers.forEach { tailer -> tailer.stop() }
         logFileTailers = emptyList()
         stopNativeRuntimesBounded()
@@ -261,6 +400,8 @@ class StarseaVpnService : VpnService() {
         tunFileDescriptor = null
         LocalProxyRuntime.clear()
         running = false
+        sessionPreferences.setVpnSessionActive(false)
+        if (removeForeground) stopForegroundNotification()
     }
 
     private fun stopNativeRuntimesBounded() {
@@ -299,6 +440,8 @@ class StarseaVpnService : VpnService() {
     companion object {
         private const val LogTag = "StarseaVpnService"
         private const val RuntimeShutdownTimeoutMillis = 1_000L
+        private const val ForegroundChannelId = "vpn-service"
+        private const val ForegroundNotificationId = 4
 
         @Volatile
         private var running = false

@@ -45,13 +45,28 @@ abstract class SyncGitSubmoduleVersionTask : DefaultTask() {
         if (!moduleDirectory.resolve(".git").exists()) {
             runGit(rootDirectory, "submodule", "update", "--init", "--recursive", modulePath)
         }
-        requireClean(moduleDirectory, modulePath)
-        if (runGit(moduleDirectory, "rev-parse", "--verify", "refs/tags/$version^{commit}", ignoreExitValue = true) != 0) {
-            runGit(moduleDirectory, "fetch", "--depth", "1", "origin", "tag", version)
+        val tagCommit = resolveTagCommit(moduleDirectory, version)
+        val head = gitOutput(moduleDirectory, "rev-parse", "HEAD")
+        if (head == tagCommit) {
+            logger.lifecycle("Skipping submodule sync: $modulePath is already at $version")
+            return
         }
+        if (runGit(moduleDirectory, "merge-base", "--is-ancestor", tagCommit, "HEAD", ignoreExitValue = true) == 0) {
+            logger.lifecycle("Skipping submodule sync: $modulePath is ahead of $version")
+            return
+        }
+        requireClean(moduleDirectory, modulePath)
         runGit(moduleDirectory, "checkout", "--detach", "refs/tags/$version")
         runGit(moduleDirectory, "submodule", "update", "--init", "--recursive")
         requireClean(moduleDirectory, modulePath)
+    }
+
+    private fun resolveTagCommit(moduleDirectory: File, version: String): String {
+        val tag = "refs/tags/$version^{commit}"
+        if (runGit(moduleDirectory, "rev-parse", "--verify", tag, ignoreExitValue = true) != 0) {
+            runGit(moduleDirectory, "fetch", "--depth", "1", "origin", "tag", version)
+        }
+        return gitOutput(moduleDirectory, "rev-parse", tag)
     }
 
     private fun requireClean(moduleDirectory: File, modulePath: String) {

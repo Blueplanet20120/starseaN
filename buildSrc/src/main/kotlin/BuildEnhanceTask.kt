@@ -19,6 +19,7 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.Properties
 import javax.inject.Inject
@@ -74,10 +75,12 @@ abstract class BuildEnhanceTask : DefaultTask() {
         val sourceDir = sourceDirectory.get().asFile
         val script = sourceDir.resolve("tools/build.py")
         if (!script.isFile) throw GradleException("AsteriskEnhance source is missing: $sourceDir")
+        val python = resolvePython(properties)
+        logger.lifecycle("enhance python: $python")
         execOperations.exec {
             workingDir(sourceDir)
             commandLine(
-                "python", script.absolutePath,
+                python, script.absolutePath,
                 "--ndk", ndkDir.absolutePath,
                 "--sdk", sdkDir.absolutePath,
                 "--min-sdk", minSdk.get().toString(),
@@ -88,5 +91,90 @@ abstract class BuildEnhanceTask : DefaultTask() {
             )
         }.assertNormalExitValue()
     }
+
+    private fun resolvePython(properties: Properties): String {
+        val candidates = linkedSetOf<String>()
+        properties.getProperty("python.dir")?.trim()?.takeIf(String::isNotEmpty)?.let { configured ->
+            val file = File(configured)
+            candidates += if (file.isDirectory) File(file, pythonExecutableName()).absolutePath else file.absolutePath
+        }
+        System.getenv("PYTHON")?.trim()?.takeIf(String::isNotEmpty)?.let(candidates::add)
+        if (isWindows()) {
+            windowsPythonLaunchers().forEach(candidates::add)
+            uvPythonInstalls().forEach(candidates::add)
+        }
+        candidates += "python"
+        val usable = candidates.mapNotNull(::pythonIdentity)
+        val cpython = usable.filter { identity -> identity.cpython && identity.atLeast310 }
+        if (cpython.isNotEmpty()) {
+            return cpython.minWith(compareBy<PythonIdentity> { it.major }.thenBy { it.minor }).path
+        }
+        val newer = usable.filter(PythonIdentity::atLeast310)
+        if (newer.isNotEmpty()) {
+            return newer.minWith(compareBy<PythonIdentity> { it.major }.thenBy { it.minor }).path
+        }
+        return "python"
+    }
+
+    private fun pythonIdentity(path: String): PythonIdentity? {
+        val output = ByteArrayOutputStream()
+        val result = execOperations.exec {
+            commandLine(
+                path, "-c",
+                "import sys; print(sys.version_info[0], sys.version_info[1], sys.implementation.name)",
+            )
+            standardOutput = output
+            errorOutput = ByteArrayOutputStream()
+            isIgnoreExitValue = true
+        }
+        if (result.exitValue != 0) return null
+        val parts = output.toString(Charsets.UTF_8).trim().split(Regex("\\s+"))
+        if (parts.size < 3) return null
+        val major = parts[0].toIntOrNull() ?: return null
+        val minor = parts[1].toIntOrNull() ?: return null
+        return PythonIdentity(path, major, minor, parts[2] == "cpython")
+    }
+
+    private fun windowsPythonLaunchers(): List<String> {
+        val output = ByteArrayOutputStream()
+        val result = execOperations.exec {
+            commandLine("py", "-0p")
+            standardOutput = output
+            errorOutput = ByteArrayOutputStream()
+            isIgnoreExitValue = true
+        }
+        if (result.exitValue != 0) return emptyList()
+        return output.toString(Charsets.UTF_8).lineSequence().mapNotNull { line ->
+            val path = line.trim().substringAfterLast("  ", "").trim()
+            path.takeIf { it.endsWith("python.exe", ignoreCase = true) && File(it).isFile }
+        }.toList()
+    }
+
+    private fun uvPythonInstalls(): List<String> {
+        val appData = System.getenv("APPDATA")?.takeIf(String::isNotBlank) ?: return emptyList()
+        val root = File(appData, "uv/python")
+        if (!root.isDirectory) return emptyList()
+        return root.listFiles()?.mapNotNull { install ->
+            install.resolve("python.exe").takeIf(File::isFile)?.absolutePath
+        }.orEmpty()
+    }
+
+    private fun isWindows(): Boolean {
+        return System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+    }
+
+    private fun pythonExecutableName(): String {
+        return if (isWindows()) "python.exe" else "python"
+    }
+}
+
+private data class PythonIdentity(
+    val path: String,
+    val major: Int,
+    val minor: Int,
+    val cpython: Boolean,
+) {
+    val atLeast310: Boolean
+        get() = major > 3 || (major == 3 && minor >= 10)
 }
 

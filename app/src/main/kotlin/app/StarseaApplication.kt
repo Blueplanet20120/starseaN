@@ -19,8 +19,12 @@ import features.logs.AndroidLogcatRepository
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import app.modes.RunModeVpnService
 import data.AppSettingsPreferences
 import data.AndroidAppStateStore
+import engine.proxy.AndroidProxyEngine
+import features.boot.BootAutoConnect
+import system.AndroidRootShellGateway
 import features.subscription.runtime.AndroidSubscriptionFetcher
 import features.subscription.runtime.AndroidSubscriptionScheduleGateway
 import features.subscription.runtime.SubscriptionScheduler
@@ -35,6 +39,13 @@ class StarseaApplication : Application(), SingletonImageLoader.Factory {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     internal val stateStore: AndroidAppStateStore by lazy {
         AndroidAppStateStore.get(applicationContext)
+    }
+    internal val proxyEngine: AndroidProxyEngine by lazy {
+        AndroidProxyEngine(
+            context = applicationContext,
+            rootAccess = AndroidRootShellGateway(),
+            requestVpnPermission = { false },
+        )
     }
     internal val subscriptionFetcher: AndroidSubscriptionFetcher by lazy {
         AndroidSubscriptionFetcher(applicationContext)
@@ -105,6 +116,16 @@ class StarseaApplication : Application(), SingletonImageLoader.Factory {
         AndroidCoreLogRepository.initialize(applicationContext)
         AndroidAccessLogRepository.initialize(applicationContext)
         AndroidStarseadLogRepository.initialize(applicationContext)
+        appScope.launch {
+            stateStore.state
+                .map { state ->
+                    state.enableAutoConnect && state.runMode == RunModeVpnService
+                }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    BootAutoConnect.setComponentEnabled(applicationContext, enabled)
+                }
+        }
         appScope.launch {
             stateStore.state
                 .map { state ->

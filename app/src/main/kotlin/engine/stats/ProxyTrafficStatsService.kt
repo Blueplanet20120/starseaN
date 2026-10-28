@@ -32,6 +32,7 @@ class ProxyTrafficStatsService : Service() {
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(serviceJob + Dispatchers.IO)
     private val notificationManager by lazy { getSystemService(NotificationManager::class.java) }
+    private val speedIcon by lazy { TrafficSpeedNotificationIcon(resources.displayMetrics.density) }
     private val contentIntent by lazy {
         packageManager.getLaunchIntentForPackage(packageName)?.let { intent ->
             PendingIntent.getActivity(
@@ -194,7 +195,12 @@ class ProxyTrafficStatsService : Service() {
             sample.totalBytes.downlink.toTrafficSizeString(),
         )
         return notificationBuilder()
-            .setSmallIcon(R.drawable.ic_qs_proxy)
+            .setSmallIcon(speedIcon.create(sample.speedBytesPerSecond.downlink))
+            .apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+                }
+            }
             .setContentTitle(serverName.ifBlank { getString(R.string.app_name) })
             .setContentText(speedText)
             .setStyle(Notification.BigTextStyle().bigText("$speedText\n$totalText"))

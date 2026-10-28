@@ -160,6 +160,7 @@ fun App(
         rootEbpfProbeUseCase,
         tipNotifier,
         logFileCreator,
+        requestVpnPermission,
     ) {
         AppServices(
             appScope = appScope,
@@ -182,6 +183,7 @@ fun App(
             rootBootScriptUseCase = rootBootScriptUseCase,
             rootEbpfProbeUseCase = rootEbpfProbeUseCase,
             tipNotifier = tipNotifier,
+            requestVpnPermission = requestVpnPermission,
             logFileCreator = logFileCreator,
             coreLogRepository = AndroidCoreLogRepository,
             accessLogRepository = AndroidAccessLogRepository,

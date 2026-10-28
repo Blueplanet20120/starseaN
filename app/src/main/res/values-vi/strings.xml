@@ -40,6 +40,7 @@
     <string name="root_foreign_owner_conflict">Dịch vụ proxy ROOT đang được sử dụng bởi %1$s, vui lòng dừng dịch vụ trong %1$s trước rồi thử lại.</string>
 <!-- Common -->
     <string name="common_cancel">Hủy</string>
+    <string name="common_close">Đóng</string>
     <string name="common_save">Lưu</string>
     <string name="settings_save_and_apply">Lưu và áp dụng</string>
     <string name="common_add">Thêm</string>

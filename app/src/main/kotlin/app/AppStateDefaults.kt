@@ -35,9 +35,9 @@ val DefaultRouteRules = listOf(
     ),
     RouteRule(
         id = 2,
-        remarks = "Block-QUIC",
+        remarks = "Block-QUIC-STUN",
         outboundTag = "block",
-        port = "443",
+        port = "443,3478,5349,3479,5350,19302-19305",
         protocol = "",
         network = "udp",
         enabled = true,

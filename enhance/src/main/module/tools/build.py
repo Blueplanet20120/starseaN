@@ -109,19 +109,21 @@ def build_libraries(args, abi, environment):
     ):
         raise ValueError("Invalid runtime module version")
     identity = build_identity(args, abi)
-    (output / "ae_build_identity.h").write_text(
-        "#define AE_MODULE_VERSION_CODE "
-        + json.dumps(properties["versionCode"])
-        + "\n"
-        + "#define AE_MODULE_VERSION "
-        + json.dumps(version)
-        + "\n"
-        + "#define AE_MODULE_BUILD_ID "
-        + json.dumps(identity)
-        + "\n",
-        newline="\n",
+    # write_bytes keeps LF on Python older than 3.10, which has no Path.write_text(newline=).
+    (output / "ae_build_identity.h").write_bytes(
+        (
+            "#define AE_MODULE_VERSION_CODE "
+            + json.dumps(properties["versionCode"])
+            + "\n"
+            + "#define AE_MODULE_VERSION "
+            + json.dumps(version)
+            + "\n"
+            + "#define AE_MODULE_BUILD_ID "
+            + json.dumps(identity)
+            + "\n"
+        ).encode()
     )
-    (output / "runtime-identity.prop").write_text("buildId=" + identity + "\n", newline="\n")
+    (output / "runtime-identity.prop").write_bytes(("buildId=" + identity + "\n").encode())
     target = TARGETS[abi] + str(args.min_sdk)
     core_objects = []
     for source in sorted((ROOT / "native/common").glob("*.c")):

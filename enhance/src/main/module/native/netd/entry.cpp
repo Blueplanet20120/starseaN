@@ -30,6 +30,14 @@
 #include "../broker/server.h"
 #include "../common/session.h"
 
+// NDK 27 drops these from the public header. They remain exported by libc.
+#pragma GCC visibility push(default)
+extern "C" {
+uint32_t __system_property_area_serial(void);
+uint32_t __system_property_serial(const prop_info *);
+}
+#pragma GCC visibility pop
+
 namespace {
 constexpr const char *kTag = "AsteriskEnhance";
 struct NetContext26 {

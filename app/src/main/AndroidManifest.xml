@@ -11,12 +11,14 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE"
         tools:ignore="ForegroundServicesPolicy" />
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
         tools:ignore="ForegroundServicesPolicy" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
 
     <!-- Required to resolve labels and icons for the per-app proxy package list. -->
     <uses-permission
@@ -59,6 +61,7 @@
 
                 <data android:scheme="clash" />
                 <data android:host="install-config" />
+                <data android:host="install-sub" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -68,6 +71,7 @@
 
                 <data android:scheme="clashmeta" />
                 <data android:host="install-config" />
+                <data android:host="install-sub" />
             </intent-filter>
         </activity>
 
@@ -185,14 +189,28 @@
                 android:value="true" />
         </service>
 
+        <receiver
+            android:name="features.boot.AutoConnectBootReceiver"
+            android:enabled="false"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name="engine.vpn.StarseaVpnService"
             android:exported="false"
+            android:foregroundServiceType="systemExempted"
             android:permission="android.permission.BIND_VPN_SERVICE"
-            tools:ignore="VpnServicePolicy">
+            tools:ignore="ForegroundServicePermission,VpnServicePolicy">
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
+            <meta-data
+                android:name="android.net.VpnService.SUPPORTS_ALWAYS_ON"
+                android:value="true" />
         </service>
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

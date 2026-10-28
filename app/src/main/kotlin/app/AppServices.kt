@@ -4,6 +4,7 @@
 package app
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import android.content.Intent
 import android.net.Uri
 import data.backup.AppBackupUseCase
 import engine.proxy.AndroidProxyEngine
@@ -47,6 +48,7 @@ internal data class AppServices(
     val rootBootScriptUseCase: RootBootScriptUseCase,
     val rootEbpfProbeUseCase: RootEbpfProbeUseCase,
     val tipNotifier: AndroidToastTipNotifier,
+    val requestVpnPermission: suspend (Intent) -> Boolean,
     val logFileCreator: suspend (String) -> Uri?,
     val coreLogRepository: CoreLogRepository,
     val accessLogRepository: CoreLogRepository,
