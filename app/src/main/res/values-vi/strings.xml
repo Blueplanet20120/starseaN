@@ -24,7 +24,6 @@
     <string name="resource_file_download_notification_channel">Cập nhật tệp tài nguyên</string>
     <string name="resource_file_download_notification_title">Đang cập nhật tệp tài nguyên</string>
     <string name="resource_file_download_notification_progress">Đang tải %1$s</string>
-    <string name="resource_file_download_notification_cancel">Hủy</string>
     <string name="resource_file_download_notification_cancelled">Đã hủy cập nhật tệp tài nguyên</string>
     <string name="resource_file_download_notification_complete">Cập nhật tệp tài nguyên hoàn tất</string>
     <string name="resource_file_download_notification_failed">Cập nhật tệp tài nguyên thất bại: %1$s</string>
@@ -76,8 +75,6 @@
     <string name="nav_proxy">Proxy</string>
     <string name="nav_routing">Định tuyến</string>
     <string name="nav_apps">Ứng dụng</string>
-    <string name="nav_settings">Cài đặt</string>
-
     <!-- Settings -->
     <string name="settings_title">Cài đặt</string>
     <string name="settings_theme">Giao diện</string>
@@ -125,7 +122,6 @@
     <string name="settings_proxy_tun2socks">Cài đặt proxy (TUN2SOCKS)</string>
     <string name="settings_proxy_bpf2socks">Cài đặt proxy (BPF2SOCKS)</string>
     <string name="settings_proxy_vpn_service">Cài đặt proxy (VPN Service)</string>
-    <string name="settings_root_boot_script">Tự khởi động cùng hệ thống</string>
     <string name="settings_root_boot_script_summary">Tạo script khởi động service.d</string>
     <string name="settings_root_boot_script_failed">Thiết lập tự khởi động thất bại</string>
     <string name="settings_root_ebpf_matcher">Sử dụng bộ khớp eBPF</string>
@@ -136,7 +132,6 @@
     <string name="enhancement_module_apk_install_failed">Công cụ ROOT không cài trực tiếp được APK này. Nếu không hỗ trợ APK, hãy xuất APK, đổi .apk thành .zip, cài bằng trình quản lý ROOT rồi khởi động lại</string>
     <string name="enhancement_module_failed">Thao tác mô-đun thất bại. Hãy kiểm tra trình quản lý ROOT và bảo đảm Zygisk Next đã được cài và bật</string>
     <string name="enhancement_module_incompatible">Mô-đun tăng cường đang chạy không hỗ trợ môi trường này</string>
-    <string name="enhancement_module_install_close">Đóng</string>
     <string name="enhancement_module_install_output_waiting">Đang chờ kết quả cài đặt…</string>
     <string name="enhancement_module_install_title">Cài mô-đun tăng cường</string>
     <string name="enhancement_module_installing">Đang cài mô-đun tăng cường…</string>
@@ -148,7 +143,6 @@
     <string name="enhancement_module_root_denied">Quyền ROOT bị từ chối. Hãy cấp quyền rồi thử lại</string>
     <string name="enhancement_module_timeout">Thao tác mô-đun quá thời gian. Hãy kiểm tra trình quản lý ROOT rồi thử lại</string>
     <string name="enhancement_module_title">Mô-đun tăng cường</string>
-    <string name="enhancement_module_update">Cập nhật mô-đun tăng cường</string>
     <string name="enhancement_module_update_available">Ứng dụng này có bản cập nhật mô-đun. Hãy cập nhật và khởi động lại trước khi dùng tăng cường danh sách ứng dụng</string>
     <string name="settings_root_ebpf_bypass_direct_cidrs">Bỏ qua địa chỉ kết nối trực tiếp</string>
     <string name="settings_root_ebpf_bypass_direct_cidrs_summary">Mặc định là danh sách địa chỉ Trung Quốc, có thể điều chỉnh trong quản lý tài nguyên</string>
@@ -309,7 +303,6 @@
     <string name="settings_restore_backup_counts">{groups} nhóm, {servers} nút proxy, {rules} quy tắc định tuyến</string>
     <string name="settings_restore_warning_missing_chain_members">Cảnh báo: {count} thành viên proxy chuỗi tham chiếu đến nút proxy không tồn tại, sẽ được giữ nguyên như cũ.</string>
     <string name="settings_logs">Nhật ký</string>
-    <string name="settings_core_logs">Nhật ký lõi</string>
     <string name="settings_record_access_log">Ghi nhật ký truy cập</string>
     <string name="settings_access_logs">Nhật ký truy cập</string>
     <string name="settings_logcat">Logcat</string>
@@ -444,7 +437,6 @@
     <string name="proxy_server_list_start_proxy">Khởi động proxy</string>
     <string name="proxy_server_list_stop_proxy">Dừng proxy</string>
     <string name="proxy_server_list_scan_qr_code">Quét mã QR</string>
-    <string name="proxy_server_list_import_clipboard">Nhập từ khay nhớ tạm</string>
     <string name="proxy_server_list_import_file">Nhập từ tệp</string>
     <string name="proxy_server_list_manual_input">Nhập thủ công</string>
     <string name="proxy_server_list_add_strategy_group">Thêm Nhóm chiến lược</string>
@@ -723,7 +715,6 @@
     <string name="proxy_error_dialog_diagnostics">Hành động đề xuất</string>
     <string name="proxy_error_dialog_copy">Sao chép nhật ký</string>
     <string name="proxy_error_dialog_copied">Đã sao chép vào bộ nhớ tạm</string>
-    <string name="proxy_error_dialog_close">Đóng</string>
     <string name="shared_core_migration_title">Ứng dụng đã được cập nhật</string>
     <string name="shared_core_migration_message">VPN và ROOT hiện dùng chung Core tích hợp. Xóa Core tùy chỉnh để tiết kiệm dung lượng? Bạn vẫn có thể tải lên Core tùy chỉnh sau.</string>
     <string name="shared_core_migration_stop_root">Dịch vụ ROOT sẽ dừng trước khi xóa.</string>

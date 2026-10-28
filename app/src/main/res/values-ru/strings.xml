@@ -23,7 +23,6 @@
     <string name="resource_file_download_notification_channel">Обновление файлов ресурсов</string>
     <string name="resource_file_download_notification_title">Обновление файлов ресурсов</string>
     <string name="resource_file_download_notification_progress">Скачивание %1$s</string>
-    <string name="resource_file_download_notification_cancel">Отмена</string>
     <string name="resource_file_download_notification_cancelled">Обновление файлов ресурсов отменено</string>
     <string name="resource_file_download_notification_complete">Файлы ресурсов успешно обновлены</string>
     <string name="resource_file_download_notification_failed">Ошибка обновления файлов ресурсов: %1$s</string>
@@ -66,8 +65,6 @@
     <string name="nav_proxy">Прокси</string>
     <string name="nav_routing">Правила</string>
     <string name="nav_apps">Приложения</string>
-    <string name="nav_settings">Настройки</string>
-
     <string name="settings_title">Настройки</string>
     <string name="settings_theme">Тема оформления</string>
     <string name="settings_color_mode">Цветовой режим</string>
@@ -89,7 +86,6 @@
     <string name="settings_proxy_tproxy">Настройки прокси (TPROXY)</string>
     <string name="settings_proxy_tun2socks">Настройки прокси (TUN2SOCKS)</string>
     <string name="settings_proxy_vpn_service">Настройки прокси (VPN Service)</string>
-    <string name="settings_root_boot_script">Автозапуск при загрузке</string>
     <string name="settings_root_boot_script_summary">Генерировать скрипт инициализации в service.d (Magisk/KernelSU)</string>
     <string name="settings_root_boot_script_failed">Не удалось обновить скрипт автозапуска</string>
     <string name="settings_root_ebpf_matcher">Использовать eBPF-файрвол</string>
@@ -100,7 +96,6 @@
     <string name="enhancement_module_apk_install_failed">ROOT-инструмент не смог установить этот APK напрямую. Если APK не поддерживается, экспортируйте APK, смените .apk на .zip, установите его в ROOT-менеджере и перезагрузите устройство</string>
     <string name="enhancement_module_failed">Операция модуля не удалась. Проверьте ROOT-менеджер и убедитесь, что Zygisk Next установлен и включен</string>
     <string name="enhancement_module_incompatible">Работающий модуль улучшения не поддерживает эту среду</string>
-    <string name="enhancement_module_install_close">Закрыть</string>
     <string name="enhancement_module_install_output_waiting">Ожидание вывода установки…</string>
     <string name="enhancement_module_install_title">Установить модуль улучшения</string>
     <string name="enhancement_module_installing">Установка модуля улучшения…</string>
@@ -112,7 +107,6 @@
     <string name="enhancement_module_root_denied">Доступ ROOT отклонен. Разрешите его и повторите</string>
     <string name="enhancement_module_timeout">Операция модуля превысила время ожидания. Проверьте ROOT-менеджер и повторите</string>
     <string name="enhancement_module_title">Модуль улучшения</string>
-    <string name="enhancement_module_update">Обновить модуль улучшения</string>
     <string name="enhancement_module_update_available">Это приложение содержит обновление модуля. Обновите его и перезагрузите устройство перед использованием улучшения списка</string>
     <string name="settings_root_ebpf_bypass_direct_cidrs">Обходить прямые адреса</string>
     <string name="settings_root_ebpf_bypass_direct_cidrs_summary">По умолчанию используются списки подсетей Китая; настроить их можно в Управлении ресурсами</string>
@@ -267,7 +261,6 @@
     <string name="settings_restore_backup_counts">Групп: {groups}, прокси-серверов: {servers}, правил маршрутов: {rules}</string>
     <string name="settings_restore_warning_missing_chain_members">Внимание: {count} ссылок в цепочке прокси ведут на несуществующие серверы. Они будут сохранены как есть.</string>
     <string name="settings_logs">Журналы событий (Логи)</string>
-    <string name="settings_core_logs">Логи ядра</string>
     <string name="settings_record_access_log">Записывать логи доступа (Access log)</string>
     <string name="settings_access_logs">Логи доступа</string>
     <string name="settings_logcat">Лог Android (Logcat)</string>
@@ -396,7 +389,6 @@
     <string name="proxy_server_list_start_proxy">Запустить прокси</string>
     <string name="proxy_server_list_stop_proxy">Остановить прокси</string>
     <string name="proxy_server_list_scan_qr_code">Сканировать QR-код</string>
-    <string name="proxy_server_list_import_clipboard">Импортировать из буфера</string>
     <string name="proxy_server_list_import_file">Импортировать из файла</string>
     <string name="proxy_server_list_manual_input">Ручной ввод</string>
     <string name="proxy_server_list_add_strategy_group">Добавить группу стратегий (Strategy Group)</string>
@@ -713,7 +705,6 @@
     <string name="proxy_error_dialog_diagnostics">Рекомендуемые действия</string>
     <string name="proxy_error_dialog_copy">Копировать журнал</string>
     <string name="proxy_error_dialog_copied">Скопировано в буфер обмена</string>
-    <string name="proxy_error_dialog_close">Закрыть</string>
     <string name="shared_core_migration_title">Приложение обновлено</string>
     <string name="shared_core_migration_message">VPN и ROOT теперь используют встроенное ядро совместно. Удалить пользовательское ядро, чтобы освободить место? Позже его можно загрузить снова.</string>
     <string name="shared_core_migration_stop_root">Перед удалением служба ROOT будет остановлена.</string>
