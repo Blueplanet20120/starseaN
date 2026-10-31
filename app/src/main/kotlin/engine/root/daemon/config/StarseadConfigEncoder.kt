@@ -20,7 +20,7 @@ internal object StarseadConfigEncoder {
 }
 
 private fun StarseadConfig.toJsonObject(): JsonObject = buildJsonObject {
-    put("schemaVersion", 5)
+    put("schemaVersion", 6)
     put("owner", owner.wireValue)
     put("coreType", coreType.wireValue)
     put("coreExecutablePath", coreExecutablePath)
@@ -90,7 +90,7 @@ private fun StarseadNetworkConfig.toJsonObject(): JsonObject = buildJsonObject {
     put("fakeDnsIpv4Pool", fakeDnsIpv4Pool?.let(::JsonPrimitive) ?: JsonNull)
     put("ignoredInterfaces", ignoredInterfaces.toJsonArray())
     put("virtualInterfaces", virtualInterfaces.toJsonArray())
-    put("hotspotInterfacePrefixes", hotspotInterfacePrefixes.toJsonArray())
+    put("hotspotInterfaces", hotspotInterfaces.toJsonArray())
     put("proxyPrivateCidrs", proxyPrivateCidrs.toJsonArray())
     put("bypassPrivateCidrs", bypassPrivateCidrs.toJsonArray())
     put("appPolicy", appPolicy.toJsonObject())
@@ -144,7 +144,7 @@ private fun StarseadHelper.toJsonObject(): JsonObject = when (this) {
         put("udpBatchSize", udpBatchSize)
         put("maxUdpSessions", maxUdpSessions)
         put("maxUdpBindings", maxUdpBindings)
-        put("udpIdleTimeoutSeconds", udpIdleTimeoutSeconds)
+        put("udpIdleTimeoutMilliseconds", udpIdleTimeoutMilliseconds)
         put("maxUdpPendingBytes", maxUdpPendingBytes)
         put("dnsTransactionTimeoutMilliseconds", dnsTransactionTimeoutMilliseconds)
     }

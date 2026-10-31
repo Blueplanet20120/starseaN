@@ -16,7 +16,7 @@
 
 struct starsead_resource_operation;
 
-#define STARSEAD_CONFIG_VERSION 5U
+#define STARSEAD_CONFIG_VERSION 6U
 #define STARSEAD_MAX_JSON_SIZE (8U * 1024U * 1024U)
 #define STARSEAD_JSON_MAX_TOKENS 262144U
 #define STARSEAD_JSON_MAX_DEPTH 64U
@@ -59,7 +59,7 @@ struct starsead_resource_operation;
 #define STARSEAD_PROCESS_MAX_ENV_ENTRY 8192U
 #define STARSEAD_PROCESS_MAX_INHERITED_FDS 8U
 #define STARSEAD_PROCESS_TERM_GRACE_MILLIS 3000U
-#define STARSEAD_PROCESS_KILL_REAP_MILLIS 1000U
+#define STARSEAD_PROCESS_KILL_REAP_MILLIS 5000U
 // A readiness check reads one /proc listing; a short interval keeps the
 // notice delay small for children that become ready a few hundred ms in.
 #define STARSEAD_READINESS_POLL_INTERVAL_MILLIS 20U
@@ -82,7 +82,6 @@ struct starsead_resource_operation;
 #define STARSEAD_XTABLES_MAX_HOOK_ARGUMENTS 10U
 #define STARSEAD_RULE_TRANSACTION_MAX_ROUTES 8U
 #define STARSEAD_MAX_POLL_SOURCES 64U
-#define STARSEAD_MAX_NETWORK_IMMEDIATE_REQUESTS 64U
 #define STARSEAD_MAX_CRON_EXPRESSION 256U
 #define STARSEAD_MAX_WIFI_IDENTIFIERS 64U
 #define STARSEAD_MAX_WIFI_SSID_BYTES 32U
@@ -230,6 +229,7 @@ struct starsead_wifi_monitor {
     uint32_t sequence;
     struct starsead_wifi_identity baseline_identity;
     uint64_t debounce_deadline_milliseconds;
+    unsigned int association_retry_count;
     uint64_t startup_probe_until_milliseconds;
     bool baseline_connected;
     bool debounce_armed;
@@ -341,7 +341,7 @@ struct starsead_bpf_helper_config {
     uint32_t udp_batch_size;
     uint32_t max_udp_sessions;
     uint32_t max_udp_bindings;
-    uint32_t udp_idle_timeout_seconds;
+    uint32_t udp_idle_timeout_milliseconds;
     uint32_t max_udp_pending_bytes;
     uint32_t dns_transaction_timeout_milliseconds;
 };
@@ -388,8 +388,8 @@ struct starsead_config {
     size_t ignored_interface_count;
     char virtual_interfaces[STARSEAD_MAX_INTERFACES][STARSEAD_MAX_INTERFACE_NAME];
     size_t virtual_interface_count;
-    char hotspot_interface_prefixes[STARSEAD_MAX_INTERFACES][STARSEAD_MAX_INTERFACE_NAME];
-    size_t hotspot_interface_prefix_count;
+    char hotspot_interfaces[STARSEAD_MAX_INTERFACES][STARSEAD_MAX_INTERFACE_NAME];
+    size_t hotspot_interface_count;
     char proxy_private_cidrs[STARSEAD_MAX_CIDRS][STARSEAD_MAX_CIDR];
     size_t proxy_private_cidr_count;
     char bypass_private_cidrs[STARSEAD_MAX_CIDRS][STARSEAD_MAX_CIDR];
@@ -613,7 +613,8 @@ void starsead_text_writer_yaml_string(struct starsead_text_writer *, const char 
 int starsead_text_writer_take(
     struct starsead_text_writer *, struct starsead_anonymous_document *);
 
-#define STARSEAD_BYTE_BUFFER_MAX_BYTES (8U * 1024U * 1024U)
+/* Matches captured action stdout, so a table listing fits whatever was captured. */
+#define STARSEAD_BYTE_BUFFER_MAX_BYTES (16U * 1024U * 1024U)
 struct starsead_byte_buffer {
     unsigned char *bytes;
     size_t length;
@@ -1014,6 +1015,7 @@ int starsead_system_process_backends_init(
     struct starsead_system_process_context *, const struct starsead_process_spec *,
     const struct starsead_process_spec *, struct starsead_readiness_backend *,
     struct starsead_stop_backend *);
+int starsead_process_wait_state_describe(int pid, char *out, size_t size);
 
 enum starsead_resource_operation_kind {
     STARSEAD_RESOURCE_OPERATION_IPTABLES_CHAIN,
@@ -2464,11 +2466,14 @@ struct starsead_network_runtime {
     uint64_t deadline_milliseconds;
     bool integrity_loss;
     const struct starsead_network_effect_sink *effect_sink;
-    struct starsead_network_effect_request
-        immediate_requests[STARSEAD_MAX_NETWORK_IMMEDIATE_REQUESTS];
+    /* Grows with the netd networks; one request per guarded interface at most. */
+    struct starsead_network_effect_request *immediate_requests;
     size_t immediate_request_count;
-    struct starsead_netd_network netd_networks[STARSEAD_MAX_INTERFACES];
+    size_t immediate_request_capacity;
+    /* Grows with the netd networks seen; overflow marks a failed allocation. */
+    struct starsead_netd_network *netd_networks;
     size_t netd_network_count;
+    size_t netd_network_capacity;
     struct starsead_netd_rule *netd_rules;
     bool netd_network_overflow;
     bool ipv6_guard_resync;

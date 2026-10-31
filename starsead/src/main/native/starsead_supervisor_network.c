@@ -86,7 +86,7 @@ int starsead_supervisor_effect_open_network(void *opaque) {
         char message[192U];
         int written = snprintf(message, sizeof(message), "network open failed: detail=%s",
             error[0] == '\0' ? "unavailable" : error);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_NETWORK, message);
         }
         return -1;
@@ -232,7 +232,7 @@ static int system_reconcile_local_bypass_consumer(
         char message[256U];
         int written = snprintf(message, sizeof(message),
             "local bypass plan failed: chain=%s detail=%s", consumer_chain, error);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_ERROR,
                 STARSEAD_COMPONENT_RULES, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
         }
@@ -332,7 +332,7 @@ failed:
             "bpf2socks local address map reconcile failed: family=%s pin=%d detail=%s",
             family, path != NULL && object_id != 0U ? 1 : 0,
             error[0] == '\0' ? "unavailable" : error);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_HELPER, message);
         }
     }
@@ -341,20 +341,39 @@ failed:
 
 static bool system_hotspot_interface_selected(
     const struct starsead_config *config, const char *name) {
-    for (size_t index = 0U; index < config->hotspot_interface_prefix_count; ++index) {
+    for (size_t index = 0U; index < config->hotspot_interface_count; ++index) {
         if (starsead_interface_matches_selector(
-                name, config->hotspot_interface_prefixes[index])) return true;
+                name, config->hotspot_interfaces[index])) return true;
     }
     return false;
+}
+
+/* Links disappear normally, for example while tethering is stopped or recreated.
+ * Keep lookup failures distinct so a live link's failures remain fatal. */
+static int system_interface_index(const char *name, uint32_t *index) {
+    *index = if_nametoindex(name);
+    if (*index != 0U) return 0;
+    return errno == ENODEV || errno == ENXIO || errno == ENOENT ? 1 : -1;
+}
+
+int starsead_supervisor_interface_state(const char *name, uint32_t index) {
+    uint32_t current = 0U;
+    int found = system_interface_index(name, &current);
+    if (found != 0) return found;
+    return current == index ? 0 : 1;
 }
 
 static int system_clear_android_hotspot_offload_interface(
     struct starsead_system_supervisor *system, const char *name, uint32_t priority) {
     // Probed and removed over rtnetlink; no tc process per interface and priority.
-    uint32_t interface_index = if_nametoindex(name);
+    uint32_t interface_index = 0U;
+    int found = system_interface_index(name, &interface_index);
+    if (found != 0) return found == 1 ? 0 : -1;
     bool present = false;
-    return interface_index == 0U ? -1 : starsead_supervisor_rtnl_tether_offload(
+    int result = starsead_supervisor_rtnl_tether_offload(
         system, interface_index, priority, true, &present);
+    if (result != 0 && starsead_supervisor_interface_state(name, interface_index) == 1) return 0;
+    return result;
 }
 
 static void system_log_optional_hotspot_offload_cleanup_failure(
@@ -364,7 +383,7 @@ static void system_log_optional_hotspot_offload_cleanup_failure(
         "optional Android IPv6 tethering offload cleanup failed%s%s%s%s; continuing",
         name != NULL ? " for " : "", name != NULL ? name : "",
         priority != NULL ? " pref " : "", priority != NULL ? priority : "");
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_WARNING,
             STARSEAD_COMPONENT_RUNTIME, STARSEAD_LOG_EVENT_CAPABILITY_ADJUSTED, message);
     }
@@ -451,7 +470,7 @@ static int system_reconcile_hotspot_tc_interface(
     sysctl.sysctl_id = STARSEAD_SYSCTL_ROUTE_LOCALNET;
     if (snprintf(sysctl.interface_name, sizeof(sysctl.interface_name), "%s", name) <= 0) return -1;
     sysctl.interface_index = index;
-    if (starsead_supervisor_sysctl_read(&sysctl, &probe.route_localnet_value) != 0) return -1;
+    if (starsead_supervisor_sysctl_read(&sysctl, &probe.route_localnet_value) != 0) goto failed;
 
     struct starsead_resource_operation qdisc;
     memset(&qdisc, 0, sizeof(qdisc));
@@ -460,7 +479,7 @@ static int system_reconcile_hotspot_tc_interface(
     qdisc.resource.tc_qdisc.interface_index = index;
     (void)snprintf(qdisc.resource.tc_qdisc.interface_name,
         sizeof(qdisc.resource.tc_qdisc.interface_name), "%s", name);
-    if (system_tc_slot_for_qdisc(system, &qdisc, &probe.qdisc) != 0) return -1;
+    if (system_tc_slot_for_qdisc(system, &qdisc, &probe.qdisc) != 0) goto failed;
 
     struct starsead_resource_operation filter;
     memset(&filter, 0, sizeof(filter));
@@ -471,20 +490,45 @@ static int system_reconcile_hotspot_tc_interface(
     filter.resource.tc_filter.filter_id = STARSEAD_FILTER_HOTSPOT_EGRESS;
     filter.resource.tc_filter.direction = STARSEAD_TC_DIRECTION_EGRESS;
     filter.resource.tc_filter.program_id = STARSEAD_PROGRAM_BPF2SOCKS_EGRESS;
-    if (system_tc_slot_for_filter(system, &filter, &probe.egress) != 0) return -1;
+    if (system_tc_slot_for_filter(system, &filter, &probe.egress) != 0) goto failed;
     filter.resource.tc_filter.filter_id = STARSEAD_FILTER_HOTSPOT_INGRESS;
     filter.resource.tc_filter.direction = STARSEAD_TC_DIRECTION_INGRESS;
     filter.resource.tc_filter.program_id = STARSEAD_PROGRAM_BPF2SOCKS_INGRESS;
-    if (system_tc_slot_for_filter(system, &filter, &probe.ingress) != 0) return -1;
+    if (system_tc_slot_for_filter(system, &filter, &probe.ingress) != 0) goto failed;
 
     struct starsead_tc_plan plan;
     char error[128U];
     if (starsead_tc_install_plan_build(&system->loaded_config.config,
-            &probe, &plan, error, sizeof(error)) != 0) return -1;
+            &probe, &plan, error, sizeof(error)) != 0) goto failed;
     for (size_t operation = 0U; operation < plan.operation_count; ++operation) {
-        if (system_tc_apply_record(system, &plan.operations[operation].operation) != 0) return -1;
+        if (system_tc_apply_record(system, &plan.operations[operation].operation) != 0) goto failed;
     }
     return 0;
+
+failed:
+    if (starsead_supervisor_interface_state(name, index) != 1) return -1;
+    // The old link's TC state vanished with it. Do not restore its sysctl to a
+    // replacement link with the same name; a later link event reconciles that link.
+    struct starsead_effect effect = {.kind = STARSEAD_EFFECT_SYSCTL};
+    effect.resource.sysctl = sysctl;
+    starsead_effect_journal_forget(&system->volatile_effects, &effect);
+    return 0;
+}
+
+/* No event restores route_localnet for a link removed between reconciles. Retire
+ * those entries so repeated tethering cannot fill the shared volatile journal. */
+static void system_forget_gone_hotspot_sysctls(struct starsead_system_supervisor *system) {
+    struct starsead_effect_journal *journal = &system->volatile_effects;
+    for (size_t index = journal->count; index > 0U; --index) {
+        const struct starsead_effect *entry = &journal->entries[index - 1U];
+        if (entry->kind != STARSEAD_EFFECT_SYSCTL ||
+            entry->resource.sysctl.sysctl_id != STARSEAD_SYSCTL_ROUTE_LOCALNET ||
+            entry->resource.sysctl.interface_index == 0U ||
+            starsead_supervisor_interface_state(entry->resource.sysctl.interface_name,
+                entry->resource.sysctl.interface_index) != 1) continue;
+        struct starsead_effect stale = *entry;
+        starsead_effect_journal_forget(journal, &stale);
+    }
 }
 
 int starsead_supervisor_reconcile_hotspot_tc(struct starsead_system_supervisor *system) {
@@ -494,6 +538,7 @@ int starsead_supervisor_reconcile_hotspot_tc(struct starsead_system_supervisor *
     if (offload_policy != STARSEAD_HOTSPOT_IPV6_OFFLOAD_KEEP &&
         system_clear_android_hotspot_offload(system, offload_policy) != 0) return -1;
     if (!bpf2socks) return 0;
+    system_forget_gone_hotspot_sysctls(system);
     struct ifaddrs *addresses = NULL;
     if (getifaddrs(&addresses) != 0) return -1;
     char handled[STARSEAD_MAX_ADDRESSES][STARSEAD_MAX_INTERFACE_NAME];
@@ -511,8 +556,10 @@ int starsead_supervisor_reconcile_hotspot_tc(struct starsead_system_supervisor *
             result = -1;
             break;
         }
-        uint32_t interface_index = if_nametoindex(entry->ifa_name);
-        if (interface_index == 0U || snprintf(handled[handled_count],
+        uint32_t interface_index = 0U;
+        int found = system_interface_index(entry->ifa_name, &interface_index);
+        if (found == 1) continue;
+        if (found != 0 || snprintf(handled[handled_count],
                 sizeof(handled[handled_count]), "%s", entry->ifa_name) <= 0 ||
             system_reconcile_hotspot_tc_interface(
                 system, entry->ifa_name, interface_index) != 0) {

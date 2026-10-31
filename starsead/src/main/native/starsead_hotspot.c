@@ -5,7 +5,7 @@
 
 enum starsead_hotspot_ipv6_offload_policy starsead_hotspot_ipv6_offload_policy_for(
     const struct starsead_config *config) {
-    if (config == NULL || config->hotspot_interface_prefix_count == 0U ||
+    if (config == NULL || config->hotspot_interface_count == 0U ||
         config->mode == STARSEAD_MODE_EBPF) return STARSEAD_HOTSPOT_IPV6_OFFLOAD_KEEP;
     if (config->mode == STARSEAD_MODE_BPF2SOCKS) {
         return STARSEAD_HOTSPOT_IPV6_OFFLOAD_REMOVE_PREF1_REQUIRED;

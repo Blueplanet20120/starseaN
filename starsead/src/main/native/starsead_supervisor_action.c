@@ -125,6 +125,29 @@ int starsead_supervisor_pump_condition_periodic(struct starsead_system_superviso
     }
 }
 
+/* Wait for a started stop coordinator. Wake at the TERM grace deadline so
+ * SIGKILL goes out on time and the reap still gets the full KILL window. */
+int starsead_supervisor_pump_stop(struct starsead_system_supervisor *system) {
+    const struct starsead_stop_coordinator *coordinator = &system->stop_coordinator;
+    if (coordinator->kill_deadline_milliseconds > (uint64_t)INT64_MAX) return -1;
+    const int64_t term_deadline = (int64_t)coordinator->term_deadline_milliseconds;
+    const struct starsead_deadline deadline = {
+        .armed = true,
+        .monotonic_milliseconds = (int64_t)coordinator->kill_deadline_milliseconds,
+    };
+    for (;;) {
+        if (starsead_supervisor_stop_done(system)) return 0;
+        int64_t now = 0;
+        if (starsead_supervisor_runtime_clock(system, &now) != 0 ||
+            now >= deadline.monotonic_milliseconds) return -1;
+        struct starsead_deadline iteration = deadline;
+        if (now < term_deadline) iteration.monotonic_milliseconds = term_deadline;
+        struct starsead_runtime_delta delta;
+        if (starsead_runtime_pump_once(system->runtime, &iteration, &delta) != 0) return -1;
+        if (starsead_supervisor_accept_pump_delta(system, &delta) != 0) return -1;
+    }
+}
+
 static int system_action_signal_unverified(
     struct starsead_system_supervisor *system, int signal_number) {
     pid_t pid = (pid_t)system->action_process.pid;
@@ -150,15 +173,9 @@ static int system_action_cleanup(struct starsead_system_supervisor *system,
         system->stop_result = starsead_stop_coordinator_begin(
             &system->stop_coordinator, NULL, &system->action_identity,
             &system->stop_backend, (uint64_t)now);
-        if (system->stop_result == STARSEAD_STOP_PENDING) {
-            struct starsead_deadline deadline = {
-                .armed = true,
-                .monotonic_milliseconds =
-                    (int64_t)system->stop_coordinator.kill_deadline_milliseconds,
-            };
-            if (starsead_supervisor_pump_condition(system, &deadline, starsead_supervisor_stop_done) != 0) {
-                system->stop_result = STARSEAD_STOP_FAILED;
-            }
+        if (system->stop_result == STARSEAD_STOP_PENDING &&
+            starsead_supervisor_pump_stop(system) != 0) {
+            system->stop_result = STARSEAD_STOP_FAILED;
         }
         system->stopping_children = false;
         if (system->stop_result != STARSEAD_STOP_COMPLETE) return -1;
@@ -241,6 +258,43 @@ void starsead_supervisor_action_stderr_summary(
     }
 }
 
+/*
+ * Accepts an snprintf-formatted diagnostic for logging. A message longer than
+ * its buffer is kept truncated with a "..." mark rather than dropped.
+ */
+bool starsead_supervisor_message_fit(char *message, size_t size, int written) {
+    if (message == NULL || size < 4U || written <= 0) return false;
+    if ((size_t)written >= size) memcpy(&message[size - 4U], "...", 4U);
+    return true;
+}
+
+/*
+ * Grows captured stdout to hold at least `wanted` bytes. A failed or
+ * over-limit request keeps the current buffer, so callers see overflow.
+ */
+int starsead_supervisor_action_stdout_reserve(
+    struct starsead_system_supervisor *system, size_t wanted) {
+    if (system == NULL || wanted > STARSEAD_ACTION_STDOUT_LIMIT) return -1;
+    if (wanted <= system->action_stdout_capacity) return 0;
+    size_t capacity = system->action_stdout_capacity == 0U
+        ? STARSEAD_ACTION_STDOUT_INITIAL : system->action_stdout_capacity;
+    while (capacity < wanted) capacity *= 2U;
+    if (capacity > STARSEAD_ACTION_STDOUT_LIMIT) capacity = STARSEAD_ACTION_STDOUT_LIMIT;
+    char *bytes = realloc(system->action_stdout, capacity);
+    if (bytes == NULL) return -1;
+    system->action_stdout = bytes;
+    system->action_stdout_capacity = capacity;
+    return 0;
+}
+
+void starsead_supervisor_action_stdout_release(struct starsead_system_supervisor *system) {
+    if (system == NULL) return;
+    free(system->action_stdout);
+    system->action_stdout = NULL;
+    system->action_stdout_capacity = 0U;
+    system->action_stdout_length = 0U;
+}
+
 int starsead_supervisor_action_run_spec(struct starsead_system_supervisor *system,
     const struct starsead_process_spec *spec, bool capture_stdout, int *exit_status) {
     if (system->action_spawned || spec == NULL || exit_status == NULL) {
@@ -250,7 +304,7 @@ int starsead_supervisor_action_run_spec(struct starsead_system_supervisor *syste
                 "action execution rejected: busy=%d spec=%d exitStatus=%d",
                 system->action_spawned ? 1 : 0, spec != NULL ? 1 : 0,
                 exit_status != NULL ? 1 : 0);
-            if (written > 0 && (size_t)written < sizeof(message)) {
+            if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
                 (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_ERROR,
                     STARSEAD_COMPONENT_RUNTIME, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
             }
@@ -279,7 +333,7 @@ int starsead_supervisor_action_run_spec(struct starsead_system_supervisor *syste
         int written = snprintf(message, sizeof(message),
             "action execution failed: phase=spawn detail=%s",
             error[0] == '\0' ? "unavailable" : error);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             (void)starsead_log_line(&system->logger,
                 system->owned_cleanup_in_progress ? STARSEAD_LOG_LEVEL_WARNING : STARSEAD_LOG_LEVEL_ERROR,
                 STARSEAD_COMPONENT_RUNTIME, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
@@ -387,7 +441,7 @@ failed:
             system->action_setup.complete ? 1 : 0,
             system->action_setup.fatal ? 1 : 0,
             error[0] == '\0' ? "unavailable" : error, stderr_summary);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RUNTIME, message);
         }
     }
@@ -526,7 +580,7 @@ static void system_rule_batch_log_failure(struct starsead_system_supervisor *sys
     int written = snprintf(message, sizeof(message),
         "rule batch commit failed: phase=%s family=%s exitStatus=%d stderr=%s",
         phase, family, exit_status, stderr_summary);
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RULES, message);
     }
 }
@@ -691,7 +745,7 @@ int starsead_supervisor_effect_capability(void *opaque) {
         char message[320U];
         int written = snprintf(message, sizeof(message),
             "optional SELinux policy setup incomplete; continuing: %s", error);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_WARNING,
                 STARSEAD_COMPONENT_RUNTIME, STARSEAD_LOG_EVENT_CAPABILITY_ADJUSTED, message);
         }

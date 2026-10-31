@@ -135,17 +135,17 @@ static int render_bpf(const struct starsead_config *config, int direct_ipv4_fd, 
     starsead_text_writer_format(&writer,
         ",\"workerCount\":%u,\"tcpBufferSize\":%u,\"maxTcpSessions\":%u,\"connectTimeoutMilliseconds\":%u"
         ",\"tcpIdleTimeoutMilliseconds\":%u,\"udpSocketBufferSize\":%u,\"udpBatchSize\":%u,\"maxUdpSessions\":%u"
-        ",\"maxUdpBindings\":%u,\"udpIdleTimeoutSeconds\":%u,\"maxUdpPendingBytes\":%u,\"dnsTransactionTimeoutMilliseconds\":%u",
+        ",\"maxUdpBindings\":%u,\"udpIdleTimeoutMilliseconds\":%u,\"maxUdpPendingBytes\":%u,\"dnsTransactionTimeoutMilliseconds\":%u",
         bpf->worker_count, bpf->tcp_buffer_size, bpf->max_tcp_sessions, bpf->connect_timeout_milliseconds,
         bpf->tcp_idle_timeout_milliseconds, bpf->udp_socket_buffer_size, bpf->udp_batch_size, bpf->max_udp_sessions,
-        bpf->max_udp_bindings, bpf->udp_idle_timeout_seconds, bpf->max_udp_pending_bytes,
+        bpf->max_udp_bindings, bpf->udp_idle_timeout_milliseconds, bpf->max_udp_pending_bytes,
         bpf->dns_transaction_timeout_milliseconds);
     starsead_text_writer_literal(&writer, ",\"socksHost\":");
     starsead_text_writer_json_string(&writer, bpf->socks_host);
     starsead_text_writer_format(&writer, ",\"socksPort\":%u,\"enableIpv6\":%s,\"enableDnsHijack\":%s",
         (unsigned)bpf->socks_port, config->enable_ipv6 ? "true" : "false", config->enable_local_dns ? "true" : "false");
-    starsead_text_writer_literal(&writer, ",\"hotspotInterfacePrefixes\":");
-    writer_string_array(&writer, config->hotspot_interface_prefixes, config->hotspot_interface_prefix_count);
+    starsead_text_writer_literal(&writer, ",\"hotspotInterfaces\":");
+    writer_string_array(&writer, config->hotspot_interfaces, config->hotspot_interface_count);
     starsead_text_writer_literal(&writer, ",\"ignoredInterfaces\":");
     writer_string_array(&writer, config->ignored_interfaces, config->ignored_interface_count);
     starsead_text_writer_literal(&writer, ",\"proxyPrivateCidrsV4\":");

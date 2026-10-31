@@ -195,7 +195,9 @@ class ProxyTrafficStatsService : Service() {
             sample.totalBytes.downlink.toTrafficSizeString(),
         )
         return notificationBuilder()
-            .setSmallIcon(speedIcon.create(sample.speedBytesPerSecond.downlink))
+            .setSmallIcon(speedIcon.create(
+                sample.speedBytesPerSecond.uplink + sample.speedBytesPerSecond.downlink,
+            ))
             .apply {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)

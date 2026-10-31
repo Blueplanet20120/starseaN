@@ -16,7 +16,7 @@ uint32_t starsead_supervisor_rule_categories(const struct starsead_config *confi
             STARSEAD_RULE_CATEGORY_BIT(STARSEAD_RULE_CATEGORY_LOCAL_BYPASS);
     } else if (config->mode == STARSEAD_MODE_BPF2SOCKS) {
         categories |= STARSEAD_RULE_CATEGORY_BIT(STARSEAD_RULE_CATEGORY_BPF);
-        if (config->hotspot_interface_prefix_count != 0U) {
+        if (config->hotspot_interface_count != 0U) {
             categories |= STARSEAD_RULE_CATEGORY_BIT(STARSEAD_RULE_CATEGORY_TC) |
                 STARSEAD_RULE_CATEGORY_BIT(STARSEAD_RULE_CATEGORY_HOTSPOT);
         }
@@ -24,7 +24,7 @@ uint32_t starsead_supervisor_rule_categories(const struct starsead_config *confi
     if (config->matcher.enabled) {
         categories |= STARSEAD_RULE_CATEGORY_BIT(STARSEAD_RULE_CATEGORY_BPF);
     }
-    if (config->hotspot_interface_prefix_count != 0U) {
+    if (config->hotspot_interface_count != 0U) {
         categories |= STARSEAD_RULE_CATEGORY_BIT(STARSEAD_RULE_CATEGORY_HOTSPOT);
     }
     if (config->enable_local_dns) {
@@ -819,7 +819,7 @@ int starsead_supervisor_reconcile_remove_phase(
                     phase < STARSEAD_RECONCILE_PHASE_COUNT
                 ? names[phase] : "invalid");
         starsead_supervisor_reconcile_error(error, error_size,
-            written > 0 && (size_t)written < sizeof(message)
+            starsead_supervisor_message_fit(message, sizeof(message), written)
                 ? message : "owned resource reconcile failed");
     }
     return result;

@@ -143,7 +143,7 @@ int starsead_supervisor_tc_netlink_dispatch(
         char message[96U];
         int written = snprintf(message, sizeof(message),
             "TC netlink poll failed: revents=0x%x", (unsigned short)ready);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_ERROR,
                 STARSEAD_COMPONENT_RULES, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
         }
@@ -206,7 +206,7 @@ int starsead_supervisor_tc_netlink_dispatch(
                 (unsigned)first.nlmsg_type, (unsigned)first.nlmsg_flags,
                 first.nlmsg_seq, first.nlmsg_pid, kernel_error,
                 error[0] == '\0' ? "unavailable" : error);
-            if (written > 0 && (size_t)written < sizeof(message)) {
+            if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
                 (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_ERROR,
                     STARSEAD_COMPONENT_RULES, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
             }

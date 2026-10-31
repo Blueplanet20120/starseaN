@@ -210,9 +210,13 @@ static int system_service_wifi_reconcile(
     enum starsead_wifi_transition transition = STARSEAD_WIFI_TRANSITION_BASELINE_DISCONNECTED;
     struct starsead_wifi_identity identity;
     bool has_transition = false;
-    char error[128U];
+    char error[128U] = {0};
     if (starsead_wifi_monitor_take_reconcile(&system->wifi_monitor, now,
-            &transition, &identity, &has_transition, error, sizeof(error)) != 0) return -1;
+            &transition, &identity, &has_transition, error, sizeof(error)) != 0) {
+        starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_NETWORK,
+            error[0] ? error : "WiFi association reconcile failed");
+        return -1;
+    }
     if (has_transition) {
         system_service_apply_action(system,
             starsead_service_control_on_wifi(
@@ -512,9 +516,14 @@ static int system_runtime_dispatch_log(struct starsead_system_supervisor *system
         if (count < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return 0;
         if (count > 0 && slot == 2U && stream == STARSEAD_LOG_STREAM_STDOUT &&
             system->action_capture_stdout) {
-            size_t available = sizeof(system->action_stdout) - system->action_stdout_length;
+            size_t wanted = system->action_stdout_length + (size_t)count;
+            (void)starsead_supervisor_action_stdout_reserve(system,
+                wanted < STARSEAD_ACTION_STDOUT_LIMIT ? wanted : STARSEAD_ACTION_STDOUT_LIMIT);
+            size_t available = system->action_stdout_capacity - system->action_stdout_length;
             size_t copied = (size_t)count < available ? (size_t)count : available;
-            memcpy(&system->action_stdout[system->action_stdout_length], bytes, copied);
+            if (copied != 0U) {
+                memcpy(&system->action_stdout[system->action_stdout_length], bytes, copied);
+            }
             system->action_stdout_length += copied;
             if (copied != (size_t)count) system->action_stdout_overflow = true;
         }
@@ -750,7 +759,7 @@ static int system_effect_event(void *opaque, enum starsead_control_event_type ty
             details->message == NULL ? 0 : (int)(details->message_length < 256U
                 ? details->message_length : 256U),
             details->message == NULL ? "" : details->message);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_ERROR,
                 details->component, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
         }
@@ -919,7 +928,7 @@ static void system_log_readiness_failure(struct starsead_system_supervisor *syst
         system_readiness_result_name(result),
         starsead_mode_name(system->loaded_config.config.mode), target,
         system->loaded_config.config.readiness_timeout_milliseconds);
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         starsead_supervisor_log_failure(system,
             role == STARSEAD_CHILD_CORE ? STARSEAD_COMPONENT_CORE : STARSEAD_COMPONENT_HELPER,
             message);
@@ -960,7 +969,7 @@ static int system_tun_compatibility_log(
     int written = snprintf(message, sizeof(message),
         "TUN compatibility path %s failed: %s", operation,
         detail != NULL && detail[0] != '\0' ? detail : "unknown error");
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_ERROR,
             STARSEAD_COMPONENT_HELPER, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
     }
@@ -1139,7 +1148,7 @@ static int system_effect_reconcile(void *opaque, bool *active,
         char message[160U];
         int written = snprintf(message, sizeof(message),
             "rules reconcile failed: stage=%s", failed_stage);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RULES, message);
         }
         return -1;
@@ -1215,7 +1224,7 @@ static int system_effect_stop_children(
             "child stop failed: stage=prepare coreIdentity=%d helperIdentity=%d",
             core == NULL ? -1 : system->core_identity_ready ? 1 : 0,
             helper == NULL ? -1 : system->helper_identity_ready ? 1 : 0);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RUNTIME, message);
         }
         return -1;
@@ -1227,14 +1236,9 @@ static int system_effect_stop_children(
     system->stop_result = starsead_stop_coordinator_begin(
         &system->stop_coordinator, core, helper,
         &system->stop_backend, (uint64_t)now);
-    if (system->stop_result == STARSEAD_STOP_PENDING) {
-        struct starsead_deadline deadline = {
-            .armed = true,
-            .monotonic_milliseconds = (int64_t)system->stop_coordinator.kill_deadline_milliseconds,
-        };
-        if (starsead_supervisor_pump_condition(system, &deadline, starsead_supervisor_stop_done) != 0) {
-            system->stop_result = STARSEAD_STOP_FAILED;
-        }
+    if (system->stop_result == STARSEAD_STOP_PENDING &&
+        starsead_supervisor_pump_stop(system) != 0) {
+        system->stop_result = STARSEAD_STOP_FAILED;
     }
     system->stopping_children = false;
     bool killed = system->stop_coordinator.core.kill_sent ||
@@ -1242,18 +1246,32 @@ static int system_effect_stop_children(
     if (system->stop_result != STARSEAD_STOP_COMPLETE || killed) {
         const struct starsead_stop_role_state *core_state = &system->stop_coordinator.core;
         const struct starsead_stop_role_state *helper_state = &system->stop_coordinator.helper;
-        char message[320U];
+        char core_wait[96U] = "";
+        char helper_wait[96U] = "";
+        if (core_state->present && !core_state->reaped &&
+            starsead_process_wait_state_describe(
+                core_state->identity.pid, core_wait, sizeof(core_wait)) != 0) {
+            (void)snprintf(core_wait, sizeof(core_wait), "%s", "unavailable");
+        }
+        if (helper_state->present && !helper_state->reaped &&
+            starsead_process_wait_state_describe(
+                helper_state->identity.pid, helper_wait, sizeof(helper_wait)) != 0) {
+            (void)snprintf(helper_wait, sizeof(helper_wait), "%s", "unavailable");
+        }
+        char message[512U];
         int written = snprintf(message, sizeof(message),
             "child stop %s: core=present:%d,term:%d,kill:%d,signalFailed:%d,reaped:%d "
-            "helper=present:%d,term:%d,kill:%d,signalFailed:%d,reaped:%d",
+            "helper=present:%d,term:%d,kill:%d,signalFailed:%d,reaped:%d%s%s%s%s",
             system->stop_result == STARSEAD_STOP_COMPLETE ? "required SIGKILL" : "failed",
             core_state->present ? 1 : 0, core_state->term_sent ? 1 : 0,
             core_state->kill_sent ? 1 : 0, core_state->signal_failed ? 1 : 0,
             core_state->reaped ? 1 : 0,
             helper_state->present ? 1 : 0, helper_state->term_sent ? 1 : 0,
             helper_state->kill_sent ? 1 : 0, helper_state->signal_failed ? 1 : 0,
-            helper_state->reaped ? 1 : 0);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+            helper_state->reaped ? 1 : 0,
+            core_wait[0] != '\0' ? " coreWait=" : "", core_wait,
+            helper_wait[0] != '\0' ? " helperWait=" : "", helper_wait);
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             if (system->stop_result == STARSEAD_STOP_COMPLETE) {
                 (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_WARNING,
                     STARSEAD_COMPONENT_RUNTIME, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
@@ -1274,7 +1292,14 @@ static int system_effect_stop_children(
         starsead_supervisor_accept_pump_delta(system, &delta) != 0) return -1;
     if (include_helper) starsead_child_process_close(&system->helper_process);
     if (include_core) starsead_child_process_close(&system->core_process);
-    return system->stop_result == STARSEAD_STOP_COMPLETE && !killed ? 0 : -1;
+    /* A child reaped after SIGKILL leaves only supervisor-owned state, which
+     * the caller still cleans: the helper's BPF pins and cgroup hooks are
+     * reconciled by system_effect_stop_helper. A core that manages its own
+     * traffic restores system state only on a graceful exit, so killing it
+     * stays a cleanup failure. */
+    bool residue = system->stop_coordinator.core.kill_sent &&
+        starsead_mode_core_managed(system->loaded_config.config.mode);
+    return system->stop_result == STARSEAD_STOP_COMPLETE && !residue ? 0 : -1;
 }
 
 static int system_effect_stop_helper(void *opaque) {
@@ -1591,6 +1616,7 @@ static void system_runtime_cleanup(struct starsead_system_supervisor *system) {
     starsead_state_store_close(&system->store);
     if (system->logger.opened) (void)starsead_log_close(&system->logger);
     starsead_loaded_config_release(&system->loaded_config);
+    starsead_supervisor_action_stdout_release(system);
 }
 
 static void system_runtime_finish_control_stop(

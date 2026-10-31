@@ -125,7 +125,7 @@ int starsead_supervisor_xtables_zero(struct starsead_system_supervisor *system,
             family == STARSEAD_IP_FAMILY_IPV6 ? "ipv6" : "ipv4",
             table_name == NULL ? "invalid" : table_name, effective_operation, chain,
             run_result, exit_status, run_result == 0 ? stderr_summary : "none");
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RULES, message);
         }
     }
@@ -594,14 +594,14 @@ static int system_enhanced_dns_prerouting(struct starsead_system_supervisor *sys
             return -1;
     }
     // Hotspot DNS uses both transports; local unmarked queries already returned.
-    for (size_t i = 0; i < config->hotspot_interface_prefix_count; ++i) {
+    for (size_t i = 0; i < config->hotspot_interface_count; ++i) {
         for (unsigned protocol_index = 0; protocol_index < 2; ++protocol_index) {
             const char *protocol = protocol_index ? "tcp" : "udp";
             if (tproxy && protocol_index &&
                 system_append_established_tcp6_dns(
-                    system, family, chain, config->hotspot_interface_prefixes[i], false) != 0)
+                    system, family, chain, config->hotspot_interfaces[i], false) != 0)
                 return -1;
-            const char *args[20] = {"-i", config->hotspot_interface_prefixes[i], "-p", protocol,
+            const char *args[20] = {"-i", config->hotspot_interfaces[i], "-p", protocol,
                 "-m", protocol, "--dport", "53", "-j"};
             size_t count = 9;
             if (tproxy) {
@@ -665,9 +665,9 @@ static int system_populate_tproxy_prerouting(
     if (system_append_ipsec_udp_bypass(system, family, chain) != 0) return -1;
     if (system_append_local_bypass_interval(
             system, family, chain, local_begin, local_end) != 0) return -1;
-    for (size_t prefix_remaining = config->hotspot_interface_prefix_count;
+    for (size_t prefix_remaining = config->hotspot_interface_count;
          prefix_remaining > 0U; --prefix_remaining) {
-        const char *interface_name = config->hotspot_interface_prefixes[prefix_remaining - 1U];
+        const char *interface_name = config->hotspot_interfaces[prefix_remaining - 1U];
         for (size_t cidr_remaining = config->proxy_private_cidr_count;
              cidr_remaining > 0U; --cidr_remaining) {
             const char *cidr = config->proxy_private_cidrs[cidr_remaining - 1U];
@@ -699,8 +699,8 @@ static int system_populate_tproxy_prerouting(
             ? STARSEAD_PIN_MATCHER_PREROUTING_V4 : STARSEAD_PIN_MATCHER_PREROUTING_V6);
         if (matcher_path == NULL) return -1;
     }
-    for (size_t index = 0U; index < config->hotspot_interface_prefix_count; ++index) {
-        const char *interface_name = config->hotspot_interface_prefixes[index];
+    for (size_t index = 0U; index < config->hotspot_interface_count; ++index) {
+        const char *interface_name = config->hotspot_interfaces[index];
         if (system_append_tproxy(system, family, chain, "tcp", interface_name,
                 NULL, false, matcher_path) != 0 ||
             system_append_tproxy(system, family, chain, "udp", interface_name,
@@ -768,8 +768,8 @@ static int system_populate_tun_prerouting(
             ? STARSEAD_PIN_MATCHER_PREROUTING_V4 : STARSEAD_PIN_MATCHER_PREROUTING_V6);
         if (matcher_path == NULL) return -1;
     }
-    for (size_t index = 0U; index < config->hotspot_interface_prefix_count; ++index) {
-        const char *interface_name = config->hotspot_interface_prefixes[index];
+    for (size_t index = 0U; index < config->hotspot_interface_count; ++index) {
+        const char *interface_name = config->hotspot_interfaces[index];
         if (system_append_mark(system, family, chain, "tcp", NULL,
                 interface_name, NULL, matcher_path) != 0 ||
             system_append_mark(system, family, chain, "udp", NULL,
@@ -932,7 +932,7 @@ static int system_verify_private_chain_contents(
     int written = snprintf(message, sizeof(message),
         "private chain shape mismatch: chain=%s expectedRules=%zu outputBytes=%zu",
         chain, expected_rule_count, observed_length);
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_ERROR,
             STARSEAD_COMPONENT_RULES, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
     }
@@ -1380,7 +1380,7 @@ failed:
             source == NULL ? "unknown" : source,
             failed_family == STARSEAD_IP_FAMILY_IPV6 ? "ipv6" : "ipv4",
             exit_status, system->action_stdout_overflow ? 1 : 0, stderr_summary);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RULES, message);
         }
     }

@@ -259,7 +259,7 @@ static int system_run_matcher_loader(struct starsead_system_supervisor *system) 
             "matcher loader failed: stage=%s exitStatus=%d detail=%s stderr=%s",
             stage, exit_status, error[0] == '\0' ? "unavailable" : error,
             strcmp(stage, "prepare") == 0 ? "none" : stderr_summary);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_MATCHER, message);
         }
         return -1;
@@ -299,10 +299,15 @@ static int system_start_and_verify_b2s(struct starsead_system_supervisor *system
         "bpf2socks pin verification failed: helperReaped=%d timeoutMs=%" PRIu32 " detail=%s",
         system->helper_reaped ? 1 : 0, system->loaded_config.config.readiness_timeout_milliseconds,
         system->b2s_verify_error[0] == '\0' ? "unavailable" : system->b2s_verify_error);
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_HELPER, message);
     }
     return -1;
+}
+
+static int system_sysctl_interface_state(const struct starsead_sysctl_resource *resource) {
+    return resource->interface_index == 0U ? 0 : starsead_supervisor_interface_state(
+        resource->interface_name, resource->interface_index);
 }
 
 static int system_sysctl_open(
@@ -314,8 +319,8 @@ static int system_sysctl_open(
     if (resource->interface_name[0] == '\0' || strchr(resource->interface_name, '/') != NULL ||
         strcmp(resource->interface_name, ".") == 0 ||
         strcmp(resource->interface_name, "..") == 0 || output == NULL) return -1;
-    if (resource->interface_index != 0U &&
-        if_nametoindex(resource->interface_name) != resource->interface_index) return 1;
+    int interface_state = system_sysctl_interface_state(resource);
+    if (interface_state != 0) return interface_state;
     int root = open(root_path, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
     if (root < 0) return errno == ENOENT || errno == ENODEV ? 1 : -1;
     int directory = openat(root, resource->interface_name,
@@ -332,6 +337,13 @@ static int system_sysctl_open(
     if (fd < 0) {
         errno = saved;
         return errno == ENOENT || errno == ENODEV ? 1 : -1;
+    }
+    // A same-name replacement between the first check and open must never
+    // receive the previous link's saved value.
+    interface_state = system_sysctl_interface_state(resource);
+    if (interface_state != 0) {
+        (void)close(fd);
+        return interface_state;
     }
     *output = fd;
     return 0;
@@ -361,7 +373,7 @@ static int system_sysctl_write(
     if (value > 1U) return -1;
     int fd = -1;
     int opened = system_sysctl_open(resource, O_WRONLY, &fd);
-    if (opened != 0) return -1;
+    if (opened != 0) return opened;
     char bytes[2U] = {(char)('0' + value), '\n'};
     ssize_t count;
     do {
@@ -426,21 +438,30 @@ static int system_effect_undo_one(
     void *opaque, const struct starsead_effect *effect,
     char *error, size_t error_size) {
     (void)opaque;
-    if (effect == NULL || effect->kind != STARSEAD_EFFECT_SYSCTL ||
-        system_sysctl_write(&effect->resource.sysctl,
-            effect->resource.sysctl.original_value) != 0) {
-        starsead_supervisor_reconcile_error(error, error_size, "failed to restore sysctl value");
-        return -1;
+    if (effect != NULL && effect->kind == STARSEAD_EFFECT_SYSCTL) {
+        int written = system_sysctl_write(&effect->resource.sysctl,
+            effect->resource.sysctl.original_value);
+        if (written == 0 || written == 1) return 0;
+        uint8_t value = 0U;
+        // The old link may disappear while the write is in progress.
+        if (starsead_supervisor_sysctl_read(&effect->resource.sysctl, &value) == 1) return 0;
     }
-    return 0;
+    starsead_supervisor_reconcile_error(error, error_size, "failed to restore sysctl value");
+    return -1;
 }
 
 static int system_effect_verify_restored_one(
     void *opaque, const struct starsead_effect *effect,
     char *error, size_t error_size) {
     (void)opaque;
-    return system_effect_verify_value(effect,
+    int result = system_effect_verify_value(effect,
         effect->resource.sysctl.original_value, error, error_size);
+    uint8_t value = 0U;
+    if (result != 0 && starsead_supervisor_sysctl_read(&effect->resource.sysctl, &value) == 1) {
+        if (error != NULL && error_size != 0U) error[0] = '\0';
+        return 0;
+    }
+    return result;
 }
 
 struct starsead_effect_backend starsead_supervisor_effect_backend(
@@ -777,7 +798,7 @@ static int system_rules_apply_plan(
     int written = snprintf(message, sizeof(message),
         "rule transaction failed: result=%d records=%zu detail=%s",
         applied, count, error[0] == '\0' ? "unavailable" : error);
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RULES, message);
     }
     return -1;
@@ -795,7 +816,7 @@ static int system_rules_apply_private(
     int written = snprintf(message, sizeof(message),
         "private rules apply failed: result=%d detail=%s", applied,
         error[0] == '\0' ? "unavailable" : error);
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RULES, message);
     }
     return -1;
@@ -818,7 +839,7 @@ static int system_rules_apply_route(
     int written = snprintf(message, sizeof(message),
         "route rules apply failed: result=%d detail=%s", applied,
         error[0] == '\0' ? "unavailable" : error);
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RULES, message);
     }
     return -1;
@@ -839,7 +860,7 @@ static int system_rules_apply_hook(
         applied, group->family == STARSEAD_IP_FAMILY_IPV6 ? "ipv6" : "ipv4",
         table_name == NULL ? "invalid" : table_name,
         error[0] == '\0' ? "unavailable" : error);
-    if (written > 0 && (size_t)written < sizeof(message)) {
+    if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
         starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RULES, message);
     }
     return -1;
@@ -1040,7 +1061,7 @@ int starsead_supervisor_effect_rules(
         char message[160U];
         int written =
             snprintf(message, sizeof(message), "rules apply failed: stage=%s", failed_stage);
-        if (written > 0 && (size_t)written < sizeof(message)) {
+        if (starsead_supervisor_message_fit(message, sizeof(message), written)) {
             starsead_supervisor_log_failure(system, STARSEAD_COMPONENT_RULES, message);
         }
         return -1;

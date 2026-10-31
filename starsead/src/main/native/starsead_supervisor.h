@@ -61,6 +61,13 @@ struct starsead_runtime {
 bool starsead_runtime_lifecycle_stop_requested(void *opaque);
 
 #if defined(__linux__) || defined(__ANDROID__)
+/*
+ * Captured action stdout starts at the initial size and doubles on demand.
+ * Vendor ROMs can list far more than 64 KiB of rules in one table.
+ */
+#define STARSEAD_ACTION_STDOUT_INITIAL (64U * 1024U)
+#define STARSEAD_ACTION_STDOUT_LIMIT STARSEAD_BYTE_BUFFER_MAX_BYTES
+
 /* Supervisor-side waits for the DNS enhancement companion. */
 #define SYSTEM_DNS_COMMAND_WAIT_MILLIS 2100
 #define SYSTEM_DNS_WITHDRAW_BUDGET_MILLIS 5000
@@ -214,7 +221,9 @@ struct starsead_system_supervisor {
     struct starsead_child_exit_status action_exit;
     bool action_capture_stdout;
     bool action_stdout_overflow;
-    char action_stdout[65536U];
+    /* Captured stdout grows on demand up to STARSEAD_ACTION_STDOUT_LIMIT. */
+    char *action_stdout;
+    size_t action_stdout_capacity;
     size_t action_stdout_length;
     /* Leading stderr bytes, reported only when an action fails. */
     char action_stderr[512U];
@@ -274,10 +283,15 @@ int starsead_supervisor_pump_condition(struct starsead_system_supervisor *system
 int starsead_supervisor_pump_condition_periodic(struct starsead_system_supervisor *system,
     const struct starsead_deadline *deadline, uint32_t interval,
     starsead_runtime_predicate predicate);
+int starsead_supervisor_pump_stop(struct starsead_system_supervisor *system);
 void starsead_supervisor_log_failure(struct starsead_system_supervisor *system,
     enum starsead_component component, const char *message);
 void starsead_supervisor_action_stderr_summary(
     const struct starsead_system_supervisor *system, char *out, size_t size);
+bool starsead_supervisor_message_fit(char *message, size_t size, int written);
+int starsead_supervisor_action_stdout_reserve(
+    struct starsead_system_supervisor *system, size_t wanted);
+void starsead_supervisor_action_stdout_release(struct starsead_system_supervisor *system);
 int starsead_supervisor_action_run_spec(struct starsead_system_supervisor *system,
     const struct starsead_process_spec *spec, bool capture_stdout, int *exit_status);
 int starsead_supervisor_action_run_argv(struct starsead_system_supervisor *system,
@@ -393,6 +407,9 @@ uint64_t starsead_supervisor_verified_pin_id(
     const struct starsead_system_supervisor *system, enum starsead_pin_id pin_id);
 const struct starsead_b2s_verified_pin *starsead_supervisor_b2s_verified_pin(
     const struct starsead_system_supervisor *system, enum starsead_pin_id pin_id);
+/* 0: name still resolves to index; 1: that link is gone or was replaced by a
+ * same-name link; -1: the lookup itself failed, so the link may still be live. */
+int starsead_supervisor_interface_state(const char *name, uint32_t index);
 int starsead_supervisor_sysctl_read(
     const struct starsead_sysctl_resource *resource, uint8_t *value);
 struct starsead_effect_backend starsead_supervisor_effect_backend(
