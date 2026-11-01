@@ -4,6 +4,7 @@
 package engine.vpn
 
 import android.annotation.SuppressLint
+import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -20,41 +21,29 @@ import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 import app.MainActivity
 import app.R
-import app.StarseaApplication
 import app.modes.ProxyAppListModeBlacklist
 import app.modes.ProxyAppListModeGlobal
 import app.modes.ProxyAppListModeWhitelist
-import app.modes.RunModeVpnService
-import data.AppSettingsPreferences
 import engine.network.NetworkDefaults
 import engine.proxy.LocalProxyLoopbackAddress
-import engine.proxy.LocalProxyRuntime
-import engine.proxy.ProxyEngineStartRequest
 import engine.vpn.hevtun.HevTunRuntime
-import engine.xray.logDirectoryPath
-import engine.xray.startCoreLogTailers
+import features.boot.VpnResumeReceiver
 import features.logs.AndroidAppLogger
-import features.logs.CoreLogFileTailer
-import features.logs.clearServiceLogsAsApp
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeout
 import system.getInstalledApplicationsCompat
 import utils.toTrimmedNonEmptyDistinctList
-import java.io.File
+import java.io.Closeable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import kotlin.time.Duration.Companion.milliseconds
 
 @SuppressLint("VpnServicePolicy")
 class StarseaVpnService : VpnService() {
     private var tunFileDescriptor: ParcelFileDescriptor? = null
-    private var logFileTailers: List<CoreLogFileTailer> = emptyList()
     private var hevTunRuntime: HevTunRuntime? = null
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(serviceJob + Dispatchers.IO)
@@ -64,45 +53,53 @@ class StarseaVpnService : VpnService() {
     @Volatile
     private var foregroundStarted = false
 
+    private var resumeWatchdog: Runnable? = null
+
     @Volatile
-    private var latestStartId = 0
-    private val sessionPreferences by lazy { AppSettingsPreferences(this) }
+    private var running = false
+    private var session: Closeable? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        latestStartId = startId
+        val reply = intent?.serviceReply()
         when (intent?.action) {
             StarseaVpnServiceIntents.ACTION_STOP -> {
+                cancelResumeWatchdog()
                 serviceScope.launch {
-                    try {
+                    val result = runCatching {
                         operationMutex.withLock {
                             stopVpn()
                         }
-                    } finally {
-                        stopSelfOnMain(startId)
+                    }.onFailure { error ->
+                        AndroidAppLogger.warn(LogTag, "Failed to stop VPN Service", error)
                     }
+                    reply?.sendServiceResult(result)
+                    stopSelfOnMain(startId)
                 }
             }
 
             StarseaVpnServiceIntents.ACTION_START -> {
+                cancelResumeWatchdog()
                 val config = intent.readVpnServiceStartConfig()
                 if (config == null) {
-                    completeStart(Result.failure(IllegalStateException(getString(R.string.error_vpn_start_config_missing))))
+                    reply?.sendServiceResult(
+                        Result.failure(IllegalStateException(getString(R.string.error_vpn_start_config_missing))),
+                    )
                     stopSelf(startId)
                     return START_NOT_STICKY
                 }
                 serviceScope.launch {
                     operationMutex.withLock {
-                        runCatching {
+                        val result = runCatching {
                             startVpn(config)
-                        }.onSuccess {
-                            sessionPreferences.setVpnSessionActive(true)
-                            completeStart(Result.success(Unit))
+                            // A resumed start kept the service in the foreground until now;
+                            // the system's VPN binding keeps the process alive from here on.
+                            stopForegroundNotification()
                         }.onFailure { error ->
                             AndroidAppLogger.error(LogTag, "Failed to start VPN Service", error)
                             stopVpn()
-                            completeStart(Result.failure(error))
                             stopSelfOnMain(startId)
                         }
+                        reply?.sendServiceResult(result)
                     }
                 }
             }
@@ -115,16 +112,18 @@ class StarseaVpnService : VpnService() {
     }
 
     /**
-     * Starts the tunnel from the persisted state when the caller only names the service: the
-     * boot receiver's resume request and the system's always-on VPN start.
+     * Handles a start that only names the service: the boot receiver's resume request and the
+     * system's always-on VPN start.
+     *
+     * The service must already be a foreground service before the start continues: a
+     * `startForegroundService()` caller has five seconds to reach `startForeground()`, and the
+     * app process may only start this service while it runs in the foreground. The app state
+     * and the configuration compiler belong to the app process, so the start is handed back to
+     * [VpnResumeReceiver], which starts the tunnel exactly like a manual start; the
+     * [ACTION_START][StarseaVpnServiceIntents.ACTION_START] that follows removes the start-up
+     * notification again. A start that never arrives is released by the watchdog.
      */
     private fun resumeVpn(startId: Int) {
-        val starseaApplication = application as? StarseaApplication
-        if (starseaApplication == null) {
-            AndroidAppLogger.error(LogTag, "Cannot resume VPN Service without the application")
-            stopSelfOnMain(startId)
-            return
-        }
         if (VpnService.prepare(this) != null) {
             AndroidAppLogger.warn(LogTag, "Refused to resume VPN Service without VPN permission")
             stopSelfOnMain(startId)
@@ -135,45 +134,30 @@ class StarseaVpnService : VpnService() {
             stopSelfOnMain(startId)
             return
         }
-        serviceScope.launch {
-            val result = runCatching {
-                val state = starseaApplication.stateStore.state.value
-                check(state.runMode == RunModeVpnService) {
-                    "VPN Service is not the active run mode"
+        if (running) {
+            stopForegroundNotification()
+            return
+        }
+        sendBroadcast(Intent(this, VpnResumeReceiver::class.java))
+        cancelResumeWatchdog()
+        val watchdog = Runnable {
+            resumeWatchdog = null
+            serviceScope.launch {
+                operationMutex.withLock {
+                    if (running) return@withLock
+                    AndroidAppLogger.warn(LogTag, "Released the VPN Service because the resume was never completed")
+                    stopVpn()
+                    stopSelfOnMain(startId)
                 }
-                val server = checkNotNull(
-                    state.proxyServers.firstOrNull { server -> server.id == state.selectedProxyServerId },
-                ) {
-                    getString(R.string.proxy_server_list_select_first)
-                }
-                starseaApplication.proxyEngine.start(ProxyEngineStartRequest(state, server))
-            }
-            val status = result.getOrNull()
-            if (status?.running == true) {
-                starseaApplication.stateStore.update { current ->
-                    current.copy(
-                        proxyRunning = true,
-                        localProxyPort = status.appState?.localProxyPort ?: current.localProxyPort,
-                    )
-                }
-                stopForegroundNotification()
-                return@launch
-            }
-            AndroidAppLogger.error(
-                LogTag,
-                "Failed to resume VPN Service",
-                result.exceptionOrNull() ?: IllegalStateException("VPN Service did not start"),
-            )
-            operationMutex.withLock {
-                if (running || pendingStart != null) {
-                    stopForegroundNotification()
-                    return@withLock
-                }
-                stopVpn()
-                starseaApplication.stateStore.update { current -> current.copy(proxyRunning = false) }
-                stopSelfOnMain(latestStartId)
             }
         }
+        resumeWatchdog = watchdog
+        mainHandler.postDelayed(watchdog, ResumeWatchdogMillis)
+    }
+
+    private fun cancelResumeWatchdog() {
+        resumeWatchdog?.let(mainHandler::removeCallbacks)
+        resumeWatchdog = null
     }
 
     private fun promoteToForeground(): Boolean {
@@ -231,6 +215,7 @@ class StarseaVpnService : VpnService() {
     }
 
     override fun onDestroy() {
+        cancelResumeWatchdog()
         runCatching {
             stopVpn()
         }.onFailure { error ->
@@ -258,9 +243,13 @@ class StarseaVpnService : VpnService() {
     }
 
     private fun startVpn(config: VpnServiceStartConfig) {
+        // Keep the foreground promotion from resumeVpn() while clearing a previous session.
         stopVpn(removeForeground = false)
-        clearServiceLogsAsApp(File(config.coreLogPaths.logDirectoryPath()), LogTag)
-        logFileTailers = config.coreLogPaths.startCoreLogTailers(config.enableAccessLog)
+        session = runCatching {
+            VpnSession.open(this, config.localProxyOptions, config.enableAccessLog)
+        }.getOrElse { error ->
+            throw IllegalStateException(getString(R.string.error_vpn_session_unavailable), error)
+        }
         tunFileDescriptor = establishTun(config)
         val tunFd = tunFileDescriptor?.fd ?: error(getString(R.string.error_vpn_tun_fd_unavailable))
         AndroidLibXrayLiteRuntime.start(
@@ -273,7 +262,6 @@ class StarseaVpnService : VpnService() {
             runtime.start(hevConfig, tunFd)
             AndroidAppLogger.info(LogTag, "Started Hev TUN with VPN file descriptor")
         }
-        LocalProxyRuntime.update(config.localProxyOptions)
         running = true
     }
 
@@ -389,8 +377,6 @@ class StarseaVpnService : VpnService() {
     }
 
     private fun stopVpn(removeForeground: Boolean = true) {
-        logFileTailers.forEach { tailer -> tailer.stop() }
-        logFileTailers = emptyList()
         stopNativeRuntimesBounded()
         runCatching {
             tunFileDescriptor?.close()
@@ -398,9 +384,13 @@ class StarseaVpnService : VpnService() {
             AndroidAppLogger.warn(LogTag, "Failed to close VPN TUN file descriptor", error)
         }
         tunFileDescriptor = null
-        LocalProxyRuntime.clear()
         running = false
-        sessionPreferences.setVpnSessionActive(false)
+        runCatching {
+            session?.close()
+        }.onFailure { error ->
+            AndroidAppLogger.warn(LogTag, "Failed to close the VPN session", error)
+        }
+        session = null
         if (removeForeground) stopForegroundNotification()
     }
 
@@ -443,40 +433,40 @@ class StarseaVpnService : VpnService() {
         private const val ForegroundChannelId = "vpn-service"
         private const val ForegroundNotificationId = 4
 
-        @Volatile
-        private var running = false
-
-        @Volatile
-        private var pendingStart: CompletableDeferred<Result<Unit>>? = null
+        private const val StartTimeoutMillis = 10_000L
+        private const val StopTimeoutMillis = 5_000L
+        private const val ResumeWatchdogMillis = 60_000L
 
         internal suspend fun start(context: Context, config: VpnServiceStartConfig) {
-            val result = CompletableDeferred<Result<Unit>>()
-            pendingStart = result
-            try {
-                context.startService(StarseaVpnServiceIntents.startIntent(context, config))
-                withTimeout(10_000.milliseconds) {
-                    result.await()
-                }.getOrThrow()
-            } finally {
-                if (pendingStart === result) {
-                    pendingStart = null
-                }
+            awaitServiceCall(context, StarseaVpnServiceIntents.startIntent(context, config), StartTimeoutMillis)
+        }
+
+        internal suspend fun stop(context: Context) {
+            awaitServiceCall(context, StarseaVpnServiceIntents.stopIntent(context), StopTimeoutMillis)
+        }
+
+        internal fun isRunning(context: Context): Boolean = VpnSession.isRunning(context)
+
+        /** Must match `android:process` of this service in the manifest. */
+        internal const val ServiceProcessSuffix = ":vpn"
+
+        /** Whether [application] runs in this service's own process, which hosts the core only. */
+        internal fun isServiceProcess(application: Application): Boolean {
+            return currentProcessName(application) == application.packageName + ServiceProcessSuffix
+        }
+
+        private fun currentProcessName(application: Application): String {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                Application.getProcessName()?.takeIf(String::isNotEmpty)?.let { return it }
             }
+            // argv is NUL separated; its first entry is the process name.
+            runCatching { java.io.File("/proc/self/cmdline").readBytes() }.getOrNull()
+                ?.toString(Charsets.UTF_8)
+                ?.substringBefore('\u0000')
+                ?.takeIf(String::isNotEmpty)
+                ?.let { return it }
+            AndroidAppLogger.platformWarn(LogTag, "Unable to resolve the process name; assuming the app process")
+            return application.packageName
         }
-
-        internal fun stop(context: Context) {
-            running = false
-            context.startService(StarseaVpnServiceIntents.stopIntent(context))
-        }
-
-        internal fun isRunning(): Boolean {
-            return running && AndroidLibXrayLiteRuntime.isRunning()
-        }
-
-        private fun completeStart(result: Result<Unit>) {
-            pendingStart?.complete(result)
-            pendingStart = null
-        }
-
     }
 }

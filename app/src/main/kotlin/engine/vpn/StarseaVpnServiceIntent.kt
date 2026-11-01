@@ -5,6 +5,12 @@ package engine.vpn
 
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
+import android.os.ResultReceiver
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
+import kotlin.time.Duration.Companion.milliseconds
 import app.modes.ProxyAppListModeGlobal
 import engine.hevtun.DefaultHevSocks5TunnelLogLevel
 import engine.hevtun.DefaultHevSocks5TunnelTcpReadWriteTimeoutMillis
@@ -43,6 +49,65 @@ internal object StarseaVpnServiceIntents {
             action = ACTION_STOP
         }
     }
+}
+
+private const val EXTRA_SERVICE_REPLY = "service_reply"
+private const val EXTRA_SERVICE_REPLY_MESSAGE = "message"
+private const val ServiceReplySuccess = 0
+private const val ServiceReplyFailure = 1
+
+internal fun Intent.putServiceReply(reply: ResultReceiver) {
+    putExtra(EXTRA_SERVICE_REPLY, reply)
+}
+
+internal fun Intent.serviceReply(): ResultReceiver? {
+    @Suppress("DEPRECATION")
+    return getParcelableExtra(EXTRA_SERVICE_REPLY)
+}
+
+internal fun ResultReceiver.sendServiceResult(result: Result<Unit>) {
+    val error = result.exceptionOrNull()
+    if (error == null) {
+        send(ServiceReplySuccess, null)
+    } else {
+        send(
+            ServiceReplyFailure,
+            Bundle().apply {
+                putString(EXTRA_SERVICE_REPLY_MESSAGE, error.message ?: error::class.java.simpleName)
+            },
+        )
+    }
+}
+
+/**
+ * Sends [intent] to the VPN Service, which may run in another process, and waits for its reply.
+ * A service that never answers is a failed call rather than a cancellation, so callers can fall
+ * back or report it like any other failure.
+ */
+internal suspend fun awaitServiceCall(context: Context, intent: Intent, timeoutMillis: Long) {
+    val reply = CompletableDeferred<Result<Unit>>()
+    intent.putServiceReply(
+        object : ResultReceiver(null) {
+            override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                reply.complete(
+                    if (resultCode == ServiceReplySuccess) {
+                        Result.success(Unit)
+                    } else {
+                        Result.failure(
+                            IllegalStateException(resultData?.getString(EXTRA_SERVICE_REPLY_MESSAGE).orEmpty()),
+                        )
+                    },
+                )
+            }
+        },
+    )
+    context.startService(intent)
+    val result = try {
+        withTimeout(timeoutMillis.milliseconds) { reply.await() }
+    } catch (error: TimeoutCancellationException) {
+        Result.failure(IllegalStateException("VPN Service did not answer ${intent.action}", error))
+    }
+    result.getOrThrow()
 }
 
 internal fun Intent.readVpnServiceStartConfig(): VpnServiceStartConfig? {

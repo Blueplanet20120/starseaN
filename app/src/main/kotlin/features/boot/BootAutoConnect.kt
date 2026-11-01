@@ -14,6 +14,7 @@ import app.R
 import app.StarseaApplication
 import app.modes.RunModeVpnService
 import engine.proxy.ProxyEngineStartRequest
+import engine.vpn.StarseaVpnService
 import engine.vpn.StarseaVpnServiceIntents
 import features.logs.AndroidAppLogger
 import kotlin.coroutines.cancellation.CancellationException
@@ -21,11 +22,12 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * Entry points for the VPN Service that run without a visible activity.
  *
- * [AutoConnectBootReceiver] only hands the service to the foreground; the service itself
- * compiles the configuration through the regular proxy engine, so the boot path cannot drift
- * away from an ordinary start. When the VPN consent is missing the receiver cannot show the
- * system dialog (background activity launches are blocked), so it posts a notification that
- * reuses the activity consent flow through [connectAfterConsent].
+ * [AutoConnectBootReceiver] only hands the service to the foreground. The service may run in its
+ * own process, so it hands the start back through [VpnResumeReceiver] and this process compiles
+ * the configuration through the regular proxy engine ([resume]); the boot path cannot drift away
+ * from an ordinary start. When the VPN consent is missing the receiver cannot show the system
+ * dialog (background activity launches are blocked), so it posts a notification that reuses the
+ * activity consent flow through [connectAfterConsent].
  */
 internal object BootAutoConnect {
     const val ActionConnectAfterConsent = "app.action.CONNECT_AFTER_CONSENT"
@@ -93,6 +95,19 @@ internal object BootAutoConnect {
             if (error is CancellationException) throw error
             AndroidAppLogger.warn(LogTag, "Failed to connect after granting the VPN permission", error)
             application.stateStore.update { current -> current.copy(proxyRunning = false) }
+        }
+    }
+
+    /**
+     * Completes a start the VPN Service could not perform itself: the boot receiver's resume
+     * request and the system's always-on VPN start. The service is already in the foreground and
+     * waits for this process; when no tunnel comes up it is released again.
+     */
+    suspend fun resume(context: Context) {
+        if (connectAfterConsent(context) { false }.getOrNull() == true) return
+        runCatching { StarseaVpnService.stop(context) }.onFailure { error ->
+            if (error is CancellationException) throw error
+            AndroidAppLogger.warn(LogTag, "Failed to release the VPN Service after a declined resume", error)
         }
     }
 }

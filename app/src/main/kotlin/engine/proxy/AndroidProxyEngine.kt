@@ -132,9 +132,22 @@ class AndroidProxyEngine(
         request: ProxyEngineStartRequest,
         explicitRestart: Boolean = false,
     ): ProxyEngineStatus = withContext(Dispatchers.Default) {
-        ProxyTrafficStatsService.reconcile(appContext, null)
         val requestedEngine = request.appState.runMode.engine()
         var rootResumeChecked = false
+        // A start that reaches an already running engine does not relaunch the core, so the
+        // ports it is running with must be kept instead of being resolved again. The VPN tunnel
+        // outlives this process, so a fresh process (no active engine yet) checks it as well.
+        if (!explicitRestart && requestedEngine is VpnXrayEngine &&
+            (activeEngine == null || activeEngine === requestedEngine)
+        ) {
+            val status = requestedEngine.status()
+            if (status.running) {
+                activeEngine = requestedEngine
+                status.withTrafficStatsReconciled(request.appState)
+                return@withContext status.copy(appState = request.appState)
+            }
+        }
+        ProxyTrafficStatsService.reconcile(appContext, null)
         if (shouldResumeRootBeforeResolvingPorts(explicitRestart, activeEngine != null, requestedEngine is RootModeEngine)) {
             requestedEngine as RootModeEngine
             requestedEngine.resumeIfRunning(request)?.let { status ->

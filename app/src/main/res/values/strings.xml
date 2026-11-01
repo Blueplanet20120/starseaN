@@ -3,6 +3,7 @@
     <string name="error_vpn_permission_denied">VPN permission was not granted. VPN Service cannot be started</string>
     <string name="error_vpn_start_config_missing">VPN Service start configuration is missing</string>
     <string name="error_vpn_tun_fd_unavailable">VPN TUN file descriptor is unavailable</string>
+    <string name="error_vpn_session_unavailable">Unable to publish the VPN session; the tunnel was not started</string>
     <string name="error_vpn_tunnel_establish_failed">Unable to establish VPN tunnel</string>
     <string name="error_tproxy_root_required">ROOT access is required for TPROXY mode</string>
     <string name="error_tproxy_start_failed">Failed to start TPROXY mode: %1$s</string>

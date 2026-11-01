@@ -3,6 +3,7 @@
     <string name="error_vpn_permission_denied">VPN 权限未授予，无法启动 VPN Service</string>
     <string name="error_vpn_start_config_missing">VPN Service 启动配置缺失</string>
     <string name="error_vpn_tun_fd_unavailable">VPN TUN 文件描述符不可用</string>
+    <string name="error_vpn_session_unavailable">无法发布 VPN 会话状态，隧道未启动</string>
     <string name="error_vpn_tunnel_establish_failed">无法建立 VPN 隧道</string>
     <string name="error_tproxy_root_required">ROOT 权限不可用，无法启动 TPROXY 模式</string>
     <string name="error_tproxy_start_failed">TPROXY 模式启动失败：%1$s</string>

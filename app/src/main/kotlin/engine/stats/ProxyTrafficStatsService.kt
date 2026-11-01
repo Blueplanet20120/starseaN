@@ -48,6 +48,7 @@ class ProxyTrafficStatsService : Service() {
     private var accumulator = XrayTrafficSessionAccumulator()
     private var foregroundStarted = false
     private var latestStartId = 0
+    private val screenObserver = ScreenInteractiveObserver(this, ::onScreenInteractiveChanged)
 
     override fun onCreate() {
         super.onCreate()
@@ -86,7 +87,7 @@ class ProxyTrafficStatsService : Service() {
             return START_NOT_STICKY
         }
 
-        if (runtime == activeRuntime && monitor.isActive) {
+        if (runtime == activeRuntime && (monitor.isActive || !screenObserver.isInteractive)) {
             return START_STICKY
         }
         if (runtime != activeRuntime) {
@@ -105,11 +106,33 @@ class ProxyTrafficStatsService : Service() {
     private fun startStats(runtime: ProxyTrafficStatsRuntime, startId: Int): Boolean {
         monitor.cancel()
         if (!startForegroundNotification(runtime.serverName, startId)) return false
+        screenObserver.register()
+        if (screenObserver.isInteractive) startSampling(runtime)
+        return true
+    }
 
+    // Sampling pauses while the screen is off; Xray keeps counting, so totals stay exact.
+    private fun onScreenInteractiveChanged(interactive: Boolean) {
+        val runtime = activeRuntime ?: return
+        if (!interactive) {
+            monitor.cancel()
+            notificationManager.notify(
+                NotificationId,
+                buildNotification(runtime.serverName, accumulator.recordWithoutSpeed()),
+            )
+        } else if (!monitor.isActive) {
+            startSampling(runtime)
+        }
+    }
+
+    private fun startSampling(runtime: ProxyTrafficStatsRuntime) {
         val sessionAccumulator = accumulator
         monitor.start {
             var lastPollAt = SystemClock.elapsedRealtime()
             var failures = 0
+            // The first query returns bytes counted before sampling (re)started, e.g. while the
+            // screen was off; they belong to the total, not to the current speed.
+            var catchUp = true
             XrayStatsClient(
                 listenAddress = runtime.listenAddress,
                 port = runtime.port,
@@ -124,12 +147,18 @@ class ProxyTrafficStatsService : Service() {
                         val delta = client.queryInboundTraffic(reset = true)
                         currentCoroutineContext().ensureActive()
                         failures = 0
+                        val sampleCatchUp = catchUp
+                        catchUp = false
                         publish {
                             notificationManager.notify(
                                 NotificationId,
                                 buildNotification(
                                     serverName = runtime.serverName,
-                                    sample = sessionAccumulator.record(delta, elapsedMillis),
+                                    sample = if (sampleCatchUp) {
+                                        sessionAccumulator.recordWithoutSpeed(delta)
+                                    } else {
+                                        sessionAccumulator.record(delta, elapsedMillis)
+                                    },
                                 ),
                             )
                         }
@@ -152,10 +181,10 @@ class ProxyTrafficStatsService : Service() {
                 }
             }
         }
-        return true
     }
 
     private fun stopStats() {
+        screenObserver.unregister()
         monitor.cancel()
         activeRuntime = null
         accumulator = XrayTrafficSessionAccumulator()

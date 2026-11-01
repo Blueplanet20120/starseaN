@@ -199,11 +199,18 @@
             </intent-filter>
         </receiver>
 
+        <!-- Receives the start that the VPN Service hands back after a boot resume or an
+             always-on start; only the service sends it, by explicit component. -->
+        <receiver
+            android:name="features.boot.VpnResumeReceiver"
+            android:exported="false" />
+
         <service
             android:name="engine.vpn.StarseaVpnService"
             android:exported="false"
             android:foregroundServiceType="systemExempted"
             android:permission="android.permission.BIND_VPN_SERVICE"
+            android:process=":vpn"
             tools:ignore="ForegroundServicePermission,VpnServicePolicy">
             <intent-filter>
                 <action android:name="android.net.VpnService" />

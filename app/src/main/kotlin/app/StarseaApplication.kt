@@ -23,6 +23,7 @@ import app.modes.RunModeVpnService
 import data.AppSettingsPreferences
 import data.AndroidAppStateStore
 import engine.proxy.AndroidProxyEngine
+import engine.vpn.StarseaVpnService
 import features.boot.BootAutoConnect
 import system.AndroidRootShellGateway
 import features.subscription.runtime.AndroidSubscriptionFetcher
@@ -96,6 +97,9 @@ class StarseaApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        // The VPN Service process hosts the core only. The state store, the schedulers,
+        // WorkManager and the log repositories belong to this app process.
+        if (StarseaVpnService.isServiceProcess(this)) return
         appScope.launch(Dispatchers.IO) {
             stateStore.state
                 .map { state -> state.colorMode to state.hideLauncherIcon }
