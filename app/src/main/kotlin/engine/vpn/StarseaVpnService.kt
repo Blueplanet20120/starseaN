@@ -29,6 +29,7 @@ import engine.proxy.LocalProxyLoopbackAddress
 import engine.vpn.hevtun.HevTunRuntime
 import features.boot.VpnResumeReceiver
 import features.logs.AndroidAppLogger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,6 +64,10 @@ class StarseaVpnService : VpnService() {
         val reply = intent?.serviceReply()
         when (intent?.action) {
             StarseaVpnServiceIntents.ACTION_STOP -> {
+                if (!intent.acceptServiceCall()) {
+                    stopSelfIfIdle(startId)
+                    return START_NOT_STICKY
+                }
                 cancelResumeWatchdog()
                 serviceScope.launch {
                     val result = runCatching {
@@ -78,15 +83,19 @@ class StarseaVpnService : VpnService() {
             }
 
             StarseaVpnServiceIntents.ACTION_START -> {
-                cancelResumeWatchdog()
                 val config = intent.readVpnServiceStartConfig()
                 if (config == null) {
                     reply?.sendServiceResult(
                         Result.failure(IllegalStateException(getString(R.string.error_vpn_start_config_missing))),
                     )
-                    stopSelf(startId)
+                    stopSelfIfIdle(startId)
                     return START_NOT_STICKY
                 }
+                if (!intent.acceptServiceCall()) {
+                    stopSelfIfIdle(startId)
+                    return START_NOT_STICKY
+                }
+                cancelResumeWatchdog()
                 serviceScope.launch {
                     operationMutex.withLock {
                         val result = runCatching {
@@ -234,6 +243,14 @@ class StarseaVpnService : VpnService() {
         super.onRevoke()
     }
 
+    /**
+     * Stops a service that has nothing to keep it, after a request it refused. A running or
+     * starting tunnel is left alone, and the resume watchdog keeps watching a resumed start.
+     */
+    private fun stopSelfIfIdle(startId: Int) {
+        if (!running && !operationMutex.isLocked && resumeWatchdog == null) stopSelf(startId)
+    }
+
     private fun stopSelfOnMain(startId: Int) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             stopSelf(startId)
@@ -246,7 +263,7 @@ class StarseaVpnService : VpnService() {
         // Keep the foreground promotion from resumeVpn() while clearing a previous session.
         stopVpn(removeForeground = false)
         session = runCatching {
-            VpnSession.open(this, config.localProxyOptions, config.enableAccessLog)
+            VpnSession.open(this, config.localProxyOptions)
         }.getOrElse { error ->
             throw IllegalStateException(getString(R.string.error_vpn_session_unavailable), error)
         }
@@ -433,24 +450,37 @@ class StarseaVpnService : VpnService() {
         private const val ForegroundChannelId = "vpn-service"
         private const val ForegroundNotificationId = 4
 
-        private const val StartTimeoutMillis = 10_000L
-        private const val StopTimeoutMillis = 5_000L
+        /** Covers launching the service process; the request itself may then run as long as it needs. */
+        private const val AcceptTimeoutMillis = 10_000L
         private const val ResumeWatchdogMillis = 60_000L
 
         internal suspend fun start(context: Context, config: VpnServiceStartConfig) {
-            awaitServiceCall(context, StarseaVpnServiceIntents.startIntent(context, config), StartTimeoutMillis)
+            awaitServiceCall(context, StarseaVpnServiceIntents.startIntent(context, config), AcceptTimeoutMillis) {
+                Result.failure(IllegalStateException("VPN Service process exited while starting the tunnel"))
+            }
         }
 
+        // The tunnel cannot outlive the process that holds it, so its death completes a stop.
         internal suspend fun stop(context: Context) {
-            awaitServiceCall(context, StarseaVpnServiceIntents.stopIntent(context), StopTimeoutMillis)
+            try {
+                awaitServiceCall(context, StarseaVpnServiceIntents.stopIntent(context), AcceptTimeoutMillis) {
+                    Result.success(Unit)
+                }
+            } catch (error: Throwable) {
+                // A service that died before it could answer took the tunnel with it.
+                if (error is CancellationException || isRunning(context)) throw error
+            }
         }
 
         internal fun isRunning(context: Context): Boolean = VpnSession.isRunning(context)
 
         /** Must match `android:process` of this service in the manifest. */
-        internal const val ServiceProcessSuffix = ":vpn"
+        internal const val ServiceProcessSuffix = ":service"
 
-        /** Whether [application] runs in this service's own process, which hosts the core only. */
+        /**
+         * Whether [application] runs in the `:service` process, which hosts the VPN Service with its
+         * core and the traffic statistics service, and nothing that decides.
+         */
         internal fun isServiceProcess(application: Application): Boolean {
             return currentProcessName(application) == application.packageName + ServiceProcessSuffix
         }

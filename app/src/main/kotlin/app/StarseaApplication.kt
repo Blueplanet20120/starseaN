@@ -23,7 +23,10 @@ import app.modes.RunModeVpnService
 import data.AppSettingsPreferences
 import data.AndroidAppStateStore
 import engine.proxy.AndroidProxyEngine
+import engine.proxy.LocalProxyRuntime
 import engine.vpn.StarseaVpnService
+import engine.vpn.VpnSession
+import app.effects.synchronizeProxyStatus
 import features.boot.BootAutoConnect
 import system.AndroidRootShellGateway
 import features.subscription.runtime.AndroidSubscriptionFetcher
@@ -95,11 +98,41 @@ class StarseaApplication : Application(), SingletonImageLoader.Factory {
         )
     }
 
+    /**
+     * Brings the app state in line when a tunnel ends in the service process, whether it was
+     * stopped, revoked or its process died. The session watch reports the end, so this costs
+     * nothing while the tunnel runs; a tunnel that is up when this process starts is watched
+     * from here as well.
+     */
+    private fun synchronizeOnVpnSessionEnd() {
+        appScope.launch {
+            VpnSession.ended.collect {
+                // Only the VPN mode is resynchronized: other modes are probed through ROOT.
+                if (stateStore.state.value.runMode != RunModeVpnService) return@collect
+                synchronizeProxyStatus(
+                    currentState = { stateStore.state.value },
+                    readStatus = { snapshot ->
+                        runCatching { proxyEngine.status(snapshot.runMode, snapshot) }.getOrNull()
+                    },
+                    updateAppState = stateStore::update,
+                )
+            }
+        }
+        appScope.launch(Dispatchers.IO) { VpnSession.watch(applicationContext) }
+    }
+
     override fun onCreate() {
         super.onCreate()
-        // The VPN Service process hosts the core only. The state store, the schedulers,
-        // WorkManager and the log repositories belong to this app process.
-        if (StarseaVpnService.isServiceProcess(this)) return
+        // The `:service` process only executes: the VPN Service with its core and the traffic
+        // statistics service. The state store, the schedulers, WorkManager and the core log
+        // repositories belong to this app process; `:service` only appends its own app log.
+        if (StarseaVpnService.isServiceProcess(this)) {
+            AndroidLogcatRepository.initializeServiceProcess(this)
+            return
+        }
+        // HTTP fetches here go through the tunnel's local proxy, which the service publishes.
+        LocalProxyRuntime.attachExternalSource { VpnSession.runningLocalProxyOptions(applicationContext) }
+        synchronizeOnVpnSessionEnd()
         appScope.launch(Dispatchers.IO) {
             stateStore.state
                 .map { state -> state.colorMode to state.hideLauncherIcon }
