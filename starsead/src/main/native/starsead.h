@@ -16,12 +16,13 @@
 
 struct starsead_resource_operation;
 
-#define STARSEAD_CONFIG_VERSION 6U
+#define STARSEAD_CONFIG_VERSION 7U
 #define STARSEAD_MAX_JSON_SIZE (8U * 1024U * 1024U)
 #define STARSEAD_JSON_MAX_TOKENS 262144U
 #define STARSEAD_JSON_MAX_DEPTH 64U
 #define STARSEAD_MAX_PATH 512U
 #define STARSEAD_MAX_SECRET_KEY 4096U
+#define STARSEAD_MAX_COMPONENT_NAME 256U
 #define STARSEAD_MAX_INTERFACES 64U
 #define STARSEAD_MAX_INTERFACE_NAME 64U
 #define STARSEAD_MAX_CIDRS 512U
@@ -220,6 +221,10 @@ enum starsead_service_action starsead_service_control_on_wifi(
     struct starsead_service_control_runtime *,
     enum starsead_wifi_transition,
     const struct starsead_wifi_identity *);
+enum starsead_service_action starsead_service_control_on_boot_wifi(
+    struct starsead_service_control_runtime *,
+    enum starsead_wifi_transition,
+    const struct starsead_wifi_identity *);
 enum starsead_service_action starsead_service_control_reconcile_time(
     struct starsead_service_control_runtime *, time_t);
 
@@ -375,6 +380,8 @@ struct starsead_config {
     uint32_t readiness_timeout_milliseconds;
     bool has_age_secret_key;
     char age_secret_key[STARSEAD_MAX_SECRET_KEY];
+    bool has_runtime_event_receiver;
+    char runtime_event_receiver[STARSEAD_MAX_COMPONENT_NAME];
 
     bool enable_ipv6;
     bool disable_system_ipv6;
@@ -1905,6 +1912,8 @@ int starsead_runtime_start_system(
     const char *, bool *, struct starsead_control_result *);
 int starsead_runtime_monitor_system(
     const char *, bool *, struct starsead_control_result *);
+int starsead_runtime_boot_system(
+    const char *, bool *, struct starsead_control_result *);
 
 enum starsead_control_backend_result {
     STARSEAD_CONTROL_BACKEND_OK = 0,
@@ -1939,6 +1948,7 @@ enum starsead_control_listener_result starsead_control_listener_open(int *);
 enum starsead_cli_command {
     STARSEAD_CLI_START,
     STARSEAD_CLI_MONITOR,
+    STARSEAD_CLI_BOOT,
     STARSEAD_CLI_STATUS,
     STARSEAD_CLI_STOP,
     STARSEAD_CLI_SHUTDOWN,
@@ -2021,6 +2031,8 @@ struct starsead_cli_backend {
     int (*run_start)(
         void *, const char *, bool *, struct starsead_control_result *);
     int (*run_monitor)(
+        void *, const char *, bool *, struct starsead_control_result *);
+    int (*run_boot)(
         void *, const char *, bool *, struct starsead_control_result *);
     int (*write_stdout)(void *, const char *, size_t);
     int (*write_stderr)(void *, const char *, size_t);

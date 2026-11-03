@@ -586,6 +586,12 @@
     <string name="subscription_group_list_count">Групп: {count}</string>
     <string name="subscription_group_list">Список групп</string>
     <string name="subscription_manual_group">Ручная группа прокси-серверов</string>
+    <string name="subscription_share_export_failed">Не удалось экспортировать группу</string>
+    <string name="subscription_share_export_file">Экспортировать ссылки в файл</string>
+    <string name="subscription_share_exported">Группа экспортирована</string>
+    <string name="subscription_share_group">Поделиться группой подписки</string>
+    <string name="subscription_share_qr_code">QR-код подписки</string>
+    <string name="subscription_share_url">Копировать ссылку подписки</string>
     <string name="subscription_update_interval">Обновлять каждые {interval} ч.</string>
     <string name="subscription_update_group">Обновить группу подписки</string>
     <string name="subscription_edit_group">Редактировать группу подписки</string>

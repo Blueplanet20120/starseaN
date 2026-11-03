@@ -56,6 +56,7 @@ internal data class StarseadConfig(
     val helper: StarseadHelper?,
     val serviceControl: StarseadServiceControlConfig,
     val dnsEnhancement: StarseadDnsEnhancementConfig? = null,
+    val runtimeEventReceiver: String?,
 )
 
 internal data class StarseadServiceControlConfig(

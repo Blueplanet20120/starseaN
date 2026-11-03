@@ -108,10 +108,11 @@ fun App(
             requestVpnPermission = requestVpnPermission,
         )
     }
-    val rootBootScriptUseCase = remember(appContext, rootAccess) {
+    val rootBootScriptUseCase = remember(appContext, rootAccess, proxyEngine) {
         RootBootScriptUseCase(
             context = appContext,
             rootAccess = rootAccess,
+            lifecycleLock = proxyEngine,
         )
     }
     val rootEbpfProbeUseCase = remember(appContext, rootAccess) {

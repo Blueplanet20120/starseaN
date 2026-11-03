@@ -478,6 +478,8 @@ int starsead_supervisor_dns_activate(struct starsead_system_supervisor *system, 
 int starsead_supervisor_dns_verify_startup(struct starsead_system_supervisor *system);
 int starsead_supervisor_dns_tick(
     struct starsead_system_supervisor *system, struct starsead_runtime_delta *delta);
+/* Fire-and-forget `cmd activity broadcast -n` to the configured receiver; -1 only when fork fails. */
+int starsead_supervisor_notify_runtime_event(const struct starsead_config *config);
 
 #endif
 

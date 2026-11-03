@@ -288,6 +288,8 @@ int starsead_cli_parse(
         invocation->command = STARSEAD_CLI_START;
     } else if (strcmp(argv[1], "monitor") == 0 && strcmp(argv[2], "--config") == 0) {
         invocation->command = STARSEAD_CLI_MONITOR;
+    } else if (strcmp(argv[1], "boot") == 0 && strcmp(argv[2], "--config") == 0) {
+        invocation->command = STARSEAD_CLI_BOOT;
     } else {
         goto invalid;
     }
@@ -1847,6 +1849,7 @@ static bool control_cli_backend_complete(const struct starsead_cli_backend *back
     return backend != NULL && backend->effective_uid != NULL &&
         backend->control_client != NULL &&
         backend->run_start != NULL && backend->run_monitor != NULL &&
+        backend->run_boot != NULL &&
         backend->write_stdout != NULL && backend->write_stderr != NULL;
 }
 
@@ -1933,7 +1936,7 @@ static int control_cli_usage(
     const struct starsead_cli_backend *backend,
     void *context) {
     static const char usage[] =
-        "usage: starsead start|monitor --config ABSOLUTE_PATH | status | stop | shutdown | "
+        "usage: starsead start|monitor|boot --config ABSOLUTE_PATH | status | stop | shutdown | "
         "watch [--until-running] | dns-suspend|dns-resume|dns-abort --instance-id ID --cycle-id ID --generation ID\n";
     (void)backend->write_stderr(context, usage, sizeof(usage) - 1U);
     return 64;
@@ -2035,6 +2038,7 @@ int starsead_cli_main_with_backend(
     if (backend->effective_uid(context) != 0U) {
         const char *request_id = invocation.command == STARSEAD_CLI_START ? "start" :
             invocation.command == STARSEAD_CLI_MONITOR ? "monitor" :
+            invocation.command == STARSEAD_CLI_BOOT ? "boot" :
             invocation.command == STARSEAD_CLI_STATUS ? "status" :
             invocation.command == STARSEAD_CLI_STOP ? "stop" :
             invocation.command == STARSEAD_CLI_SHUTDOWN ? "shutdown" :
@@ -2066,14 +2070,16 @@ int starsead_cli_main_with_backend(
     }
 
     if (invocation.command == STARSEAD_CLI_START ||
-        invocation.command == STARSEAD_CLI_MONITOR) {
+        invocation.command == STARSEAD_CLI_MONITOR ||
+        invocation.command == STARSEAD_CLI_BOOT) {
         bool has_early_result = false;
         struct starsead_control_result early_result;
         memset(&early_result, 0, sizeof(early_result));
-        int status = (invocation.command == STARSEAD_CLI_START
-            ? backend->run_start : backend->run_monitor)(
+        int status = (invocation.command == STARSEAD_CLI_START ? backend->run_start :
+            invocation.command == STARSEAD_CLI_MONITOR ? backend->run_monitor : backend->run_boot)(
                 context, invocation.path, &has_early_result, &early_result);
-        const char *request_id = invocation.command == STARSEAD_CLI_START ? "start" : "monitor";
+        const char *request_id = invocation.command == STARSEAD_CLI_START ? "start" :
+            invocation.command == STARSEAD_CLI_MONITOR ? "monitor" : "boot";
         if (has_early_result && starsead_control_result_valid(&early_result)) {
             status = control_cli_write_response(
                 backend, context, request_id, early_result.code,

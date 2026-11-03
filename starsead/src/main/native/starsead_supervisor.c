@@ -764,6 +764,14 @@ static int system_effect_event(void *opaque, enum starsead_control_event_type ty
                 details->component, STARSEAD_LOG_EVENT_DIAGNOSTIC, message);
         }
     }
+    /* CORE_EXITED and HELPER_FAILED are always followed by STOPPED, which notifies. */
+    if ((type == STARSEAD_CONTROL_EVENT_RUNNING || type == STARSEAD_CONTROL_EVENT_PAUSED ||
+            type == STARSEAD_CONTROL_EVENT_STOPPED || type == STARSEAD_CONTROL_EVENT_FAILED) &&
+        starsead_supervisor_notify_runtime_event(&system->loaded_config.config) != 0) {
+        (void)starsead_log_line(&system->logger, STARSEAD_LOG_LEVEL_WARNING,
+            STARSEAD_COMPONENT_RUNTIME, STARSEAD_LOG_EVENT_DIAGNOSTIC,
+            "runtime event receiver notify failed");
+    }
     return starsead_control_server_publish_event(
         system->control, type, snapshot, details,
         system_event_is_final(type), (uint64_t)now);
@@ -1643,7 +1651,7 @@ static void system_runtime_finish_control_stop(
     starsead_control_snapshot_destroy(&snapshot);
 }
 
-static int system_runtime_run(const char *config_path, bool initial_start,
+static int system_runtime_run(const char *config_path, bool initial_start, bool boot,
     bool *has_early_result, struct starsead_control_result *early_result) {
     if (has_early_result == NULL || early_result == NULL) return -1;
     *has_early_result = false;
@@ -1782,6 +1790,9 @@ static int system_runtime_run(const char *config_path, bool initial_start,
         if (starsead_wifi_monitor_baseline(
                 &system.wifi_monitor, &transition, &identity) != 0) {
             system.wifi_monitor_opened = false;
+        } else if (boot) {
+            wifi_baseline_action = starsead_service_control_on_boot_wifi(
+                &system.service_control, transition, &identity);
         } else {
             wifi_baseline_action = starsead_service_control_on_wifi(
                 &system.service_control, transition, &identity);
@@ -1851,6 +1862,11 @@ static int system_runtime_run(const char *config_path, bool initial_start,
     if (wifi_baseline_action == STARSEAD_SERVICE_ACTION_STOP) {
         should_start = false;
         system.service_running = false;
+        if (boot) {
+            (void)starsead_log_line(&system.logger, STARSEAD_LOG_LEVEL_INFO,
+                STARSEAD_COMPONENT_RUNTIME, STARSEAD_LOG_EVENT_DIAGNOSTIC,
+                "boot start skipped by Wi-Fi connect-stop rule");
+        }
     } else if (wifi_baseline_action == STARSEAD_SERVICE_ACTION_START) {
         should_start = true;
     }
@@ -1927,12 +1943,17 @@ static int system_runtime_run(const char *config_path, bool initial_start,
 
 int starsead_runtime_start_system(const char *config_path,
     bool *has_early_result, struct starsead_control_result *early_result) {
-    return system_runtime_run(config_path, true, has_early_result, early_result);
+    return system_runtime_run(config_path, true, false, has_early_result, early_result);
 }
 
 int starsead_runtime_monitor_system(const char *config_path,
     bool *has_early_result, struct starsead_control_result *early_result) {
-    return system_runtime_run(config_path, false, has_early_result, early_result);
+    return system_runtime_run(config_path, false, false, has_early_result, early_result);
+}
+
+int starsead_runtime_boot_system(const char *config_path,
+    bool *has_early_result, struct starsead_control_result *early_result) {
+    return system_runtime_run(config_path, true, true, has_early_result, early_result);
 }
 
 #endif

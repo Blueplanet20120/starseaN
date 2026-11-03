@@ -20,7 +20,7 @@ internal object StarseadConfigEncoder {
 }
 
 private fun StarseadConfig.toJsonObject(): JsonObject = buildJsonObject {
-    put("schemaVersion", 6)
+    put("schemaVersion", 7)
     put("owner", owner.wireValue)
     put("coreType", coreType.wireValue)
     put("coreExecutablePath", coreExecutablePath)
@@ -41,6 +41,7 @@ private fun StarseadConfig.toJsonObject(): JsonObject = buildJsonObject {
             put("coreDnsGeneration", enhancement.coreDnsGeneration)
         }
     } ?: JsonNull)
+    put("runtimeEventReceiver", runtimeEventReceiver?.let(::JsonPrimitive) ?: JsonNull)
 }
 
 private fun StarseadServiceControlConfig.toJsonObject(): JsonObject = buildJsonObject {

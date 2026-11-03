@@ -95,5 +95,6 @@ internal fun RootStartConfig.buildStarseadConfig(
             enableLocalDns,
             xrayConfigJson.toByteArray(Charsets.UTF_8),
         ),
+        runtimeEventReceiver = runtimeEventReceiver,
     )
 }

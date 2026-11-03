@@ -5,7 +5,6 @@ package features.quicksettings
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.VpnService
@@ -34,6 +33,7 @@ import system.AndroidRootShellGateway
 import ui.feedback.rootOperationTipMessageOrNull
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -79,11 +79,12 @@ class ProxyQuickSettingsTileService : TileService() {
         super.onClick()
         activeService = WeakReference(this)
         if (!operationInProgress.compareAndSet(false, true)) return
+        operationSequence.incrementAndGet()
 
         val appContext = applicationContext
         operationScope.launch {
-            updateTile()
-            requestTileRefresh(appContext)
+            updateTile(processing = true)
+            requestQuickSettingsTileRefresh(appContext)
             var finalRunning: Boolean? = null
             try {
                 finalRunning = toggleProxy()
@@ -114,11 +115,18 @@ class ProxyQuickSettingsTileService : TileService() {
     }
 
     private suspend fun refreshTileState() {
+        val sequence = operationSequence.get()
         if (operationInProgress.get()) {
-            updateTile()
+            updateTile(processing = true)
             return
         }
         val running = syncProxyRunningState()
+        // A toggle that began while the status was read owns the tile; the status is stale.
+        if (operationInProgress.get()) {
+            updateTile(processing = true)
+            return
+        }
+        if (operationSequence.get() != sequence) return
         updateTile(running = running)
     }
 
@@ -189,12 +197,13 @@ class ProxyQuickSettingsTileService : TileService() {
 
     private fun updateTile(
         running: Boolean = stateStore.state.value.proxyRunning,
+        processing: Boolean = false,
     ) {
         val tile = qsTile ?: return
         tile.label = getString(R.string.quick_settings_tile_label)
         tile.state = if (running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            tile.subtitle = null
+            tile.subtitle = if (processing) getString(R.string.quick_settings_tile_processing) else null
         }
         tile.updateTile()
     }
@@ -227,6 +236,7 @@ class ProxyQuickSettingsTileService : TileService() {
 
         private val operationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         private val operationInProgress = AtomicBoolean(false)
+        private val operationSequence = AtomicLong(0)
         private var activeService: WeakReference<ProxyQuickSettingsTileService>? = null
 
         private suspend fun ProxyQuickSettingsTileService.refreshTileAfterToggle(
@@ -245,18 +255,7 @@ class ProxyQuickSettingsTileService : TileService() {
             }
 
             delay(TileRefreshSettleDelayMillis.milliseconds)
-            requestTileRefresh(context)
-        }
-
-        private fun requestTileRefresh(context: Context) {
-            runCatching {
-                requestListeningState(
-                    context,
-                    ComponentName(context, ProxyQuickSettingsTileService::class.java),
-                )
-            }.onFailure { error ->
-                AndroidAppLogger.warn(LogTag, "Failed to request quick settings tile refresh", error)
-            }
+            requestQuickSettingsTileRefresh(context)
         }
 
         private const val TileRefreshSettleDelayMillis = 1_000L
