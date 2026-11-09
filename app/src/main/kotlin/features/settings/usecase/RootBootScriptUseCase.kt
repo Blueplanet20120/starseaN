@@ -8,6 +8,7 @@ import app.AppState
 import app.modes.isRootRunMode
 import engine.proxy.ProxyEngineStartRequest
 import engine.proxy.ProxyLifecycleLock
+import engine.proxy.withTrafficStatsConfig
 import engine.root.runtime.RootFailureKind
 import engine.root.runtime.RootOperationResult
 import engine.root.runtime.RootRequestedAction
@@ -72,7 +73,9 @@ internal class RootBootScriptUseCase(
         val selectedServer = state.proxyServers.firstOrNull { server -> server.id == state.selectedProxyServerId }
             ?: return RootBootScriptResult.MissingServer
         return runCatching {
-            val request = ProxyEngineStartRequest(state, selectedServer)
+            // The core started by this boot script may be the one listening on the stored port.
+            val (request, _) = ProxyEngineStartRequest(state, selectedServer)
+                .withTrafficStatsConfig(appContext, verifyAvailability = false)
             if (state.runMode.isRootRunMode()) {
                 installRootBootScript(state.runMode, request)
             }

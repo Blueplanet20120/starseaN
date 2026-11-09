@@ -26,7 +26,6 @@
     <string name="resource_file_download_notification_title">Updating resource files</string>
     <string name="resource_file_download_notification_progress">Downloading %1$s</string>
     <string name="resource_file_download_notification_cancelled">Resource file update cancelled</string>
-    <string name="resource_file_download_notification_complete">Resource files updated</string>
     <string name="resource_file_download_notification_failed">Resource file update failed: %1$s</string>
     <string name="proxy_traffic_stats_notification_channel">Proxy traffic statistics</string>
     <string name="proxy_traffic_stats_notification_speed">Speed: ↑ %1$s / ↓ %2$s</string>
@@ -745,6 +744,7 @@
     <string name="proxy_app_list_invert_done">Selection inverted</string>
     <string name="proxy_app_list_clear_done">Selection cleared</string>
     <string name="proxy_error_dialog_title">Failed to start proxy</string>
+    <string name="proxy_service_auto_apply_failed">Unable to apply the update to the running service</string>
     <string name="proxy_error_dialog_mode_title">Mode: %1$s</string>
     <string name="proxy_error_dialog_occurred_at">Time: %1$s</string>
     <string name="proxy_error_dialog_details">Error details</string>

@@ -26,7 +26,6 @@
     <string name="resource_file_download_notification_title">正在更新资源文件</string>
     <string name="resource_file_download_notification_progress">正在下载 %1$s</string>
     <string name="resource_file_download_notification_cancelled">资源文件更新已取消</string>
-    <string name="resource_file_download_notification_complete">资源文件更新完成</string>
     <string name="resource_file_download_notification_failed">资源文件更新失败：%1$s</string>
     <string name="proxy_traffic_stats_notification_channel">代理流量统计</string>
     <string name="proxy_traffic_stats_notification_speed">速度：↑ %1$s / ↓ %2$s</string>
@@ -745,6 +744,7 @@
     <string name="proxy_app_list_invert_done">已反选</string>
     <string name="proxy_app_list_clear_done">已清空</string>
     <string name="proxy_error_dialog_title">代理启动失败</string>
+    <string name="proxy_service_auto_apply_failed">更新内容未能应用到运行中的服务</string>
     <string name="proxy_error_dialog_mode_title">模式：%1$s</string>
     <string name="proxy_error_dialog_occurred_at">时间：%1$s</string>
     <string name="proxy_error_dialog_details">错误详情</string>

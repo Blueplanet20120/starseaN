@@ -17,6 +17,8 @@ import kotlinx.coroutines.sync.withPermit
 import engine.proxy.latency.AndroidProxyLatencyTester
 import engine.proxy.latency.ProxyServerLatencyTestMode
 import engine.proxy.latency.ProxyServerLatencyTestResult
+import features.proxy.server.model.StrategyGroup
+import features.proxy.server.model.strategyGroupMembers
 import engine.proxy.AndroidProxyEngine
 import engine.proxy.ProxyEngineStartRequest
 import data.AndroidAppStateStore
@@ -107,10 +109,17 @@ internal fun runProxyServerLatencyTest(
     scope.launch {
         val stateSnapshot = stateStore.state.value
         val targetIds = targetServers.map { server -> server.id }.toSet()
+        // A strategy group has no single outbound to measure: test its members and report the best one.
+        val groupMembers = targetServers.mapNotNull { server ->
+            (server.server as? StrategyGroup)?.let { group -> server.id to stateSnapshot.strategyGroupMembers(group) }
+        }.toMap()
+        val testedServers = (targetServers.filter { server -> server.id !in groupMembers } + groupMembers.values.flatten())
+            .distinctBy(ProxyServerState::id)
+        val clearedIds = targetIds + testedServers.map(ProxyServerState::id)
         updateAppState { state ->
             state.copy(
                 proxyServers = state.proxyServers.map { server ->
-                    if (server.id in targetIds) server.copy(latency = "") else server
+                    if (server.id in clearedIds) server.copy(latency = "") else server
                 },
             )
         }
@@ -122,9 +131,9 @@ internal fun runProxyServerLatencyTest(
         val semaphore = Semaphore(concurrency)
 
         supervisorScope {
-            targetServers.map { server ->
-                async {
-                    val latency = semaphore.withPermit {
+            val results = testedServers.associate { server ->
+                server.id to async {
+                    semaphore.withPermit {
                         runCatching {
                             proxyLatencyTester.test(
                                 appState = stateSnapshot,
@@ -133,8 +142,18 @@ internal fun runProxyServerLatencyTest(
                             )
                         }.getOrElse {
                             ProxyServerLatencyTestResult.Failed
-                        }.toLatencyText(latencyFailedMessage)
+                        }
                     }
+                }
+            }
+            val reportedServers = (testedServers + targetServers).distinctBy(ProxyServerState::id)
+            reportedServers.map { server ->
+                async {
+                    val result = groupMembers[server.id]
+                        ?.map { member -> results.getValue(member.id).await() }
+                        ?.bestStrategyGroupLatencyResult()
+                        ?: results.getValue(server.id).await()
+                    val latency = result.toLatencyText(latencyFailedMessage)
                     updateAppState { state ->
                         state.copy(
                             proxyServers = state.proxyServers.map {
@@ -142,7 +161,7 @@ internal fun runProxyServerLatencyTest(
                             },
                         )
                     }
-                    if (showSingleResult) {
+                    if (showSingleResult && server.id in targetIds) {
                         tipNotifier.show(
                             latencyResultTemplate.formatTemplate(
                                 "name" to server.server.getInfo().remarks,
@@ -158,6 +177,12 @@ internal fun runProxyServerLatencyTest(
             tipNotifier.show(doneTemplate.formatTemplate("count" to targetServers.size))
         }
     }
+}
+
+private fun List<ProxyServerLatencyTestResult>.bestStrategyGroupLatencyResult(): ProxyServerLatencyTestResult {
+    return filter { result -> result.elapsedMillis >= 0 }
+        .minByOrNull(ProxyServerLatencyTestResult::elapsedMillis)
+        ?: ProxyServerLatencyTestResult.Failed
 }
 
 private fun ProxyServerLatencyTestResult.toLatencyText(failedMessage: String): String {

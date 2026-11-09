@@ -235,11 +235,11 @@ internal class AndroidResourceFileRepository(
         }
         zipFile.delete()
         result.onSuccess {
-            runCatching { notifier.showComplete() }
+            runCatching { notifier.dismiss() }
         }.onFailure { error ->
             if (error is AndroidResourceFileDownloadCancelledException) {
                 AndroidResourceFileLogger.info("Xray-core update cancelled")
-                runCatching { notifier.showCancelled() }
+                runCatching { notifier.dismiss() }
             } else {
                 AndroidResourceFileLogger.error("Failed to update Xray-core", error)
                 runCatching { notifier.showFailed(error.message ?: error::class.simpleName.orEmpty()) }
@@ -297,11 +297,11 @@ internal class AndroidResourceFileRepository(
             presentedStatus(customResourceFiles)
         }
         result.onSuccess {
-            runCatching { notifier.showComplete() }
+            runCatching { notifier.dismiss() }
         }.onFailure { error ->
             if (error is AndroidResourceFileDownloadCancelledException) {
                 AndroidResourceFileLogger.info("Resource file update cancelled")
-                runCatching { notifier.showCancelled() }
+                runCatching { notifier.dismiss() }
             } else {
                 AndroidResourceFileLogger.error("Failed to update resource files", error)
                 runCatching { notifier.showFailed(error.message ?: error::class.simpleName.orEmpty()) }

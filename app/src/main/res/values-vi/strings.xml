@@ -25,7 +25,6 @@
     <string name="resource_file_download_notification_title">Đang cập nhật tệp tài nguyên</string>
     <string name="resource_file_download_notification_progress">Đang tải %1$s</string>
     <string name="resource_file_download_notification_cancelled">Đã hủy cập nhật tệp tài nguyên</string>
-    <string name="resource_file_download_notification_complete">Cập nhật tệp tài nguyên hoàn tất</string>
     <string name="resource_file_download_notification_failed">Cập nhật tệp tài nguyên thất bại: %1$s</string>
     <string name="proxy_traffic_stats_notification_channel">Thống kê lưu lượng proxy</string>
     <string name="proxy_traffic_stats_notification_speed">Tốc độ: ↑ %1$s / ↓ %2$s</string>
@@ -713,6 +712,7 @@
     <string name="proxy_app_list_invert_done">Đã đảo ngược lựa chọn</string>
     <string name="proxy_app_list_clear_done">Đã xóa lựa chọn</string>
     <string name="proxy_error_dialog_title">Không thể khởi động proxy</string>
+    <string name="proxy_service_auto_apply_failed">Không thể áp dụng bản cập nhật cho dịch vụ đang chạy</string>
     <string name="proxy_error_dialog_mode_title">Chế độ: %1$s</string>
     <string name="proxy_error_dialog_occurred_at">Thời gian: %1$s</string>
     <string name="proxy_error_dialog_details">Chi tiết lỗi</string>

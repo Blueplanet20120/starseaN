@@ -44,6 +44,21 @@ internal class ProxyServiceUseCase(
     suspend fun restart(
         state: AppState,
         selectedServer: ProxyServerState?,
+    ): ProxyServiceResult = restart(state, selectedServer, onlyIfRunning = false)
+
+    /**
+     * Applies changed configuration to the running core. Xray has no hot reload here, so VPN and
+     * ROOT alike take an explicit restart, which is skipped when the core stopped in the meantime.
+     */
+    suspend fun applyConfiguration(
+        state: AppState,
+        selectedServer: ProxyServerState?,
+    ): ProxyServiceResult = restart(state, selectedServer, onlyIfRunning = true)
+
+    private suspend fun restart(
+        state: AppState,
+        selectedServer: ProxyServerState?,
+        onlyIfRunning: Boolean,
     ): ProxyServiceResult {
         val server = selectedServer ?: return ProxyServiceResult.MissingServer
         val live = try {
@@ -56,7 +71,12 @@ internal class ProxyServiceUseCase(
             live,
         )?.let { conflict -> return conflict.toProxyServiceFailure(RootRequestedAction.RestartSameOwner) }
         return runCatching {
-            proxyEngine.restart(ProxyEngineStartRequest(state, server))
+            val request = ProxyEngineStartRequest(state, server)
+            if (onlyIfRunning) {
+                proxyEngine.restartIfRunning(request)
+            } else {
+                proxyEngine.restart(request)
+            }
         }.fold(
             onSuccess = { status ->
                 ProxyServiceResult.Success(

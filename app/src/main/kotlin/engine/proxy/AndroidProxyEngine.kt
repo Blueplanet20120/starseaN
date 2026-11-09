@@ -6,15 +6,10 @@ package engine.proxy
 import android.content.Context
 import android.content.Intent
 import app.AppState
-import app.ProxyServerState
 import app.R
 import app.modes.RunModeVpnService
-import engine.stats.ProxyTrafficStatsRuntime
 import engine.stats.ProxyTrafficStatsRuntimeStore
 import engine.stats.ProxyTrafficStatsService
-import engine.stats.XrayStatsApiListenAddress
-import engine.stats.resolveXrayStatsApiPort
-import engine.stats.xrayStatsApiExcludedPorts
 import engine.proxy.mode.AndroidModeProxyEngine
 import engine.root.RootModeEngine
 import engine.root.runtime.model.RootRuntimeMode
@@ -88,6 +83,20 @@ class AndroidProxyEngine(
         return status
     }
 
+    /**
+     * An explicit [restart] that only runs when the core is still running once the lifecycle
+     * lock is held, so a stop that lands first is not undone by applying a configuration change.
+     */
+    suspend fun restartIfRunning(request: ProxyEngineStartRequest): ProxyEngineStatus {
+        val status = operationMutex.withLock {
+            val live = statusUnlocked(request.appState.runMode, request.appState)
+            if (!live.running) return@withLock live
+            startUnlocked(request, explicitRestart = true)
+        }
+        mutableRootStatusWatchGeneration.update { generation -> generation + 1L }
+        return status
+    }
+
     suspend fun reconfigureServiceControl(nextState: AppState): AppState {
         val appliedState = operationMutex.withLock {
             val rootEngine = rootEnginesByRunMode[nextState.runMode] ?: return@withLock nextState
@@ -105,10 +114,12 @@ class AndroidProxyEngine(
                 activeEngine = null
                 return@withLock resolvedState.copy(proxyRunning = false)
             }
+            // The republished configuration may relaunch the core, so it keeps the stats API
+            // port the running core and the boot script already use.
+            val (request, _) = ProxyEngineStartRequest(resolvedState, selectedServer)
+                .withTrafficStatsConfig(appContext, verifyAvailability = false)
             val wasRunning = withContext(Dispatchers.Default) {
-                rootEngine.reconfigureServiceControl(
-                    ProxyEngineStartRequest(resolvedState, selectedServer),
-                )
+                rootEngine.reconfigureServiceControl(request)
             }
             activeEngine = rootEngine.takeIf { wasRunning }
             resolvedState.copy(proxyRunning = wasRunning)
@@ -161,9 +172,14 @@ class AndroidProxyEngine(
             rootResumeChecked = true
         }
         val resolvedBaseRequest = request.copy(appState = request.appState.withResolvedDynamicLocalProxyPort())
-        val (resolvedRequest, trafficStatsRuntime) = resolvedBaseRequest.withTrafficStatsConfig()
-        val nextEngine = resolvedRequest.appState.runMode.engine()
-        val currentEngine = activeEngine ?: findEngineToStop(resolvedRequest.appState.runMode)
+        val nextEngine = resolvedBaseRequest.appState.runMode.engine()
+        val currentEngine = activeEngine ?: findEngineToStop(resolvedBaseRequest.appState.runMode)
+        // A runtime of this app may still hold the stats API port until it is replaced below,
+        // so the port is only checked for a foreign holder when no such runtime exists.
+        val (resolvedRequest, trafficStatsRuntime) = resolvedBaseRequest.withTrafficStatsConfig(
+            context = appContext,
+            verifyAvailability = currentEngine == null,
+        )
         val rootToRootRestart = explicitRestart && currentEngine is RootModeEngine && nextEngine is RootModeEngine
         if (currentEngine != null && currentEngine !== nextEngine && !rootToRootRestart) {
             if (currentEngine is RootModeEngine) currentEngine.shutdown() else currentEngine.stop()
@@ -309,28 +325,6 @@ class AndroidProxyEngine(
         return this is RootModeEngine && ownsRuntime()
     }
 
-    private fun ProxyEngineStartRequest.withTrafficStatsConfig(): Pair<ProxyEngineStartRequest, ProxyTrafficStatsRuntime?> {
-        if (!appState.enableTrafficStatsNotification) {
-            return this to null
-        }
-        val port = resolveXrayStatsApiPort(
-            preferredPort = ProxyTrafficStatsRuntimeStore.readPort(appContext),
-            excludedPorts = appState.xrayStatsApiExcludedPorts(),
-        )
-        val request = copy(
-            xrayStatsApiListenAddress = XrayStatsApiListenAddress,
-            xrayStatsApiPort = port,
-        )
-        val statsApiConfig = checkNotNull(request.xrayStatsApiConfig())
-        val runtime = ProxyTrafficStatsRuntime(
-            listenAddress = statsApiConfig.listenAddress,
-            port = statsApiConfig.port,
-            serverName = selectedServer.trafficStatsServerName(),
-            apiTag = statsApiConfig.apiTag,
-        )
-        return request to runtime
-    }
-
     private fun ProxyEngineStatus.withTrafficStatsReconciled(appState: AppState?): ProxyEngineStatus {
         if (!running) {
             ProxyTrafficStatsService.reconcile(appContext, null)
@@ -379,8 +373,3 @@ internal fun shouldUsePreResolvedRootStart(
     resumeChecked: Boolean,
     nextEngineIsRoot: Boolean,
 ): Boolean = !explicitRestart && resumeChecked && nextEngineIsRoot
-
-private fun ProxyServerState.trafficStatsServerName(): String {
-    val info = server.getInfo()
-    return info.remarks.ifBlank { info.protocol }
-}

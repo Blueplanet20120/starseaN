@@ -16,6 +16,7 @@ import features.proxy.server.model.customXrayConfigProxyServerHosts
 import features.proxy.server.model.isCompositeProxyServer
 import features.proxy.server.model.isCustomProxyServer
 import features.proxy.server.model.serverHost
+import features.proxy.server.model.strategyGroupMembers
 
 internal fun AppState.buildXrayOutboundPlan(selectedServer: ProxyServerState): XrayOutboundPlan {
     return XrayOutboundPlanner(this).build(selectedServer)
@@ -108,6 +109,7 @@ private class XrayOutboundPlanner(
             tag = tag,
             selector = selector,
             strategy = strategyGroup.strategy,
+            fallbackTag = "$selector${members.first().id}",
         )
         when (strategyGroup.strategy) {
             StrategyGroupConstants.TYPE_LEAST_LOAD -> burstObservatorySelectors += selector
@@ -142,26 +144,6 @@ private fun AppState.routeTargetServers(): List<ProxyServerState> {
         .filter { tag -> tag.isNotEmpty() && tag !in XrayTags.FIXED_OUTBOUND_TAGS }
         .toSet()
     return proxyServers.filter { server -> server.proxyServerOutboundTag() in routeOutboundTags }
-}
-
-private fun AppState.strategyGroupMembers(strategyGroup: StrategyGroup): List<ProxyServerState> {
-    val regex = strategyGroup.filter.takeIf(String::isNotBlank)?.let { filter ->
-        runCatching { Regex(filter) }.getOrNull()
-    }
-    return proxyServers
-        .asSequence()
-        .filter { server -> !server.server.isCompositeProxyServer() }
-        .filter { server -> !server.server.isCustomProxyServer() }
-        .filter { server ->
-            strategyGroup.subscriptionGroupId == null || server.groupId == strategyGroup.subscriptionGroupId
-        }
-        .filter { server ->
-            val filter = strategyGroup.filter
-            filter.isBlank() ||
-                regex?.containsMatchIn(server.server.getInfo().remarks) == true ||
-                (regex == null && server.server.getInfo().remarks.contains(filter))
-        }
-        .toList()
 }
 
 private fun AppState.chainProxyMembers(chainProxy: ChainProxy): List<ProxyServerState> {

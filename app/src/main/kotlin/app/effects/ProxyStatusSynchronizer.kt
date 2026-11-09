@@ -22,6 +22,7 @@ import app.modes.isRootRunMode
 import data.AndroidAppStateStore
 import engine.proxy.AndroidProxyEngine
 import engine.proxy.ProxyEngineStatus
+import engine.stats.ProxyTrafficStatsRuntimeStore
 import engine.stats.ProxyTrafficStatsService
 import features.logs.AndroidAppLogger
 import kotlinx.coroutines.flow.Flow
@@ -84,6 +85,18 @@ internal fun ProxyStatusSynchronizer(
                                         proxyEngine.rootStatusWatchGeneration.value,
                                 )
                             }
+                            // The notification follows the observed runtime: the in-memory
+                            // proxyRunning still reads false right after the process starts.
+                            if (status.running) {
+                                val state = stateStore.state.value
+                                if (state.enableTrafficStatsNotification) {
+                                    ProxyTrafficStatsRuntimeStore.read(appContext)?.let { runtime ->
+                                        ProxyTrafficStatsService.reconcile(appContext, runtime)
+                                    }
+                                }
+                            } else {
+                                ProxyTrafficStatsService.reconcile(appContext, null)
+                            }
                         }
                     } catch (error: CancellationException) {
                         throw error
@@ -107,12 +120,6 @@ internal fun ProxyStatusSynchronizer(
 
     LaunchedEffect(appContext, appState.enableTrafficStatsNotification) {
         if (!appState.enableTrafficStatsNotification) {
-            ProxyTrafficStatsService.reconcile(appContext, null)
-        }
-    }
-
-    LaunchedEffect(appContext, appState.proxyRunning) {
-        if (!appState.proxyRunning) {
             ProxyTrafficStatsService.reconcile(appContext, null)
         }
     }

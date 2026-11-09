@@ -24,7 +24,6 @@
     <string name="resource_file_download_notification_title">Обновление файлов ресурсов</string>
     <string name="resource_file_download_notification_progress">Скачивание %1$s</string>
     <string name="resource_file_download_notification_cancelled">Обновление файлов ресурсов отменено</string>
-    <string name="resource_file_download_notification_complete">Файлы ресурсов успешно обновлены</string>
     <string name="resource_file_download_notification_failed">Ошибка обновления файлов ресурсов: %1$s</string>
     <string name="proxy_traffic_stats_notification_channel">Статистика трафика прокси</string>
     <string name="proxy_traffic_stats_notification_speed">Скорость: ^ %1$s / v %2$s</string>
@@ -703,6 +702,7 @@
     <string name="proxy_app_list_invert_done">Выбор инвертирован</string>
     <string name="proxy_app_list_clear_done">Выбор очищен</string>
     <string name="proxy_error_dialog_title">Не удалось запустить прокси</string>
+    <string name="proxy_service_auto_apply_failed">Не удалось применить обновление к работающей службе</string>
     <string name="proxy_error_dialog_mode_title">Режим: %1$s</string>
     <string name="proxy_error_dialog_occurred_at">Время: %1$s</string>
     <string name="proxy_error_dialog_details">Сведения об ошибке</string>

@@ -65,6 +65,8 @@ android {
 
     buildTypes {
         debug {
+            // Installs side by side with a release build.
+            applicationIdSuffix = ".debug"
             isMinifyEnabled = false
         }
 
