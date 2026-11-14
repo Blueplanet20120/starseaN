@@ -27,6 +27,10 @@ abstract class BuildHevTunTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sourceDirectory: DirectoryProperty
 
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val patchDirectory: DirectoryProperty
+
     @get:OutputFile
     abstract val outputFile: RegularFileProperty
 
@@ -145,8 +149,30 @@ abstract class BuildHevTunTask : DefaultTask() {
     }
 
     private fun prepareBuildSource(sourceDir: File): File {
+        val patchDir = patchDirectory.get().asFile
         val patchedSourceDir = temporaryDir.resolve("patched-source")
+        if (patchedSourceDir.exists()) {
+            patchedSourceDir.deleteRecursively()
+        }
         copyTreePreservingTimestamps(sourceDir, patchedSourceDir)
+        val additionalSourceDir = patchDir.resolve("src")
+        if (additionalSourceDir.isDirectory) {
+            additionalSourceDir.copyRecursively(patchedSourceDir.resolve("src"), overwrite = true)
+        }
+        patchDir.listFiles().orEmpty()
+            .filter { file -> file.isFile && file.extension == "patch" }
+            .sortedBy { file -> file.name }
+            .forEach { patchFile ->
+                execOperations.exec {
+                    workingDir = temporaryDir
+                    environment("GIT_CEILING_DIRECTORIES", temporaryDir.parentFile.absolutePath)
+                    commandLine(
+                        "git", "apply", "--no-index",
+                        "--directory=${patchedSourceDir.name}",
+                        patchFile.absolutePath,
+                    )
+                }
+            }
         replaceSymlinkPlaceholderFiles(patchedSourceDir)
         return patchedSourceDir
     }

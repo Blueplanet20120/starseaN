@@ -320,6 +320,7 @@ struct starsead_hev_helper_config {
     char executable_path[STARSEAD_MAX_PATH];
     char socks_host[STARSEAD_MAX_HOST];
     uint16_t socks_port;
+    char flow_metadata_token[33];
     char tunnel_name[STARSEAD_MAX_TUNNEL_NAME];
     uint32_t mtu;
     char ipv4_address[STARSEAD_MAX_CIDR];
@@ -337,6 +338,7 @@ struct starsead_bpf_helper_config {
     uint16_t bridge_port;
     char socks_host[STARSEAD_MAX_HOST];
     uint16_t socks_port;
+    char flow_metadata_token[33];
     uint32_t worker_count;
     uint32_t tcp_buffer_size;
     uint32_t max_tcp_sessions;

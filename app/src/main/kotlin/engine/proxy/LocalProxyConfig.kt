@@ -134,6 +134,7 @@ private fun AppState.localProxyExcludedPorts(): Set<Int> {
             add(bpf2SocksBridgePort.toPortOrNull() ?: RootModeEngine.DefaultBpf2SocksBridgePort)
             add(socks5ProxyPort.toPortOrNull() ?: RootModeEngine.DefaultTun2SocksProxyPort)
         }
+        if (usesFlowMetadata()) add(FlowMetadataPort)
     }
 }
 

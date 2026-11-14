@@ -11,7 +11,10 @@ import app.effectiveFakeDnsEnabled
 import app.effectiveLocalDnsEnabled
 import engine.network.normalizedFakeIpIpv4Pool
 import engine.network.toPortOrNull
+import engine.proxy.FlowMetadataInboundTag
 import engine.proxy.ProxyEngineStartRequest
+import engine.proxy.flowMetadataOptions
+import engine.proxy.usesFlowMetadata
 import engine.proxy.xrayStatsApiConfig
 import engine.vpn.xrayDnsHosts
 import engine.xray.XrayConfigFactory
@@ -21,6 +24,7 @@ import engine.xray.XrayStatsApiConfig
 import engine.xray.buildXrayOutboundPlan
 import engine.xray.prepareXrayCoreLogPaths
 import engine.xray.validateXrayExternalRoutingResources
+import engine.xray.withFlowMetadata
 import features.resources.runtime.XrayResourceFilePaths
 import features.resources.runtime.xrayRootResourceFilePaths
 import features.proxy.server.model.Custom
@@ -37,6 +41,10 @@ internal class RootConfigBuildContext(
     private val dnsHosts: List<String>,
     val statsApiConfig: XrayStatsApiConfig? = null,
 ) {
+    val bridgeOptions by lazy {
+        androidContext.flowMetadataOptions()
+    }
+
     fun buildRootStartConfig(
         inbounds: List<JsonObject>,
         dnsHijackInboundTags: List<String>,
@@ -49,14 +57,18 @@ internal class RootConfigBuildContext(
                 inbounds = inbounds,
                 coreLogPaths = coreLogPaths,
                 dnsHosts = dnsHosts,
-                dnsHijackInboundTags = dnsHijackInboundTags,
+                dnsHijackInboundTags = if (appState.usesFlowMetadata()) {
+                    dnsHijackInboundTags + FlowMetadataInboundTag
+                } else {
+                    dnsHijackInboundTags
+                },
                 statsApiConfig = statsApiConfig,
             ),
         )
         return appState.toRootStartConfig(
             runtimeEventReceiver = ComponentName(androidContext, QuickSettingsTileRefreshReceiver::class.java)
                 .flattenToString(),
-            xrayConfigJson = xrayConfigJson,
+            xrayConfigJson = xrayConfigJson.withFlowMetadata(androidContext, appState),
             resourceFilePaths = resourceFilePaths,
         )
     }

@@ -865,10 +865,12 @@ static int parse_hev(
         "type", "executablePath", "socksHost", "socksPort", "tunnelName", "mtu", "ipv4Address",
         "ipv6Address", "multiQueue", "tcpFastOpen", "tcpReadWriteTimeoutMilliseconds",
         "udpReadWriteTimeoutMilliseconds",
+        "flowMetadataToken",
     };
-    size_t values[12];
+    size_t values[13];
     struct starsead_hev_helper_config *hev = &config->helper.value.hev;
-    if (object_fields(document, object, names, 12U, values) != 0 || !token_equals(document, values[0], "hev-socks5-tunnel") ||
+    unsigned hev_fields = document->tokens[object].child_count == 13U ? 13U : 12U;
+    if (object_fields(document, object, names, hev_fields, values) != 0 || !token_equals(document, values[0], "hev-socks5-tunnel") ||
         copy_string(document, values[1], hev->executable_path, sizeof(hev->executable_path)) != 0 || !path_is_normal(hev->executable_path) ||
         copy_string(document, values[2], hev->socks_host, sizeof(hev->socks_host)) != 0 || strcmp(hev->socks_host, "127.0.0.1") != 0 ||
         parse_port(document, values[3], &hev->socks_port) != 0 ||
@@ -884,6 +886,11 @@ static int parse_hev(
         if (copy_string(document, values[7], hev->ipv6_address, sizeof(hev->ipv6_address)) != 0 ||
             strchr(hev->ipv6_address, '/') != NULL || inet_pton(AF_INET6, hev->ipv6_address, (unsigned char[16]){0}) != 1) return -1;
     }
+    if (hev_fields == 13U &&
+        (copy_string(document, values[12], hev->flow_metadata_token, sizeof(hev->flow_metadata_token)) != 0 ||
+            strlen(hev->flow_metadata_token) != 32U ||
+            strspn(hev->flow_metadata_token, "0123456789abcdef") != 32U))
+        return -1;
     config->helper.type = STARSEAD_HELPER_HEV_SOCKS5_TUNNEL;
     return 0;
 }
@@ -897,10 +904,12 @@ static int parse_bpf(
         "workerCount", "tcpBufferSize", "maxTcpSessions", "connectTimeoutMilliseconds",
         "tcpIdleTimeoutMilliseconds", "udpSocketBufferSize", "udpBatchSize", "maxUdpSessions",
         "maxUdpBindings", "udpIdleTimeoutMilliseconds", "maxUdpPendingBytes", "dnsTransactionTimeoutMilliseconds",
+        "flowMetadataToken",
     };
-    size_t values[18];
+    size_t values[19];
     struct starsead_bpf_helper_config *bpf = &config->helper.value.bpf;
-    if (object_fields(document, object, names, 18U, values) != 0 || !token_equals(document, values[0], "bpf2socks") ||
+    unsigned bpf_fields = document->tokens[object].child_count == 19U ? 19U : 18U;
+    if (object_fields(document, object, names, bpf_fields, values) != 0 || !token_equals(document, values[0], "bpf2socks") ||
         copy_string(document, values[1], bpf->executable_path, sizeof(bpf->executable_path)) != 0 || !path_is_normal(bpf->executable_path) ||
         copy_string(document, values[2], bpf->bridge_listen_address, sizeof(bpf->bridge_listen_address)) != 0 || strcmp(bpf->bridge_listen_address, "0.0.0.0") != 0 ||
         parse_port(document, values[3], &bpf->bridge_port) != 0 || copy_string(document, values[4], bpf->socks_host, sizeof(bpf->socks_host)) != 0 || strcmp(bpf->socks_host, "127.0.0.1") != 0 ||
@@ -920,6 +929,11 @@ static int parse_bpf(
         parse_u32(document, values[15], &bpf->udp_idle_timeout_milliseconds) != 0 || bpf->udp_idle_timeout_milliseconds < 1000U || bpf->udp_idle_timeout_milliseconds > 86400000U ||
         parse_u32(document, values[16], &bpf->max_udp_pending_bytes) != 0 || bpf->max_udp_pending_bytes < 65536U || bpf->max_udp_pending_bytes > 1073741824U ||
         parse_u32(document, values[17], &bpf->dns_transaction_timeout_milliseconds) != 0 || bpf->dns_transaction_timeout_milliseconds < 100U || bpf->dns_transaction_timeout_milliseconds > 60000U) return -1;
+    if (bpf_fields == 19U &&
+        (copy_string(document, values[18], bpf->flow_metadata_token, sizeof(bpf->flow_metadata_token)) != 0 ||
+            strlen(bpf->flow_metadata_token) != 32U ||
+            strspn(bpf->flow_metadata_token, "0123456789abcdef") != 32U))
+        return -1;
     config->helper.type = STARSEAD_HELPER_BPF2SOCKS;
     return 0;
 }

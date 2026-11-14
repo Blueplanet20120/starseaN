@@ -50,7 +50,8 @@ internal fun RootConfigBuildContext.buildTun2SocksStartConfig(): RootModeStartCo
             helper = StarseadHevSocks5TunnelHelper(
                 executablePath = rootStartConfig.runtimePaths.hevSocks5TunnelExecutablePath,
                 socksHost = Tun2SocksListenAddress,
-                socksPort = socks5ProxyPort,
+                socksPort = bridgeOptions.port,
+                flowMetadataToken = bridgeOptions.password,
                 tunnelName = "starsea0",
                 mtu = tunOptions.mtu,
                 ipv4Address = tunOptions.ipv4Address.address,
