@@ -48,6 +48,9 @@ internal fun LazyListScope.masqueProxyServer(masqueEdit: Masque) {
         MasqueTextField(stringResource(R.string.proxy_editor_masque_path_optional), masqueEdit.path) {
             masqueEdit.path = it
         }
+        MasqueTextField("Headers", masqueEdit.headers, multiLine = true) {
+            masqueEdit.headers = it
+        }
         MasqueTextField(stringResource(R.string.proxy_editor_masque_remote_dns_optional), masqueEdit.remoteDNS) {
             masqueEdit.remoteDNS = it
         }
@@ -92,6 +95,9 @@ internal fun LazyListScope.masqueProxyServer(masqueEdit: Masque) {
         )
         MasqueTextField(stringResource(R.string.proxy_editor_certificate_fingerprint), masqueEdit.pinSHA256) {
             masqueEdit.pinSHA256 = it
+        }
+        MasqueTextField("VerifyPeerCertByName", masqueEdit.verifyPeerCertByName) {
+            masqueEdit.verifyPeerCertByName = it
         }
     }
     item(key = "warp") {

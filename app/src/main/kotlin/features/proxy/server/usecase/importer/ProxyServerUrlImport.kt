@@ -82,7 +82,8 @@ private fun parseProxyServerUrlOrNull(
             AndroidAppLogger.warn(
                 ProxyServerImportLogTag,
                 url.importFailureMessage(index = index, source = source),
-                error,
+                // URL parser errors can include the WARP private key or authentication headers.
+                error.takeUnless { url.startsWith("${ProxyServerConstants.PROTOCOL_MASQUE}://", ignoreCase = true) },
             )
         }
         .getOrNull()
@@ -119,10 +120,11 @@ private val ProxyServerUrlPrefixes = listOf(
     "${ProxyServerConstants.PROTOCOL_HY2}://",
     "${ProxyServerConstants.PROTOCOL_HYSTERIA2}://",
     "${ProxyServerConstants.PROTOCOL_WIREGUARD}://",
+    "${ProxyServerConstants.PROTOCOL_MASQUE}://",
 )
 
 private val ProxyServerUrlRegex = Regex(
-    "(?i)\\b(?:http|socks|socks4|socks5|ss|vmess|vless|v2rayn|trojan|hy2|hysteria2|wireguard)://[^\\s<>\"']+",
+    "(?i)\\b(?:http|socks|socks4|socks5|ss|vmess|vless|v2rayn|trojan|hy2|hysteria2|wireguard|masque)://[^\\s<>\"']+",
 )
 
 private const val ProxyServerImportLogTag = "ProxyServerImport"

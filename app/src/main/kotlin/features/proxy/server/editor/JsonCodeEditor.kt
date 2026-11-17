@@ -86,6 +86,11 @@ internal class JsonCodeEditorState(
         }
     }
 
+    fun clearFocus() {
+        editor?.hideSoftInput()
+        editor?.clearFocus()
+    }
+
     fun snapshotText(): String = editor?.text?.toString() ?: retainedText
 
     fun replaceText(text: String, placeCursorAtEnd: Boolean = true) {

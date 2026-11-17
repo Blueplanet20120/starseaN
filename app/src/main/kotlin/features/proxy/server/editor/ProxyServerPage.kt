@@ -67,6 +67,7 @@ import ui.components.BackNavigationIcon
 import ui.components.NavigationIcon
 import ui.components.WarningConfirmDialog
 import ui.layout.AdaptiveTopAppBar
+import ui.layout.rememberCodeEditorFocusState
 import ui.layout.pageContentPaddingWithCutout
 import ui.layout.pageScrollModifiers
 
@@ -103,6 +104,13 @@ fun ProxyServerPage(
     val psEdit = remember(ps) {
         ps.editableCopy()
     }
+    val configJsonState = remember(psEdit) {
+        (psEdit as? Custom)?.let { JsonCodeEditorState(it.configJson) }
+    }
+    val editorFocus = rememberCodeEditorFocusState(
+        editorFocused = configJsonState?.isFocused == true,
+        clearEditorFocus = { configJsonState?.clearFocus() },
+    )
     var pendingSaveIssues by remember { mutableStateOf<List<ProxyServerValidationIssue>>(emptyList()) }
     fun saveProxyServer() {
         if (resultKey != null && serverId != null) {
@@ -166,7 +174,7 @@ fun ProxyServerPage(
                 scrollBehavior = topAppBarScrollBehavior,
                 navigationIcon = {
                     BackNavigationIcon(
-                        onClick = { navigator.pop() },
+                        onClick = { if (editorFocus.expanded) editorFocus.exit() else navigator.pop() },
                     )
                 },
                 actions = {
@@ -234,6 +242,8 @@ fun ProxyServerPage(
         if (psEdit is Custom) {
             CustomProxyServerEditor(
                 customEdit = psEdit,
+                configJsonState = requireNotNull(configJsonState),
+                editorExpanded = editorFocus.expanded,
                 contentPadding = contentPadding,
             )
             return@Scaffold
