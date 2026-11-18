@@ -6,6 +6,7 @@ package features.proxy.server.usecase.importer
 import features.logs.AndroidAppLogger
 import features.proxy.server.model.ProxyServer
 import features.proxy.server.usecase.EmptyProxyServerImportResult
+import features.proxy.server.usecase.MaxProxyServerImportBytes
 import features.proxy.server.usecase.ProxyServerImportContext
 import features.proxy.server.usecase.ProxyServerImportResult
 import features.proxy.server.usecase.ProxyServerImportSource
@@ -16,6 +17,9 @@ import org.snakeyaml.engine.v2.api.LoadSettings
 import java.net.URI
 
 private const val LogTag = "ProxyServerMihomoYamlImport"
+private val MihomoYamlImportLoadSettings = LoadSettings.builder()
+    .setCodePointLimit(MaxProxyServerImportBytes)
+    .build()
 
 internal suspend fun parseProxyServersFromMihomoYamlConfig(
     text: String,
@@ -23,7 +27,7 @@ internal suspend fun parseProxyServersFromMihomoYamlConfig(
 ): ProxyServerImportResult {
     val source = context.source
     val root = runCatching {
-        newMihomoYamlParser().loadFromString(text.trimStart(ImportByteOrderMark))
+        Load(MihomoYamlImportLoadSettings).loadFromString(text.trimStart(ImportByteOrderMark))
     }.onFailure { error ->
         AndroidAppLogger.warn(
             LogTag,
@@ -263,10 +267,6 @@ private fun skippedMessage(
 ): String {
     return "Skipped mihomo YAML Proxy Server source=${source.logName} index=$index " +
         "type=${type.ifBlank { "<blank>" }} name=${name.ifBlank { "<blank>" }} reason=$reason"
-}
-
-private fun newMihomoYamlParser(): Load {
-    return Load(LoadSettings.builder().build())
 }
 
 private val SupportedMihomoProxyTypes = setOf(

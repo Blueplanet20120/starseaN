@@ -19,6 +19,7 @@ import engine.root.publication.rootRuntimeLayout
 import engine.root.runtime.RootFailureAnalyzer
 import engine.root.runtime.RootFailureReport
 import engine.root.runtime.RootFailureWatcher
+import engine.root.runtime.boundSnapshot
 import engine.root.runtime.RootRuntimeBusyException
 import engine.root.runtime.RootRuntimeConflictException
 import engine.root.daemon.control.StarseadPhase
@@ -164,6 +165,12 @@ internal class RootModeEngine(
 
     suspend fun ownsRuntime(): Boolean {
         return controller.ownsRuntime()
+    }
+
+    internal suspend fun readStatus(): ProxyEngineStatus {
+        val snapshot = controller.status().boundSnapshot()
+            ?: return ProxyEngineStatus(running = false, runMode = runMode)
+        return controller.proxyStatus(snapshot, runMode, definition.daemonMode)
     }
 
     override suspend fun status(): ProxyEngineStatus {
