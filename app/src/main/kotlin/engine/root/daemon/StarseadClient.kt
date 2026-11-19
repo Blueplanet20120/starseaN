@@ -4,6 +4,7 @@
 package engine.root.daemon
 
 import engine.root.dns.RootDnsEnhancementState
+import engine.root.runtime.failPrivateDnsOr
 import engine.root.daemon.control.StarseadControlCodec
 import engine.root.daemon.control.StarseadControlResponse
 import engine.root.daemon.control.StarseadEventType
@@ -230,10 +231,8 @@ internal class StarseadClient(
             if (event.type == StarseadEventType.Failed ||
                 event.snapshot.phase == StarseadPhase.Failed
             ) {
-                error(
-                    event.details?.message
-                        ?: event.snapshot.error?.message
-                        ?: "starsead entered failed phase",
+                event.snapshot.failPrivateDnsOr(
+                    event.details?.message ?: event.snapshot.error?.message,
                 )
             }
             inspect(event.snapshot)
@@ -241,7 +240,7 @@ internal class StarseadClient(
 
         private fun inspect(snapshot: StarseadSnapshot) {
             if (snapshot.phase == StarseadPhase.Failed) {
-                error(snapshot.error?.message ?: "starsead entered failed phase")
+                snapshot.failPrivateDnsOr(snapshot.error?.message)
             }
             if (snapshot.phase == StarseadPhase.Running) {
                 runningSnapshot = snapshot

@@ -134,6 +134,7 @@
     <string name="settings_root_ebpf_matcher_summary">提升大应用清单性能，支持地址过滤</string>
     <string name="settings_app_list_enhancement">应用名单增强</string>
     <string name="settings_app_list_enhancement_summary">按应用名单分流系统 DNS，并隔离缓存</string>
+    <string name="error_app_list_enhancement_private_dns">请关闭私人 DNS 后再使用应用名单增强</string>
     <string name="enhancement_module_acknowledge">知道了</string>
     <string name="enhancement_module_apk_install_failed">刷入失败，请检查错误输出。可尝试导出本应用，将 .apk 后缀改为 .zip，在 ROOT 管理器中刷入</string>
     <string name="enhancement_module_failed">模块操作失败。请检查 ROOT 管理器，确认 Zygisk Next 已安装且启用后重试</string>

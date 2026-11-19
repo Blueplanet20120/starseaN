@@ -91,6 +91,7 @@
     <string name="settings_root_ebpf_matcher_summary">Повышает производительность при больших списках приложений и активирует фильтрацию адресов</string>
     <string name="settings_app_list_enhancement">Улучшение списка приложений</string>
     <string name="settings_app_list_enhancement_summary">Направлять системный DNS по списку приложений и разделять кэш</string>
+    <string name="error_app_list_enhancement_private_dns">Отключите частный DNS для расширенной обработки списка приложений</string>
     <string name="enhancement_module_acknowledge">Понятно</string>
     <string name="enhancement_module_apk_install_failed">ROOT-инструмент не смог установить этот APK напрямую. Если APK не поддерживается, экспортируйте APK, смените .apk на .zip, установите его в ROOT-менеджере и перезагрузите устройство</string>
     <string name="enhancement_module_failed">Операция модуля не удалась. Проверьте ROOT-менеджер и убедитесь, что Zygisk Next установлен и включен</string>

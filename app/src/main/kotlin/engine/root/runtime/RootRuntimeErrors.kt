@@ -7,6 +7,22 @@ import engine.root.daemon.control.StarseadFailureCode
 import engine.root.daemon.control.StarseadPhase
 import engine.root.daemon.control.StarseadSnapshot
 
+internal class RootPrivateDnsException(
+    reason: String,
+) : IllegalStateException(reason)
+
+internal fun StarseadSnapshot.failPrivateDnsOr(message: String?): Nothing {
+    val reason = dnsEnhancement.reason
+    if (dnsEnhancement.required &&
+        reason != null &&
+        reason.startsWith("CACHE_ERROR ") &&
+        " reason=private-dns " in reason
+    ) {
+        throw RootPrivateDnsException(reason)
+    }
+    kotlin.error(message ?: this.error?.message ?: "starsead entered failed phase")
+}
+
 internal class RootRuntimeConflictException(
     val snapshot: StarseadSnapshot,
 ) : IllegalStateException("ROOT runtime is owned by ${snapshot.owner.wireValue}")

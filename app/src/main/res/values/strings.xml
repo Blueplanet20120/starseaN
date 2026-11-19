@@ -134,6 +134,7 @@
     <string name="settings_root_ebpf_matcher_summary">Faster large app lists and address filtering</string>
     <string name="settings_app_list_enhancement">Application list enhancement</string>
     <string name="settings_app_list_enhancement_summary">Route system DNS by app list; isolate caches</string>
+    <string name="error_app_list_enhancement_private_dns">Turn off Private DNS to use application list enhancement</string>
     <string name="enhancement_module_acknowledge">OK</string>
     <string name="enhancement_module_apk_install_failed">Installation failed. Check the error output. You can try exporting this app, changing the .apk extension to .zip, and installing it with your ROOT manager</string>
     <string name="enhancement_module_failed">Module operation failed. Check your ROOT manager and ensure Zygisk Next is installed and enabled, then retry</string>

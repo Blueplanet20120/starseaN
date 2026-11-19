@@ -333,7 +333,7 @@ internal class RootSupervisorController(
             if (snapshot != null && snapshot.owner == StarseadOwner.StarseaN) {
                 when (snapshot.phase) {
                     StarseadPhase.Running -> return snapshot
-                    StarseadPhase.Failed -> error(snapshot.error?.message ?: "starsead entered failed phase")
+                    StarseadPhase.Failed -> snapshot.failPrivateDnsOr(snapshot.error?.message)
                     StarseadPhase.Stopped -> {
                         val since = stoppedSinceNanoseconds ?: System.nanoTime().also {
                             stoppedSinceNanoseconds = it

@@ -127,6 +127,7 @@
     <string name="settings_root_ebpf_matcher_summary">Cải thiện hiệu năng với danh sách ứng dụng lớn, hỗ trợ lọc địa chỉ</string>
     <string name="settings_app_list_enhancement">Tăng cường danh sách ứng dụng</string>
     <string name="settings_app_list_enhancement_summary">Định tuyến DNS hệ thống theo danh sách ứng dụng và tách bộ nhớ đệm</string>
+    <string name="error_app_list_enhancement_private_dns">Tắt DNS riêng tư để dùng tính năng tăng cường danh sách ứng dụng</string>
     <string name="enhancement_module_acknowledge">Đã hiểu</string>
     <string name="enhancement_module_apk_install_failed">Công cụ ROOT không cài trực tiếp được APK này. Nếu không hỗ trợ APK, hãy xuất APK, đổi .apk thành .zip, cài bằng trình quản lý ROOT rồi khởi động lại</string>
     <string name="enhancement_module_failed">Thao tác mô-đun thất bại. Hãy kiểm tra trình quản lý ROOT và bảo đảm Zygisk Next đã được cài và bật</string>
