@@ -85,7 +85,10 @@ import top.yukonga.miuix.kmp.icon.extended.MindMap
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import ui.layout.pageWindowPadding
-import ui.layout.shouldShowSplitPane
+import androidx.compose.ui.draw.clipToBounds
+import ui.layout.LocalAdaptiveWindow
+import ui.layout.avoidFold
+import ui.layout.rememberAdaptiveWindow
 import kotlin.math.abs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -136,11 +139,12 @@ fun AppContent(
 
     MainScreenBackHandler(mainPagerState, navigator)
 
-    val isWideScreen = shouldShowSplitPane()
+    val window = rememberAdaptiveWindow()
 
     CompositionLocalProvider(
         LocalNavigator provides navigator,
-        LocalIsWideScreen provides isWideScreen,
+        LocalAdaptiveWindow provides window,
+        LocalIsWideScreen provides window.supportsWideContent,
     ) {
         val entryProvider = remember(backStack, languageMode) {
             entryProvider<NavKey> {
@@ -222,6 +226,8 @@ fun AppContent(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MiuixTheme.colorScheme.surface)
+                .avoidFold(window)
+                .clipToBounds()
                 .imePadding(),
             onBack = { navigator.pop() },
             transitionEffects = transitionEffects,
@@ -235,11 +241,11 @@ private fun Home(
     padding: PaddingValues,
     mainPagerState: MainPagerState,
 ) {
-    val isWideScreen = LocalIsWideScreen.current
+    val showNavigationRail = LocalAdaptiveWindow.current.showNavigationRail
     val layoutDirection = LocalLayoutDirection.current
     val navigationItems = MainNavigation.navigationItems()
     Scaffold {
-        if (isWideScreen) {
+        if (showNavigationRail) {
             WideScreenContent(
                 navigationItems = navigationItems,
                 layoutDirection = layoutDirection,

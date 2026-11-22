@@ -17,6 +17,7 @@ import app.AppState
 import app.ProxyServerListState
 import app.ProxyServerState
 import app.R
+import app.modes.ProxyServerListLayoutAuto
 import app.modes.ProxyServerListLayoutDouble
 import app.modes.ProxyServerListLayoutMultiple
 import app.modes.ProxyServerListLayoutSingle
@@ -452,6 +453,10 @@ private fun handleProxyServerListToolAction(
                 messages.realConnectionDoneTemplate,
                 false,
             )
+        }
+
+        ProxyServerListToolAction.SetLayoutAuto -> {
+            updateAppState { state -> state.copy(proxyServerListLayout = ProxyServerListLayoutAuto) }
         }
 
         ProxyServerListToolAction.SetLayoutSingle -> {

@@ -419,6 +419,7 @@
     <string name="proxy_server_list_latency_test">Kiểm tra độ trễ</string>
     <string name="proxy_server_list_real_connection_test">Kiểm tra kết nối thực</string>
     <string name="proxy_server_list_option_layout">Bố cục</string>
+    <string name="proxy_server_list_option_layout_auto">Tự động</string>
     <string name="proxy_server_list_option_layout_single">Một cột</string>
     <string name="proxy_server_list_option_layout_double">Hai cột</string>
     <string name="proxy_server_list_option_layout_multiple">Nhiều cột</string>

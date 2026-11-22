@@ -371,6 +371,7 @@
     <string name="proxy_server_list_latency_test">Тест задержки (Ping)</string>
     <string name="proxy_server_list_real_connection_test">Тест реального соединения (HTTP)</string>
     <string name="proxy_server_list_option_layout">Отображение</string>
+    <string name="proxy_server_list_option_layout_auto">Автоматически</string>
     <string name="proxy_server_list_option_layout_single">В один столбец</string>
     <string name="proxy_server_list_option_layout_double">В два столбца</string>
     <string name="proxy_server_list_option_layout_multiple"> Сетка</string>

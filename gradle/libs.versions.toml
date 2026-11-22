@@ -5,6 +5,7 @@ androidx-navigation3 = "1.1.7"
 androidx-navigationevent = "1.1.0"
 androidx-room = "2.8.5"
 androidx-work = "2.12.0"
+androidx-window = "1.5.1"
 androidx-biometric = "1.1.0"
 androidx-fragment = "1.8.9"
 androidx-lifecycle = "2.9.4"
@@ -34,6 +35,7 @@ androidx-navigationevent = { module = "org.jetbrains.androidx.navigationevent:na
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "androidx-room" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "androidx-room" }
 androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "androidx-work" }
+androidx-window = { module = "androidx.window:window", version.ref = "androidx-window" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "androidx-biometric" }
 androidx-fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "androidx-fragment" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "androidx-lifecycle" }

@@ -124,6 +124,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.work.runtime)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.window)
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.lifecycle.process)

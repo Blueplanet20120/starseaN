@@ -11,7 +11,6 @@ import features.logs.AndroidAppLogger
 import engine.xray.XrayConfigRequest
 import engine.xray.XraySpeedTestConfigFactory
 import engine.xray.initializeAndroidXrayCoreEnvironment
-import engine.xray.prepareXrayCoreLogPaths
 import features.resources.runtime.prepareXrayResourceFilePaths
 import engine.network.NetworkDefaults
 import engine.network.toPortOrNull
@@ -77,7 +76,6 @@ internal class AndroidProxyLatencyTester(
                     appState = appState,
                     selectedServer = server,
                     inbounds = emptyList(),
-                    coreLogPaths = appContext.prepareXrayCoreLogPaths(),
                 ),
             )
             Libv2ray.measureOutboundDelay(configJson, DelayTestUrl)

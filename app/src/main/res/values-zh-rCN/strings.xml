@@ -438,6 +438,7 @@
     <string name="proxy_server_list_latency_test">延迟测试</string>
     <string name="proxy_server_list_real_connection_test">测试真连接</string>
     <string name="proxy_server_list_option_layout">布局</string>
+    <string name="proxy_server_list_option_layout_auto">自动</string>
     <string name="proxy_server_list_option_layout_single">单列</string>
     <string name="proxy_server_list_option_layout_double">双列</string>
     <string name="proxy_server_list_option_layout_multiple">多列</string>

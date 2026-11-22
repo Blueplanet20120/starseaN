@@ -10,7 +10,7 @@ import app.modes.ProxyAppListModeBlacklist
 import app.modes.ProxyAppListModeGlobal
 import app.modes.ProxyAppListModeUnset
 import app.modes.ProxyAppListModeWhitelist
-import app.modes.ProxyServerListLayoutSingle
+import app.modes.ProxyServerListLayoutAuto
 import app.modes.ProxyServerListSortDefault
 import app.modes.RunModeVpnService
 import app.modes.isRootRunMode
@@ -75,7 +75,7 @@ data class AppState(
     val proxyServers: List<ProxyServerState> = emptyList(),
     val nextProxyServerId: Int = 10,
     val selectedProxyServerId: Int = 1,
-    val proxyServerListLayout: Int = ProxyServerListLayoutSingle,
+    val proxyServerListLayout: Int = ProxyServerListLayoutAuto,
     val proxyServerListSort: Int = ProxyServerListSortDefault,
     val proxyRunning: Boolean = false,
 

@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import app.R
 import features.proxy.server.display.displayProxyServerProtocolName
+import app.modes.ProxyServerListLayoutAuto
 import app.modes.ProxyServerListLayoutDouble
 import app.modes.ProxyServerListLayoutMultiple
 import app.modes.ProxyServerListLayoutSingle
@@ -901,6 +902,11 @@ private fun proxyServerListToolMenuEntries(
         key = "layout",
         title = stringResource(R.string.proxy_server_list_option_layout),
         children = listOf(
+            proxyServerListToolMenuEntry(
+                title = stringResource(R.string.proxy_server_list_option_layout_auto),
+                action = ProxyServerListToolAction.SetLayoutAuto,
+                selected = layout == ProxyServerListLayoutAuto,
+            ),
             proxyServerListToolMenuEntry(
                 title = stringResource(R.string.proxy_server_list_option_layout_single),
                 action = ProxyServerListToolAction.SetLayoutSingle,

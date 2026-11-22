@@ -95,7 +95,7 @@ fun ProxyServerListPage(
     val defaultGroupName = stringResource(R.string.subscription_default_group)
     val unknownGroupName = stringResource(R.string.common_unknown_group)
     val messages = proxyServerListMessages()
-    val columns = proxyListState.proxyServerListLayout.resolvedProxyServerListColumns()
+    val columns = proxyListState.proxyServerListLayout.resolvedProxyServerListColumns(LocalIsWideScreen.current)
 
     LaunchedEffect(proxyListState.selectedProxyServerId) {
         selectedServerId = proxyListState.selectedProxyServerId
